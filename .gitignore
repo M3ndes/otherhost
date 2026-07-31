@@ -1,0 +1,8 @@
+devbox.local.conf
+.env
+.env.*
+*.log
+*.bak
+.DS_Store
+.idea/
+.vscode/

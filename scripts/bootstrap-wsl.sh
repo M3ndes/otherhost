@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eu
 
-ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 # shellcheck source=../lib/devbox.sh
 . "$ROOT_DIR/lib/devbox.sh"
 
@@ -42,7 +42,7 @@ enable_systemd_config() {
   source_file=$(mktemp)
   merged_file=$(mktemp)
   if sudo test -f /etc/wsl.conf; then
-    sudo cat /etc/wsl.conf > "$source_file"
+    sudo cat /etc/wsl.conf | tee "$source_file" >/dev/null
   fi
   awk '
     BEGIN { in_boot = 0; boot_seen = 0; systemd_seen = 0 }
@@ -165,7 +165,9 @@ EOF
   fi
 
   if [ -n "$PROJECT_REPOSITORY" ] || [ -n "$PROJECT_DIRECTORY" ]; then
-    [ -n "$PROJECT_REPOSITORY" ] && [ -n "$PROJECT_DIRECTORY" ] || fail 'project_repository and project_directory must be set together'
+    if [ -z "$PROJECT_REPOSITORY" ] || [ -z "$PROJECT_DIRECTORY" ]; then
+      fail 'project_repository and project_directory must be set together'
+    fi
     case "$PROJECT_REPOSITORY" in
       https://*|ssh://*|git@*:*) ;;
       *) fail 'project_repository must use an HTTPS or SSH Git URL' ;;

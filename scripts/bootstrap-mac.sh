@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eu
 
-ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 # shellcheck source=../lib/devbox.sh
 . "$ROOT_DIR/lib/devbox.sh"
 
@@ -94,8 +94,8 @@ else
 fi
 
 case ":$PATH:" in
-  *:"$HOME/.local/bin":*) ok '~/.local/bin is present in PATH' ;;
-  *) warn 'add export PATH="$HOME/.local/bin:$PATH" to ~/.zshrc' ;;
+  *:"$HOME/.local/bin":*) ok "$HOME/.local/bin is present in PATH" ;;
+  *) warn 'add ~/.local/bin to PATH in ~/.zshrc' ;;
 esac
 
 printf '\nNext: edit %s, then run devbox doctor.\n' "$CONFIG_FILE"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -u
 
-ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 # shellcheck source=../lib/devbox.sh
 . "$ROOT_DIR/lib/devbox.sh"
 

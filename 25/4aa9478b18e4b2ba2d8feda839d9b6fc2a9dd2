@@ -1,0 +1,29 @@
+tests/config_test.sh
+  s_71755d8d0bab89::t_02bc2330a7a971 4
+Makefile
+  s_71755d8d0bab89::t_02bc2330a7a971 13
+bin/devbox
+  s_71755d8d0bab89::t_02bc2330a7a971 4
+scripts/bootstrap-mac.sh
+  s_71755d8d0bab89::t_02bc2330a7a971 4,97-98
+.github/workflows/ci.yml
+  s_71755d8d0bab89::t_02bc2330a7a971 17,24,33
+scripts/bootstrap-wsl.sh
+  s_71755d8d0bab89::t_02bc2330a7a971 4,45,168-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "254aa9478b18e4b2ba2d8feda839d9b6fc2a9dd2",
+  "prompts": {},
+  "sessions": {
+    "s_71755d8d0bab89": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fba65-d026-7702-9af9-5f7244398fd3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Thales Mendes <thalesmendes.dev@gmail.com>"
+    }
+  }
+}

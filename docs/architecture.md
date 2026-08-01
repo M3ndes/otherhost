@@ -9,16 +9,18 @@ reviewable and keeps diagnostics available without a graphical application.
 the Windows and WSL bootstraps; those lower-level commands remain available for
 diagnostics and manual recovery.
 
-The pairing helper is a small Go binary distributed for Windows and for Intel and
-Apple Silicon Macs. PowerShell and Bash own policy and orchestration. The helper
-owns only local discovery and the short-lived cryptographic pairing protocol.
+The pairing helper is a small Go binary distributed for Windows, WSL Linux, and
+Intel and Apple Silicon Macs. PowerShell and Bash own policy and orchestration.
+The helper owns only local discovery and the short-lived cryptographic pairing
+protocol.
 
 ## Device pairing
 
 Pairing uses a numeric-comparison interaction:
 
 1. `setup.cmd -Pair` opens one TCP and one UDP Windows Firewall rule for the
-   private local subnet and makes the Windows host discoverable for two minutes.
+   private local subnet, or `scripts/pair-wsl.sh` listens directly in an existing
+   mirrored-network WSL user session. Either mode is discoverable for two minutes.
 2. `devbox pair` sends a versioned IPv4 multicast request and lists matching
    Windows hosts.
 3. The devices exchange fresh X25519 public keys and 256-bit random nonces.
@@ -36,9 +38,9 @@ nonces. A man-in-the-middle has approximately a one-in-one-million chance per
 user-approved attempt of presenting a matching value. Pairing permits one active
 session and closes after success, rejection, or timeout.
 
-The Windows helper listens only while pairing is enabled. Its temporary firewall
-rules are limited to the executable, private network profiles, and `LocalSubnet`.
-They are removed in a `finally` block even when pairing fails.
+The helper listens only while pairing is enabled. Windows mode limits temporary
+firewall rules to the executable, private network profiles, and `LocalSubnet`,
+then removes them in a `finally` block. WSL user mode creates no Windows rules.
 
 ## Source and compute location
 
@@ -59,6 +61,12 @@ Windows mirrored networking gives WSL direct LAN reachability. The bootstrap add
 one inbound Hyper-V firewall rule for the configured SSH port when run as
 Administrator. SSH accepts public-key authentication only, rejects root login,
 and uses the host identity pinned during pairing.
+
+On a host where mirrored networking and inbound policy already permit WSL LAN
+traffic, `bootstrap-wsl-user.sh` extracts Ubuntu's signed OpenSSH packages into
+the user home and runs `sshd` as a systemd user service on an unprivileged port.
+That mode requires neither Windows elevation nor Linux `sudo`; it restricts port
+forwarding destinations to WSL loopback addresses.
 
 ## Configuration model
 

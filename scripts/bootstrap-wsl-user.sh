@@ -72,7 +72,9 @@ if [ "$MODE" = apply ]; then
   )
   OPENSSH_PACKAGE=$(find "$TEMPORARY_DIRECTORY" -maxdepth 1 -type f -name 'openssh-server_*.deb' -print -quit)
   LIBWRAP_PACKAGE=$(find "$TEMPORARY_DIRECTORY" -maxdepth 1 -type f -name 'libwrap0_*.deb' -print -quit)
-  [ -n "$OPENSSH_PACKAGE" ] && [ -n "$LIBWRAP_PACKAGE" ] || fail 'Ubuntu SSH packages were not downloaded'
+  if [ -z "$OPENSSH_PACKAGE" ] || [ -z "$LIBWRAP_PACKAGE" ]; then
+    fail 'Ubuntu SSH packages were not downloaded'
+  fi
 
   PACKAGE_VERSION=$(dpkg-deb -f "$OPENSSH_PACKAGE" Version | sed 's/[^A-Za-z0-9._+-]/_/g')
   PACKAGE_ROOT="$INSTALL_ROOT/openssh-$PACKAGE_VERSION"

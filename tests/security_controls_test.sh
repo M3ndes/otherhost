@@ -77,8 +77,8 @@ if grep -E '^[[:space:]]*sudo([[:space:]]|$)' "$ROOTLESS_BOOTSTRAP" >/dev/null; 
   printf '%s\n' 'rootless WSL bootstrap invokes sudo' >&2
   exit 1
 fi
-grep -F -- '--authorized-keys "$AUTHORIZED_KEYS"' "$ROOTLESS_PAIR" >/dev/null
-grep -F -- '--ssh-host-key "$(cat "$HOST_KEY")"' "$ROOTLESS_PAIR" >/dev/null
+grep -F -- "--authorized-keys \"\$AUTHORIZED_KEYS\"" "$ROOTLESS_PAIR" >/dev/null
+grep -F -- "--ssh-host-key \"\$(cat \"\$HOST_KEY\")\"" "$ROOTLESS_PAIR" >/dev/null
 
 awk '
   { sub(/\r$/, "") }

@@ -47,4 +47,9 @@ URLS=$(DEVBOX_CONFIG="$CONFIG_FILE" "$ROOT_DIR/bin/devbox" urls)
 assert_equal 'http://localhost:3000
 http://localhost:8080' "$URLS"
 
+mkdir -p "$HOME/.local/bin"
+ln -s "$ROOT_DIR/bin/devbox" "$HOME/.local/bin/devbox"
+INSTALLED_URLS=$(DEVBOX_CONFIG="$CONFIG_FILE" "$HOME/.local/bin/devbox" urls)
+assert_equal "$URLS" "$INSTALLED_URLS"
+
 printf '%s\n' 'config tests passed'

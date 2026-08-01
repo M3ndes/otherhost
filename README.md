@@ -61,35 +61,73 @@ each machine, so copy its non-secret values manually when you move to Windows.
 
 ## Continue on Windows
 
-Clone the repository into the Linux filesystem, not under `/mnt/c`:
+First, confirm WSL and the Ubuntu distribution from PowerShell:
+
+```powershell
+wsl --version
+wsl --list --verbose
+```
+
+If Ubuntu is not installed, run `wsl --install -d Ubuntu` and complete its
+first-launch user setup. Then install Git and clone the repository into the Linux
+filesystem, not under `/mnt/c`:
 
 ```bash
 # Run inside WSL.
+sudo apt-get update
+sudo apt-get install -y git
 mkdir -p ~/src && cd ~/src
 git clone https://github.com/M3ndes/devbox-bridge.git
 cd devbox-bridge
 cp config/devbox.example.conf devbox.local.conf
+whoami
 ```
 
-Edit the same machine settings and set `github_user`. Then run the Windows host
-step from an **Administrator PowerShell**:
+Edit `devbox.local.conf`. Set `ssh_user` to the output of `whoami`, set
+`github_user`, and adjust the WSL memory and processor limits for the desktop.
+
+From an **Administrator PowerShell**, run the read-only check before applying any
+host changes:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
-& "\\wsl.localhost\Ubuntu\home\YOUR_WSL_USER\src\devbox-bridge\scripts\bootstrap-windows.ps1" `
-  -Mode Apply `
-  -ConfigPath "\\wsl.localhost\Ubuntu\home\YOUR_WSL_USER\src\devbox-bridge\devbox.local.conf"
+$Distro = "Ubuntu"
+$WslUser = (& wsl.exe -d $Distro -- whoami).Trim()
+$RepoPath = "\\wsl.localhost\$Distro\home\$WslUser\src\devbox-bridge"
+
+& "$RepoPath\scripts\bootstrap-windows.ps1" `
+  -Mode Check `
+  -ConfigPath "$RepoPath\devbox.local.conf"
 ```
 
-Start WSL again after it is shut down, then finish inside WSL:
+Review the report. If the distribution, RAM, processors, and Docker information
+are correct, run the same command with `Apply`:
+
+```powershell
+& "$RepoPath\scripts\bootstrap-windows.ps1" `
+  -Mode Apply `
+  -ConfigPath "$RepoPath\devbox.local.conf"
+```
+
+Start Docker Desktop and Ubuntu again after WSL is shut down. Inside WSL, check
+first and then apply:
 
 ```bash
 cd ~/src/devbox-bridge
+./scripts/bootstrap-wsl.sh
 ./scripts/bootstrap-wsl.sh --apply
 ```
 
 The first WSL run may enable systemd and ask for one more `wsl --shutdown`.
 Docker Desktop must have integration enabled for the selected distribution.
+
+The Windows side is ready when all of these are true:
+
+1. `wsl --list --verbose` shows Ubuntu using WSL 2.
+2. `docker info` works inside Ubuntu.
+3. `systemctl is-active ssh` prints `active`.
+4. `ss -lnt | grep 2222` shows the SSH listener.
+5. `devbox doctor` succeeds from the Mac after its `host` value is set.
 
 ## Connect from the Mac
 
@@ -126,7 +164,8 @@ devbox ssh-config
 | `devbox ssh-config` | Generate an OpenSSH host block |
 
 Run `make test` before contributing. See [Windows and WSL setup](docs/windows-wsl.md),
-[macOS usage](docs/macos.md), and [architecture](docs/architecture.md) for details.
+[troubleshooting](docs/troubleshooting.md), [macOS usage](docs/macos.md), and
+[architecture](docs/architecture.md) for details.
 
 ## Scope
 

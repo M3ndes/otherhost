@@ -10,14 +10,10 @@ From PowerShell in a Windows checkout of the repository, run:
 
 This is the recommended path. It runs the checks below, displays the planned
 changes, asks for one confirmation, elevates through UAC, and orchestrates both
-Windows and Ubuntu. Setup runs in a dedicated native Windows window, isolating
-UAC and WSL restarts from embedded terminals. It records the latest run in
-`%LOCALAPPDATA%\devbox-bridge\setup.log` and writes a concise state to
-`setup.status` in the same directory. The checkout used to launch it may live on
-Windows; the script pins the operational clone under `~/src` in WSL to that
-checkout's exact Git revision. Privileged bootstrap code runs from the reviewed
-Windows checkout, and setup refuses local changes that are not part of that
-revision.
+Windows and Ubuntu. The checkout used to launch it may live on Windows; the
+script pins the operational clone under `~/src` in WSL to that checkout's exact
+Git revision. Privileged bootstrap code runs from the reviewed Windows checkout,
+and setup refuses local changes that are not part of that revision.
 
 Normal host setup does not require a GitHub account or Mac key. After setup,
 enable two-minute private-network discovery:

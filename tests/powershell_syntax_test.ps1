@@ -21,17 +21,6 @@ if ($launcher -notmatch 'setup\.ps1') {
     Write-Error 'setup.cmd does not invoke setup.ps1'
     exit 1
 }
-foreach ($requiredLauncherControl in @(
-    'DEVBOX_SETUP_ATTACHED',
-    'start "Devbox Bridge Setup"',
-    'setup.status',
-    'setup.log'
-)) {
-    if (-not $launcher.Contains($requiredLauncherControl)) {
-        Write-Error "setup.cmd is missing detached-launch control: $requiredLauncherControl"
-        exit 1
-    }
-}
 
 . (Join-Path $root 'lib/devbox-windows.ps1')
 $keyOne = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDSZaD3EhKIadfnHAoP5FI2lDwzjk6xZ4H8vS2gFVrKe test-one'
@@ -83,9 +72,7 @@ foreach ($requiredControl in @(
     '-RemoteAddress LocalSubnet -Profile Private',
     'Remove-NetFirewallRule -Name $discoveryRule',
     'Remove-NetFirewallRule -Name $sessionRule',
-    'Get-FileHash -Algorithm SHA256',
-    "Set-SetupStatus -State 'ready'",
-    'Start-Transcript -Path $SetupLogPath -Force'
+    'Get-FileHash -Algorithm SHA256'
 )) {
     if (-not $setup.Contains($requiredControl)) {
         Write-Error "setup is missing required security control: $requiredControl"

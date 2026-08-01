@@ -62,15 +62,26 @@ foreach ($requiredControl in @(
     'Get-GitHubPublicKeys',
     'ssh_public_key',
     'rev-parse --verify HEAD',
-    'status --porcelain --untracked-files=all',
+    "'status', '--porcelain', '--untracked-files=all'",
+    'Invoke-CapturedProcess -FilePath $gitExecutable',
     'checkout --detach',
     'wslpath -a -u',
-    'Invoke-WslCommand -Arguments $bootstrapArguments'
+    'Invoke-WslCommand -Arguments $bootstrapArguments',
+    '[switch]$Pair',
+    'Start-PairingMode',
+    '-RemoteAddress LocalSubnet -Profile Private',
+    'Remove-NetFirewallRule -Name $discoveryRule',
+    'Remove-NetFirewallRule -Name $sessionRule',
+    'Get-FileHash -Algorithm SHA256'
 )) {
     if (-not $setup.Contains($requiredControl)) {
         Write-Error "setup is missing required security control: $requiredControl"
         exit 1
     }
+}
+if ($setup.Contains("Read-Host 'GitHub username containing the Mac public key'")) {
+    Write-Error 'normal setup still requires a GitHub username'
+    exit 1
 }
 if ($setup.Contains('cd "$HOME/src/devbox-bridge" && ./scripts/bootstrap-wsl.sh --apply')) {
     Write-Error 'setup still executes the privileged bootstrap from the secondary WSL checkout'

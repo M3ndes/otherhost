@@ -14,7 +14,8 @@ usage() {
 Usage: scripts/bootstrap-mac.sh [--apply] [--generate-key] [--config PATH]
 
 The default mode only reports what would be needed. --apply installs a symlink
-at ~/.local/bin/devbox and creates the local config when it is missing.
+at ~/.local/bin/devbox, installs the pairing helper, and creates the local config
+when it is missing.
 --generate-key also creates the dedicated Ed25519 SSH identity when absent.
 EOF
 }
@@ -55,6 +56,13 @@ if [ "$MODE" = apply ]; then
   else
     ln -s "$ROOT_DIR/bin/devbox" "$COMMAND_LINK"
     ok "installed $COMMAND_LINK -> $ROOT_DIR/bin/devbox"
+  fi
+
+  PAIRING_HELPER="$HOME/.local/lib/devbox-bridge/devbox-pair"
+  if [ -x "$PAIRING_HELPER" ]; then
+    ok "pairing helper is installed: $PAIRING_HELPER"
+  else
+    "$ROOT_DIR/scripts/install-pairing-helper.sh" "$PAIRING_HELPER"
   fi
 
   if [ ! -f "$CONFIG_FILE" ]; then
@@ -98,4 +106,4 @@ case ":$PATH:" in
   *) warn 'add ~/.local/bin to PATH in ~/.zshrc' ;;
 esac
 
-printf '\nNext: edit %s, then run devbox doctor.\n' "$CONFIG_FILE"
+printf '\nNext: enable pairing on Windows, then run devbox pair.\n'

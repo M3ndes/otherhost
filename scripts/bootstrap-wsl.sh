@@ -12,9 +12,9 @@ usage() {
   cat <<'EOF'
 Usage: scripts/bootstrap-wsl.sh [--apply] [--config PATH]
 
-The default mode is read-only. --apply installs the SSH server, imports the
-configured GitHub user's public keys, hardens SSH, and optionally clones a
-project. Docker is intentionally supplied by Docker Desktop's WSL integration.
+The default mode is read-only. --apply installs the SSH server, authorizes the
+single selected Mac public key, hardens SSH, and optionally clones a project.
+Docker is intentionally supplied by Docker Desktop's WSL integration.
 EOF
 }
 
@@ -81,14 +81,13 @@ grep -qi microsoft /proc/version 2>/dev/null || fail 'this bootstrap must run in
 devbox_require_config "$CONFIG_FILE" || exit 1
 
 SSH_PORT=$(devbox_config_get ssh_port "$CONFIG_FILE")
-GITHUB_USER=$(devbox_config_get github_user "$CONFIG_FILE")
+SSH_PUBLIC_KEY=$(devbox_config_get ssh_public_key "$CONFIG_FILE")
 PROJECT_REPOSITORY=$(devbox_config_get project_repository "$CONFIG_FILE")
 PROJECT_DIRECTORY=$(devbox_config_get project_directory "$CONFIG_FILE")
 
 if ! devbox_is_positive_integer "$SSH_PORT" || [ "$SSH_PORT" -gt 65535 ]; then
   fail 'invalid ssh_port'
 fi
-case "$GITHUB_USER" in *[!A-Za-z0-9-]*) fail 'github_user contains unsupported characters' ;; esac
 CURRENT_USER=$(id -un)
 
 ok 'WSL environment detected'
@@ -123,25 +122,14 @@ else
 fi
 
 if [ "$MODE" = apply ]; then
-  [ -n "$GITHUB_USER" ] || fail 'set github_user before applying the WSL bootstrap'
-
-  TEMP_KEYS=$(mktemp)
-  trap 'rm -f "$TEMP_KEYS"' EXIT HUP INT TERM
-  curl -fsSL "https://github.com/$GITHUB_USER.keys" > "$TEMP_KEYS"
-  grep -Eq '^ssh-(ed25519|rsa|ecdsa-sha2-)' "$TEMP_KEYS" || fail "GitHub returned no usable SSH keys for $GITHUB_USER"
+  [ -n "$SSH_PUBLIC_KEY" ] || fail 'set ssh_public_key before applying the WSL bootstrap'
 
   mkdir -p "$HOME/.ssh"
   chmod 700 "$HOME/.ssh"
   touch "$HOME/.ssh/authorized_keys"
   chmod 600 "$HOME/.ssh/authorized_keys"
-  while IFS= read -r public_key; do
-    case "$public_key" in
-      ssh-ed25519\ *|ssh-rsa\ *|ecdsa-sha2-*\ *)
-        grep -Fqx "$public_key" "$HOME/.ssh/authorized_keys" || printf '%s\n' "$public_key" >> "$HOME/.ssh/authorized_keys"
-        ;;
-    esac
-  done < "$TEMP_KEYS"
-  ok "installed public SSH keys published by github.com/$GITHUB_USER"
+  devbox_authorize_public_key "$SSH_PUBLIC_KEY" "$HOME/.ssh/authorized_keys" || fail 'ssh_public_key is not a valid supported SSH public key'
+  ok 'installed the selected Mac public SSH key'
 
   SSHD_DROP_IN=$(mktemp)
   cat > "$SSHD_DROP_IN" <<EOF
@@ -152,10 +140,14 @@ KbdInteractiveAuthentication no
 PermitRootLogin no
 AllowUsers $CURRENT_USER
 EOF
-  sudo install -m 644 "$SSHD_DROP_IN" /etc/ssh/sshd_config.d/99-devbox-bridge.conf
+  sudo install -m 644 "$SSHD_DROP_IN" /etc/ssh/sshd_config.d/00-devbox-bridge.conf
+  sudo rm -f /etc/ssh/sshd_config.d/99-devbox-bridge.conf
   rm -f "$SSHD_DROP_IN"
   sudo install -d -m 755 /run/sshd
   sudo sshd -t
+  SSHD_EFFECTIVE=$(sudo sshd -T -C "user=$CURRENT_USER,host=localhost,addr=127.0.0.1")
+  devbox_assert_sshd_policy "$SSHD_EFFECTIVE" "$SSH_PORT" "$CURRENT_USER" || fail 'effective sshd policy does not match the required hardened settings'
+  ok 'verified the effective SSH authentication policy'
 
   if [ "$(ps -p 1 -o comm= 2>/dev/null)" = systemd ]; then
     sudo systemctl enable --now ssh

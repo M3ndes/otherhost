@@ -64,6 +64,7 @@ if grep -F "https://github.com/\$GITHUB_USER.keys" "$WSL_BOOTSTRAP" >/dev/null; 
 fi
 
 awk '
+  { sub(/\r$/, "") }
   $0 == "$prepareScript = @\047" { capture = 1; next }
   capture && $0 == "\047@" { exit }
   capture { print }

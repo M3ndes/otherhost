@@ -48,6 +48,22 @@ Administrator permission through UAC, and prepares Windows, WSL, and hardened
 public-key-only SSH. No GitHub account or Mac key is needed during normal host
 setup.
 
+### Existing WSL host without elevation
+
+When Ubuntu, systemd, and mirrored networking are already active, the host can
+run entirely in the WSL user account without PowerShell, Administrator access,
+or `sudo`:
+
+```bash
+cd ~/src/devbox-bridge
+./scripts/bootstrap-wsl-user.sh --apply
+```
+
+This installs OpenSSH from Ubuntu's signed packages under `~/.local`, enables a
+user service on port 2222, disables password authentication, and limits SSH port
+forwarding to WSL loopback services. It does not install WSL or change Windows
+firewall policy.
+
 ## 2. Install the Mac client
 
 ```bash
@@ -66,6 +82,12 @@ On Windows, enable discovery for two minutes:
 
 ```powershell
 .\setup.cmd -Pair
+```
+
+For the user-scoped WSL host, enable discovery inside WSL instead:
+
+```bash
+./scripts/pair-wsl.sh
 ```
 
 Then, on the Mac:
@@ -88,8 +110,9 @@ Confirm on both devices. Pairing installs the Mac public SSH key, pins the WSL
 SSH host identity, saves the Windows address and Ubuntu user, and runs
 `devbox doctor`. The code is compared; it is never typed or used as a password.
 
-Pairing mode accepts one active session. It closes after success, rejection, or
-timeout and removes its temporary private-subnet Windows Firewall rules.
+Pairing mode accepts one active session and closes after success, rejection, or
+timeout. Windows-hosted pairing removes its temporary private-subnet firewall
+rules; WSL user pairing does not create Windows firewall rules.
 
 ## What Windows setup does
 

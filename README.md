@@ -4,12 +4,11 @@ Turn a Windows desktop with WSL 2 and Docker Desktop into a private development
 machine that a Mac can use over SSH.
 
 The project is CLI-first: setup stays inspectable, automation works in terminals
-and CI, and every machine keeps its own untracked configuration. A graphical UI
-may come later, after the setup workflow is stable; it is not required to get a
-useful remote devbox.
+and CI, and every machine keeps its own untracked configuration.
 
 ## What it provides
 
+- Bluetooth-style local discovery and six-digit device verification;
 - a macOS command for health checks, SSH tunnels, URLs, and remote status;
 - a PowerShell bootstrap for WSL resources, mirrored networking, and firewall;
 - a WSL bootstrap for systemd, hardened SSH, Docker checks, and optional cloning;
@@ -30,43 +29,13 @@ flowchart LR
 - Mac with Git and OpenSSH;
 - Windows 11 22H2 or newer for mirrored WSL networking;
 - WSL 2 with an Ubuntu distribution;
-- Docker Desktop using the WSL 2 backend;
-- both machines on the same trusted network for the first setup.
+- Docker Desktop using the WSL 2 backend for container workloads;
+- both devices on the same trusted private network during pairing.
 
 For access away from home, add a private overlay network such as Tailscale later.
-Do not expose the SSH port directly on the public internet.
+Do not expose SSH or pairing ports directly on the public internet.
 
-## Start on the Mac
-
-```bash
-git clone https://github.com/M3ndes/devbox-bridge.git
-cd devbox-bridge
-cp config/devbox.example.conf devbox.local.conf
-./scripts/bootstrap-mac.sh --apply --generate-key
-```
-
-Edit `devbox.local.conf`. At minimum, set `host` and `ssh_user` later. Upload the
-generated public key to GitHub so Windows can discover it without moving any
-private material:
-
-```bash
-gh ssh-key add ~/.ssh/devbox_bridge_ed25519.pub --title "devbox-bridge Mac"
-```
-
-If you do not use GitHub CLI, add the `.pub` file in GitHub's **SSH and GPG
-keys** settings. Never upload the private key (the file without `.pub`).
-
-Print the dedicated key's fingerprint so you can recognize it during Windows
-setup:
-
-```bash
-ssh-keygen -lf ~/.ssh/devbox_bridge_ed25519.pub -E sha256
-```
-
-Commit and push only the repository files. `devbox.local.conf` remains local on
-each machine.
-
-## Continue on Windows
+## 1. Set up the Windows host
 
 Open PowerShell in a Windows checkout of this repository and run:
 
@@ -75,65 +44,92 @@ Open PowerShell in a Windows checkout of this repository and run:
 ```
 
 The command performs a read-only preflight, asks for one confirmation, requests
-Administrator permission through UAC, and completes the Windows and Ubuntu
-setup. It automatically:
+Administrator permission through UAC, and prepares Windows, WSL, and hardened
+public-key-only SSH. No GitHub account or Mac key is needed during normal host
+setup.
+
+## 2. Install the Mac client
+
+```bash
+git clone https://github.com/M3ndes/devbox-bridge.git
+cd devbox-bridge
+./scripts/bootstrap-mac.sh --apply
+```
+
+The installer adds the `devbox` command and downloads the checksum-verified
+pairing helper for the Mac architecture. The dedicated SSH identity is created
+on the first pairing. Its private key never leaves the Mac.
+
+## 3. Pair in seconds
+
+On Windows, enable discovery for two minutes:
+
+```powershell
+.\setup.cmd -Pair
+```
+
+Then, on the Mac:
+
+```bash
+devbox pair
+```
+
+The Mac finds Windows devboxes automatically. Both devices display the same
+six-digit code:
+
+```text
+Windows                                  Mac
+MacBook-Pro wants to connect.            Found DESKTOP-HOME
+Pairing code: 482 731                    Pairing code: 482 731
+Does the Mac show the same code?         Does Windows show the same code?
+```
+
+Confirm on both devices. Pairing installs the Mac public SSH key, pins the WSL
+SSH host identity, saves the Windows address and Ubuntu user, and runs
+`devbox doctor`. The code is compared; it is never typed or used as a password.
+
+Pairing mode accepts one active session. It closes after success, rejection, or
+timeout and removes its temporary private-subnet Windows Firewall rules.
+
+## What Windows setup does
 
 - selects a resource policy based on the desktop hardware;
 - keeps the operational clone under `~/src/devbox-bridge` inside WSL;
-- creates the machine-local configuration and detects the Ubuntu user;
+- creates machine-local configuration and detects the Ubuntu user;
 - configures mirrored networking and the Hyper-V firewall;
-- installs and hardens OpenSSH, then authorizes exactly one selected Mac key.
+- installs and hardens OpenSSH with password login disabled;
+- prepares a permission-restricted `authorized_keys` file for pairing.
 
-The setup asks for the GitHub account, displays the available key fingerprints,
-and asks you to select the dedicated Mac key. It never treats the repository
-owner as your identity. For a non-interactive run, pass the explicit account and
-fingerprint shown on the Mac:
+The WSL clone is pinned to the exact revision of the Windows checkout. Privileged
+WSL configuration runs from that reviewed checkout, and setup refuses local
+changes so the scripts match the verified revision.
 
-```powershell
-.\setup.cmd -GitHubUser YOUR_USER -GitHubKeyFingerprint SHA256:YOUR_FINGERPRINT -Yes
-```
-
-The WSL operational clone is pinned to the exact revision of the Windows
-checkout. Privileged WSL configuration runs from that same reviewed Windows
-checkout instead of executing an unrelated second copy. Setup refuses a dirty
-checkout so the executed scripts match the verified Git revision.
-
-To stop after the read-only report:
+For a read-only preflight:
 
 ```powershell
 .\setup.cmd -Check
 ```
 
-Docker is not required for SSH connectivity. For container workloads, enable
-**Docker Desktop > Resources > WSL Integration > Ubuntu** after setup.
+GitHub key discovery remains available as a manual recovery path:
 
-The SSH bridge is ready when all of these are true:
-
-1. `wsl --list --verbose` shows Ubuntu using WSL 2.
-2. `systemctl is-active ssh` prints `active`.
-3. `ss -lnt | grep 2222` shows the SSH listener.
-4. `devbox doctor` succeeds from the Mac after its `host` value is set.
-
-Container workloads are ready when `docker info` also works inside Ubuntu.
+```powershell
+.\setup.cmd -GitHubUser YOUR_USER -GitHubKeyFingerprint SHA256:YOUR_FINGERPRINT -Yes
+```
 
 ## Connect from the Mac
 
-Use the desktop's Windows LAN address in `host`, then:
+After pairing, the normal daily command is:
 
 ```bash
-devbox doctor
 devbox connect
 ```
 
-Keep `devbox connect` running. Services on the configured ports are now available
-through `localhost` on the Mac. In another terminal:
+Keep it running while using forwarded services. In another terminal:
 
 ```bash
 devbox urls
 devbox status
 ```
-
-After the one-time setup, the normal daily workflow is just `devbox connect`.
 
 For editors with Remote SSH support, review the generated block before adding it
 to `~/.ssh/config`:
@@ -146,6 +142,7 @@ devbox ssh-config
 
 | Command | Purpose |
 | --- | --- |
+| `devbox pair` | Discover, verify, and configure a Windows devbox |
 | `devbox doctor` | Validate config, dependencies, key permissions, and SSH |
 | `devbox connect` | Keep all configured SSH port forwards open |
 | `devbox status` | Show remote uptime, memory, disk, and Docker usage |

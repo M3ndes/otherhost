@@ -21,6 +21,25 @@ function Write-Step([string]$Message) { Write-Host "`n==> $Message" -ForegroundC
 function Write-Warn([string]$Message) { Write-Host "[warn] $Message" -ForegroundColor Yellow }
 function Fail([string]$Message) { throw $Message }
 
+$SetupStateDirectory = Join-Path $env:LOCALAPPDATA 'devbox-bridge'
+$SetupStatusPath = Join-Path $SetupStateDirectory 'setup.status'
+$SetupLogPath = Join-Path $SetupStateDirectory 'setup.log'
+$script:SetupTranscriptStarted = $false
+
+function Set-SetupStatus([string]$State, [string]$Message) {
+    $safeMessage = $Message.Replace("`r", ' ').Replace("`n", ' ')
+    $timestamp = [DateTime]::UtcNow.ToString('o')
+    $content = "$State`r`n$timestamp`r`n$safeMessage`r`n"
+    [System.IO.File]::WriteAllText($SetupStatusPath, $content, [System.Text.UTF8Encoding]::new($false))
+}
+
+function Stop-SetupTranscript {
+    if ($script:SetupTranscriptStarted) {
+        try { Stop-Transcript | Out-Null } catch { }
+        $script:SetupTranscriptStarted = $false
+    }
+}
+
 function Test-IsAdministrator {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = [Security.Principal.WindowsPrincipal]$identity
@@ -322,6 +341,23 @@ function Start-PairingMode {
     }
 }
 
+trap {
+    $failureMessage = if ($_.Exception.Message) { $_.Exception.Message } else { [string]$_ }
+    Write-Host "[fail] $failureMessage" -ForegroundColor Red
+    Set-SetupStatus -State 'failed' -Message $failureMessage
+    Stop-SetupTranscript
+    exit 1
+}
+
+[void](New-Item -ItemType Directory -Force -Path $SetupStateDirectory)
+try {
+    Start-Transcript -Path $SetupLogPath -Force | Out-Null
+    $script:SetupTranscriptStarted = $true
+} catch {
+    Write-Warn "Could not start the setup transcript: $($_.Exception.Message)"
+}
+Set-SetupStatus -State 'running' -Message 'Windows setup is running'
+
 Write-Step 'Checking this Windows host'
 if (-not (Get-Command wsl.exe -ErrorAction SilentlyContinue)) {
     Fail 'WSL is not available. Install current WSL before running this setup.'
@@ -330,7 +366,10 @@ if (-not (Get-Command wsl.exe -ErrorAction SilentlyContinue)) {
 if ($Pair) {
     $RepositoryRevision = Get-RepositoryRevision
     Write-Ok "repository revision verified: $RepositoryRevision"
+    Set-SetupStatus -State 'pairing' -Message 'Windows is available for secure device pairing'
     Start-PairingMode
+    Set-SetupStatus -State 'paired' -Message 'Secure device pairing completed'
+    Stop-SetupTranscript
     exit 0
 }
 
@@ -396,6 +435,8 @@ if ($SelectedKey) {
 
 if ($Check) {
     Write-Host "`nCheck complete. Run .\setup.cmd to apply."
+    Set-SetupStatus -State 'checked' -Message 'Windows setup preflight completed'
+    Stop-SetupTranscript
     exit 0
 }
 
@@ -403,6 +444,8 @@ if (-not $Yes) {
     $answer = (Read-Host 'Continue? [Y/n]').Trim()
     if ($answer -and $answer -notmatch '^(?i:y|yes)$') {
         Write-Host 'Setup cancelled; no changes were applied.'
+        Set-SetupStatus -State 'cancelled' -Message 'Windows setup was cancelled'
+        Stop-SetupTranscript
         exit 0
     }
 }
@@ -411,6 +454,8 @@ if (-not $distroInstalled) {
     Write-Step "Installing $Distro"
     Install-WslDistribution
     Write-Host "`nFinish the first Ubuntu launch, then run .\setup.cmd again."
+    Set-SetupStatus -State 'waiting-for-ubuntu' -Message 'Complete the first Ubuntu launch before setup can continue'
+    Stop-SetupTranscript
     exit 0
 }
 
@@ -534,3 +579,5 @@ Write-Host "`nNext:"
 Write-Host '  1. On Windows, run: .\setup.cmd -Pair'
 Write-Host '  2. On the Mac, run: devbox pair'
 Write-Host "`nDocker is optional for SSH connectivity. If needed, enable Docker Desktop > Resources > WSL Integration > $Distro."
+Set-SetupStatus -State 'ready' -Message 'Windows devbox setup completed successfully'
+Stop-SetupTranscript

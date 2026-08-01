@@ -46,7 +46,10 @@ Open PowerShell in a Windows checkout of this repository and run:
 The command performs a read-only preflight, asks for one confirmation, requests
 Administrator permission through UAC, and prepares Windows, WSL, and hardened
 public-key-only SSH. No GitHub account or Mac key is needed during normal host
-setup.
+setup. It runs in its own native Windows window, so embedded terminals and tools
+can launch it without owning the installer process. Progress and failures are
+recorded in `%LOCALAPPDATA%\devbox-bridge\setup.log`, with the current state in
+`setup.status` in the same directory.
 
 ## 2. Install the Mac client
 

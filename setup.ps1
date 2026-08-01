@@ -6,6 +6,7 @@ param(
     [string]$GitHubUser = '',
     [ValidatePattern('^(|SHA256:[A-Za-z0-9+/]+)$')]
     [string]$GitHubKeyFingerprint = '',
+    [switch]$Pair,
     [switch]$Check,
     [switch]$Yes
 )
@@ -17,13 +18,36 @@ $LinuxRepository = '~/src/devbox-bridge'
 
 function Write-Ok([string]$Message) { Write-Host "[ok] $Message" -ForegroundColor Green }
 function Write-Step([string]$Message) { Write-Host "`n==> $Message" -ForegroundColor Cyan }
-function Write-Warn([string]$Message) { Write-Warning $Message }
+function Write-Warn([string]$Message) { Write-Host "[warn] $Message" -ForegroundColor Yellow }
 function Fail([string]$Message) { throw $Message }
 
 function Test-IsAdministrator {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = [Security.Principal.WindowsPrincipal]$identity
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+function ConvertTo-ProcessArgument([string]$Value) {
+    if ($Value -notmatch '[\s"]') { return $Value }
+    return '"' + $Value.Replace('"', '\"') + '"'
+}
+
+function Invoke-CapturedProcess([string]$FilePath, [string[]]$Arguments) {
+    $standardOutput = [System.IO.Path]::GetTempFileName()
+    $standardError = [System.IO.Path]::GetTempFileName()
+    try {
+        $argumentList = @($Arguments | ForEach-Object { ConvertTo-ProcessArgument $_ })
+        $process = Start-Process -FilePath $FilePath -ArgumentList $argumentList -NoNewWindow -Wait -PassThru `
+            -RedirectStandardOutput $standardOutput -RedirectStandardError $standardError
+        return [pscustomobject]@{
+            ExitCode = $process.ExitCode
+            Output = [System.IO.File]::ReadAllText($standardOutput)
+            Error = [System.IO.File]::ReadAllText($standardError)
+        }
+    } finally {
+        Remove-Item -LiteralPath $standardOutput -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $standardError -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function Get-InstalledDistributions {
@@ -36,26 +60,31 @@ function Get-InstalledDistributions {
 }
 
 function Get-RepositoryRevision {
-    if (-not (Get-Command git.exe -ErrorAction SilentlyContinue) -and -not (Get-Command git -ErrorAction SilentlyContinue)) {
+    $gitCommand = Get-Command git.exe -ErrorAction SilentlyContinue
+    if (-not $gitCommand) { $gitCommand = Get-Command git -ErrorAction SilentlyContinue }
+    if (-not $gitCommand) {
         Fail 'Git is required so setup can bind WSL to this exact repository revision'
     }
+    $gitExecutable = $gitCommand.Source
 
-    $revision = ((& git -C $PSScriptRoot rev-parse --verify HEAD 2>$null) | Out-String).Trim()
-    if ($LASTEXITCODE -ne 0 -or $revision -notmatch '^[a-f0-9]{40}$') {
+    $revisionResult = Invoke-CapturedProcess -FilePath $gitExecutable -Arguments @('-C', $PSScriptRoot, 'rev-parse', '--verify', 'HEAD')
+    $revision = $revisionResult.Output.Trim()
+    if ($revisionResult.ExitCode -ne 0 -or $revision -notmatch '^[a-f0-9]{40}$') {
         Fail 'Could not determine the exact Git revision for this checkout'
     }
-    $origin = ((& git -C $PSScriptRoot remote get-url origin 2>$null) | Out-String).Trim()
+    $originResult = Invoke-CapturedProcess -FilePath $gitExecutable -Arguments @('-C', $PSScriptRoot, 'remote', 'get-url', 'origin')
+    $origin = $originResult.Output.Trim()
     $allowedOrigins = @(
         $RepositoryUrl,
         'git@github.com:M3ndes/devbox-bridge.git',
         'ssh://git@github.com/M3ndes/devbox-bridge.git'
     )
-    if ($LASTEXITCODE -ne 0 -or $origin -notin $allowedOrigins) {
+    if ($originResult.ExitCode -ne 0 -or $origin -notin $allowedOrigins) {
         Fail "This checkout must use the canonical devbox-bridge origin; found: $origin"
     }
-    $worktreeChanges = @(& git -C $PSScriptRoot status --porcelain --untracked-files=all 2>$null)
-    if ($LASTEXITCODE -ne 0) { Fail 'Could not verify that the Windows checkout is clean' }
-    if ($worktreeChanges.Count -gt 0) {
+    $statusResult = Invoke-CapturedProcess -FilePath $gitExecutable -Arguments @('-C', $PSScriptRoot, 'status', '--porcelain', '--untracked-files=all')
+    if ($statusResult.ExitCode -ne 0) { Fail 'Could not verify that the Windows checkout is clean' }
+    if ($statusResult.Output.Trim()) {
         Fail 'This checkout has local changes; commit or remove them before running setup'
     }
     return $revision
@@ -162,9 +191,126 @@ function Get-LanAddress {
     return ''
 }
 
+function Get-PairingHelper {
+    if ($env:DEVBOX_PAIR_BIN) {
+        $explicitHelper = [System.IO.Path]::GetFullPath($env:DEVBOX_PAIR_BIN)
+        if (-not (Test-Path -LiteralPath $explicitHelper -PathType Leaf)) {
+            Fail "DEVBOX_PAIR_BIN does not exist: $explicitHelper"
+        }
+        return $explicitHelper
+    }
+    $architecture = switch ($env:PROCESSOR_ARCHITECTURE) {
+        'AMD64' { 'amd64' }
+        'ARM64' { 'arm64' }
+        default { Fail "Unsupported Windows architecture: $env:PROCESSOR_ARCHITECTURE" }
+    }
+    $version = 'v0.1.0'
+    $asset = "devbox-pair-windows-$architecture.exe"
+    $installDirectory = Join-Path $env:LOCALAPPDATA 'devbox-bridge\bin'
+    $destination = Join-Path $installDirectory 'devbox-pair.exe'
+    $versionFile = "$destination.version"
+    if ((Test-Path -LiteralPath $destination -PathType Leaf) -and
+        (Test-Path -LiteralPath $versionFile -PathType Leaf) -and
+        ([System.IO.File]::ReadAllText($versionFile).Trim() -eq $version)) {
+        return $destination
+    }
+
+    Write-Step "Installing secure pairing helper $version"
+    $baseUrl = "https://github.com/M3ndes/devbox-bridge/releases/download/$version"
+    $temporaryDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ("devbox-pair-" + [guid]::NewGuid().ToString('N'))
+    [void](New-Item -ItemType Directory -Path $temporaryDirectory)
+    try {
+        $download = Join-Path $temporaryDirectory $asset
+        $checksums = Join-Path $temporaryDirectory 'checksums.txt'
+        Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/$asset" -OutFile $download
+        Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/checksums.txt" -OutFile $checksums
+        $checksumPattern = '^([0-9a-fA-F]{64})[ \t]+' + [regex]::Escape($asset) + '$'
+        $checksumLine = [System.IO.File]::ReadAllLines($checksums) |
+            Where-Object { $_ -match $checksumPattern } |
+            Select-Object -First 1
+        $checksumMatch = if ($checksumLine) { [regex]::Match($checksumLine, $checksumPattern) } else { $null }
+        if (-not $checksumMatch -or -not $checksumMatch.Success) {
+            Fail "Release checksum is missing for $asset"
+        }
+        $expected = $checksumMatch.Groups[1].Value.ToUpperInvariant()
+        $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $download).Hash.ToUpperInvariant()
+        if ($actual -cne $expected) { Fail 'The pairing helper checksum did not match' }
+
+        [void](New-Item -ItemType Directory -Force -Path $installDirectory)
+        Copy-Item -LiteralPath $download -Destination $destination -Force
+        [System.IO.File]::WriteAllText($versionFile, "$version`r`n", [System.Text.UTF8Encoding]::new($false))
+        Write-Ok "installed secure pairing helper: $destination"
+    } finally {
+        if (Test-Path -LiteralPath $temporaryDirectory) {
+            Remove-Item -LiteralPath $temporaryDirectory -Recurse -Force
+        }
+    }
+    return $destination
+}
+
+function Start-PairingMode {
+    if (-not (Test-IsAdministrator)) {
+        Write-Step 'Requesting Administrator permission for temporary private-network discovery'
+        $powershell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+        $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -Pair -Distro `"$Distro`""
+        $process = Start-Process -FilePath $powershell -Verb RunAs -ArgumentList $arguments -Wait -PassThru
+        if ($process.ExitCode -ne 0) { Fail 'Windows pairing mode failed' }
+        return
+    }
+
+    $distributions = Get-InstalledDistributions
+    if ($Distro -notin $distributions) { Fail "WSL distribution is missing: $Distro" }
+    $wslUser = (& wsl.exe -d $Distro -- sh -lc 'id -un').Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $wslUser) { Fail 'Could not determine the Ubuntu user' }
+    $repoPath = "\\wsl.localhost\$Distro\home\$wslUser\src\devbox-bridge"
+    $configPath = Join-Path $repoPath 'devbox.local.conf'
+    if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
+        Fail "Windows setup must be completed before pairing: $configPath"
+    }
+    $sshPort = Get-ConfigValue -Path $configPath -Key 'ssh_port'
+    if ($sshPort -notmatch '^[1-9][0-9]*$' -or [int]$sshPort -gt 65535) {
+        Fail "Invalid ssh_port in $configPath"
+    }
+    $null = & wsl.exe -d $Distro -- sh -c 'test -r /etc/ssh/ssh_host_ed25519_key.pub'
+    if ($LASTEXITCODE -ne 0) { Fail 'SSH must be configured in WSL before pairing' }
+
+    $privateProfiles = @(Get-NetConnectionProfile -ErrorAction Stop | Where-Object {
+        $_.NetworkCategory -eq 'Private' -and $_.IPv4Connectivity -ne 'Disconnected'
+    })
+    if ($privateProfiles.Count -eq 0) {
+        Fail 'Pairing requires the active Windows network profile to be Private'
+    }
+
+    $helper = Get-PairingHelper
+    $ruleSuffix = "$PID-$([guid]::NewGuid().ToString('N'))"
+    $discoveryRule = "devbox-bridge-pairing-udp-$ruleSuffix"
+    $sessionRule = "devbox-bridge-pairing-tcp-$ruleSuffix"
+    try {
+        New-NetFirewallRule -Name $discoveryRule -DisplayName 'Devbox Bridge temporary discovery' `
+            -Direction Inbound -Action Allow -Program $helper -Protocol UDP -LocalPort 45870 `
+            -RemoteAddress LocalSubnet -Profile Private | Out-Null
+        New-NetFirewallRule -Name $sessionRule -DisplayName 'Devbox Bridge temporary pairing' `
+            -Direction Inbound -Action Allow -Program $helper -Protocol TCP -LocalPort 45871 `
+            -RemoteAddress LocalSubnet -Profile Private | Out-Null
+
+        & $helper host --name $env:COMPUTERNAME --distro $Distro --ssh-user $wslUser --ssh-port $sshPort
+        if ($LASTEXITCODE -ne 0) { Fail "Pairing helper failed with exit code $LASTEXITCODE" }
+    } finally {
+        Remove-NetFirewallRule -Name $discoveryRule -ErrorAction SilentlyContinue
+        Remove-NetFirewallRule -Name $sessionRule -ErrorAction SilentlyContinue
+    }
+}
+
 Write-Step 'Checking this Windows host'
 if (-not (Get-Command wsl.exe -ErrorAction SilentlyContinue)) {
     Fail 'WSL is not available. Install current WSL before running this setup.'
+}
+
+if ($Pair) {
+    $RepositoryRevision = Get-RepositoryRevision
+    Write-Ok "repository revision verified: $RepositoryRevision"
+    Start-PairingMode
+    exit 0
 }
 
 $os = Get-CimInstance Win32_OperatingSystem
@@ -178,13 +324,7 @@ Write-Ok "automatic WSL policy: $($resources.Memory) RAM, $($resources.Processor
 $RepositoryRevision = Get-RepositoryRevision
 Write-Ok "repository revision verified: $RepositoryRevision"
 
-if (-not $GitHubUser -and -not $Check -and -not $Yes) {
-    $GitHubUser = (Read-Host 'GitHub username containing the Mac public key').Trim()
-    if ($GitHubUser -notmatch '^[A-Za-z0-9-]+$') { Fail 'Invalid GitHub username' }
-}
-if ($Yes -and -not $Check -and (-not $GitHubUser -or -not $GitHubKeyFingerprint)) {
-    Fail 'Non-interactive setup requires both -GitHubUser and -GitHubKeyFingerprint'
-}
+if ($GitHubKeyFingerprint -and -not $GitHubUser) { Fail '-GitHubKeyFingerprint requires -GitHubUser' }
 
 $SelectedKey = $null
 $GitHubKeys = @()
@@ -207,12 +347,12 @@ if ($GitHubUser) {
 
 if ($SelectedKey) {
     Write-Ok "selected exactly one Mac key: $($SelectedKey.Fingerprint)"
-} elseif ($Check) {
-    Write-Warn 'No key was selected; pass -GitHubUser USER and, when the account has multiple keys, -GitHubKeyFingerprint SHA256:...'
-} elseif ($Yes) {
-    Fail 'Non-interactive setup requires both -GitHubUser and -GitHubKeyFingerprint'
+} elseif ($GitHubUser -and $Yes) {
+    Fail 'Non-interactive GitHub key recovery requires -GitHubKeyFingerprint'
+} elseif ($GitHubUser) {
+    Fail 'Select one GitHub public key before applying'
 } else {
-    Fail 'A GitHub account and one Mac public key must be selected before applying'
+    Write-Ok 'no SSH client key selected; secure device pairing will add one later'
 }
 
 $distributions = Get-InstalledDistributions
@@ -228,7 +368,7 @@ Write-Host "  - keep the working clone in $LinuxRepository"
 Write-Host '  - merge a safe WSL resource policy and mirrored networking settings'
 Write-Host '  - add the Hyper-V firewall rule for the configured SSH port'
 Write-Host '  - install and harden OpenSSH inside Ubuntu'
-Write-Host '  - authorize exactly the selected public key; private keys never leave the Mac'
+Write-Host '  - prepare hardened public-key-only SSH access'
 if ($SelectedKey) {
     Write-Host "  - selected SSH key: $($SelectedKey.Fingerprint)"
 }
@@ -240,7 +380,7 @@ if ($Check) {
 
 if (-not $Yes) {
     $answer = (Read-Host 'Continue? [Y/n]').Trim()
-    if ($answer -and $answer -notmatch '^(?i:y|yes|s|sim)$') {
+    if ($answer -and $answer -notmatch '^(?i:y|yes)$') {
         Write-Host 'Setup cancelled; no changes were applied.'
         exit 0
     }
@@ -311,9 +451,11 @@ if ($configCreated) {
 
 $configValues = @{
     ssh_user = $WslUser
-    github_user = $GitHubUser
-    ssh_public_key = $SelectedKey.PublicKey
     wsl_distribution = $Distro
+}
+if ($SelectedKey) {
+    $configValues.github_user = $GitHubUser
+    $configValues.ssh_public_key = $SelectedKey.PublicKey
 }
 if ($configCreated) {
     $configValues.wsl_memory = $resources.Memory
@@ -364,11 +506,10 @@ $lanAddress = Get-LanAddress
 Write-Host "`nDevbox is ready." -ForegroundColor Green
 if ($lanAddress) {
     Write-Host "Windows address: $lanAddress"
-    Write-Host "On the Mac, set host=$lanAddress and ssh_user=$WslUser, then run:"
 } else {
     Write-Warn 'The LAN address could not be detected; use ipconfig to find it'
-    Write-Host "On the Mac, set ssh_user=$WslUser, then run:"
 }
-Write-Host '  devbox doctor'
-Write-Host '  devbox connect'
+Write-Host "`nNext:"
+Write-Host '  1. On Windows, run: .\setup.cmd -Pair'
+Write-Host '  2. On the Mac, run: devbox pair'
 Write-Host "`nDocker is optional for SSH connectivity. If needed, enable Docker Desktop > Resources > WSL Integration > $Distro."

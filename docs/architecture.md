@@ -2,19 +2,43 @@
 
 ## CLI first
 
-The first release uses small Bash and PowerShell entry points. This makes every
-change reviewable, works over SSH, and avoids a desktop application's packaging,
-code-signing, permission, and update lifecycle.
+The project uses small Bash and PowerShell entry points. This makes host changes
+reviewable and keeps diagnostics available without a graphical application.
 
-A future TUI can call the same commands after real usage shows which operations
-need guided interaction. A web or native UI should only be considered if the
-project needs continuous dashboards, multiple devboxes, or non-technical users.
+`setup.cmd` is the thin Windows entry point. Its PowerShell orchestrator composes
+the Windows and WSL bootstraps; those lower-level commands remain available for
+diagnostics and manual recovery.
 
-`setup.cmd` is the thin Windows entry point for the common path. Its PowerShell
-orchestrator composes the existing Windows and WSL bootstraps; those lower-level
-commands remain available for diagnostics and manual recovery. The wrapper keeps
-the default path to one command without hiding the checks or the planned host
-changes.
+The pairing helper is a small Go binary distributed for Windows and for Intel and
+Apple Silicon Macs. PowerShell and Bash own policy and orchestration. The helper
+owns only local discovery and the short-lived cryptographic pairing protocol.
+
+## Device pairing
+
+Pairing uses a numeric-comparison interaction:
+
+1. `setup.cmd -Pair` opens one TCP and one UDP Windows Firewall rule for the
+   private local subnet and makes the Windows host discoverable for two minutes.
+2. `devbox pair` sends a versioned IPv4 multicast request and lists matching
+   Windows hosts.
+3. The devices exchange fresh X25519 public keys and 256-bit random nonces.
+4. Both derive separate AES-256-GCM direction keys and a six-digit comparison
+   value from the complete transcript using HKDF-SHA-256.
+5. The same value is displayed on both devices. Both users must confirm it.
+6. The Mac public SSH key and host connection details travel in authenticated,
+   encrypted messages only after confirmation.
+7. The Mac pins the authenticated WSL Ed25519 host key before its first SSH
+   connection.
+
+The six digits are not a password and are never sent over the network. They bind
+the device names, discovery instance, session identifier, ephemeral keys, and
+nonces. A man-in-the-middle has approximately a one-in-one-million chance per
+user-approved attempt of presenting a matching value. Pairing permits one active
+session and closes after success, rejection, or timeout.
+
+The Windows helper listens only while pairing is enabled. Its temporary firewall
+rules are limited to the executable, private network profiles, and `LocalSubnet`.
+They are removed in a `finally` block even when pairing fails.
 
 ## Source and compute location
 
@@ -33,18 +57,19 @@ applications off the Mac's LAN interfaces.
 
 Windows mirrored networking gives WSL direct LAN reachability. The bootstrap adds
 one inbound Hyper-V firewall rule for the configured SSH port when run as
-Administrator. SSH accepts public-key authentication only and rejects root login.
+Administrator. SSH accepts public-key authentication only, rejects root login,
+and uses the host identity pinned during pairing.
 
 ## Configuration model
 
-`devbox.local.conf` is a portable `key=value` file. Bash and PowerShell both parse
-it as inert text. Values are deliberately limited to plain strings; quoting,
+`devbox.local.conf` is a portable `key=value` file. Bash and PowerShell parse it
+as inert text. Values are deliberately limited to plain strings; quoting,
 variable expansion, and command substitution are unsupported.
 
-Each clone has its own ignored config. Windows may discover public keys from an
-explicitly selected GitHub profile, but setup records and authorizes only the
-confirmed fingerprint. Private keys and secrets never cross machines through
-Git.
+Each clone has its own ignored config. Secure pairing is the default key
+exchange. Windows may still discover public keys from an explicitly selected
+GitHub profile during manual recovery, but setup authorizes only the confirmed
+fingerprint. Private keys and secrets never cross devices.
 
 The Windows launcher records its exact Git revision and pins the operational WSL
 clone to it. The privileged WSL bootstrap runs from the same Windows checkout

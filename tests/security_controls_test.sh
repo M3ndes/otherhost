@@ -55,6 +55,7 @@ fi
 WSL_BOOTSTRAP="$ROOT_DIR/scripts/bootstrap-wsl.sh"
 SETUP_SCRIPT="$ROOT_DIR/setup.ps1"
 grep -F "devbox_authorize_public_key \"\$SSH_PUBLIC_KEY\"" "$WSL_BOOTSTRAP" >/dev/null
+grep -F "if [ -n \"\$SSH_PUBLIC_KEY\" ]; then" "$WSL_BOOTSTRAP" >/dev/null
 grep -F '/etc/ssh/sshd_config.d/00-devbox-bridge.conf' "$WSL_BOOTSTRAP" >/dev/null
 grep -F "SSHD_EFFECTIVE=\$(sudo sshd -T -C" "$WSL_BOOTSTRAP" >/dev/null
 grep -F "devbox_assert_sshd_policy \"\$SSHD_EFFECTIVE\"" "$WSL_BOOTSTRAP" >/dev/null
@@ -74,5 +75,34 @@ awk '
   exit 1
 }
 bash -n "$TEST_DIR/prepare-wsl-repository.sh"
+
+PAIRING_MAIN="$ROOT_DIR/cmd/devbox-pair/main.go"
+PAIRING_PROTOCOL="$ROOT_DIR/internal/pairing/protocol.go"
+PAIRING_HOST="$ROOT_DIR/internal/pairing/host.go"
+PAIRING_CLIENT="$ROOT_DIR/internal/pairing/client.go"
+MAC_COMMAND="$ROOT_DIR/bin/devbox"
+grep -F 'ecdh.X25519()' "$PAIRING_HOST" >/dev/null
+grep -F 'ecdh.X25519()' "$PAIRING_CLIENT" >/dev/null
+grep -F 'cipher.NewGCM' "$PAIRING_PROTOCOL" >/dev/null
+grep -F 'numeric-comparison/v1' "$PAIRING_PROTOCOL" >/dev/null
+grep -F 'StrictHostKeyChecking=yes' "$MAC_COMMAND" >/dev/null
+grep -F 'UserKnownHostsFile' "$MAC_COMMAND" >/dev/null
+grep -F "Remove-NetFirewallRule -Name \$discoveryRule" "$SETUP_SCRIPT" >/dev/null
+grep -F "Remove-NetFirewallRule -Name \$sessionRule" "$SETUP_SCRIPT" >/dev/null
+grep -F -- '-RemoteAddress LocalSubnet -Profile Private' "$SETUP_SCRIPT" >/dev/null
+grep -F 'Pairing is enabled' "$PAIRING_MAIN" >/dev/null
+
+PAIRING_VERSION=$(sed -n 's/^PAIRING_VERSION=//p' "$ROOT_DIR/scripts/install-pairing-helper.sh")
+[ -n "$PAIRING_VERSION" ] || { printf '%s\n' 'macOS pairing helper version is missing' >&2; exit 1; }
+grep -F "\$version = '$PAIRING_VERSION'" "$SETUP_SCRIPT" >/dev/null || {
+  printf '%s\n' 'Windows and macOS pairing helper versions differ' >&2
+  exit 1
+}
+
+if grep -Eni 'private[_ -]?key.*(send|copy|transfer)|ssh_private_key' \
+  "$PAIRING_MAIN" "$PAIRING_PROTOCOL" "$PAIRING_HOST" "$PAIRING_CLIENT" >/dev/null; then
+  printf '%s\n' 'pairing code appears to transfer a private key' >&2
+  exit 1
+fi
 
 printf '%s\n' 'security control tests passed'

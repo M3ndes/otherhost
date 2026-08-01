@@ -33,6 +33,7 @@ free -h
 From the Mac:
 
 ```bash
+devbox pair
 devbox doctor
 nc -vz YOUR_WINDOWS_IP 2222
 ```
@@ -40,6 +41,34 @@ nc -vz YOUR_WINDOWS_IP 2222
 Before posting output publicly, remove LAN addresses, usernames, hostnames, and
 project paths. Never include private keys, tokens, `.env` files, or application
 logs containing credentials.
+
+## `devbox pair` finds no Windows devbox
+
+Start `.\setup.cmd -Pair` on Windows first. Discovery remains active for two
+minutes. Confirm that both devices use the same private LAN, the active Windows
+network profile is **Private**, and the Wi-Fi access point does not isolate
+wireless clients.
+
+Pairing uses IPv4 multicast UDP port `45870` for discovery and TCP port `45871`
+for its short-lived encrypted session. Windows creates local-subnet firewall
+rules only while the pairing command runs. Do not expose either port through a
+router.
+
+If a VPN or managed network suppresses local multicast, use the explicit GitHub
+public-key recovery flow documented in [macOS client](macos.md).
+
+## The pairing codes do not match
+
+Choose **No** on both devices. Pairing stops without installing a key. Restart
+pairing from Windows and compare a new code. Never proceed after a mismatch;
+different values indicate that the session transcripts or ephemeral keys differ.
+
+## Pairing succeeds but `devbox doctor` reports a host-key error
+
+Pairing pins the WSL Ed25519 host key in
+`~/.ssh/devbox_bridge_known_hosts`. A mismatch means the WSL host identity or
+address changed after pairing. Verify the host locally before removing the
+pinned entry, then pair again. Do not disable strict host-key checking.
 
 ## `git: command not found` inside WSL
 

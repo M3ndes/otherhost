@@ -139,24 +139,28 @@ function Get-ConfigValue([string]$Path, [string]$Key) {
 }
 
 function Invoke-WslScript([string]$Script) {
-    $temporaryScript = Join-Path ([System.IO.Path]::GetTempPath()) ("devbox-bridge-" + [guid]::NewGuid().ToString('N') + '.sh')
+    $wslHomeOutput = @(& wsl.exe -d $Distro -- sh -lc 'printf %s "$HOME"')
+    $wslHomeExitCode = $LASTEXITCODE
+    $wslHome = ($wslHomeOutput -join "`n").Trim()
+    if ($wslHomeExitCode -ne 0 -or $wslHome -notmatch '^/') {
+        Fail 'Could not determine the Ubuntu home directory for script handoff'
+    }
+
+    $temporaryName = '.devbox-bridge-' + [guid]::NewGuid().ToString('N') + '.sh'
+    $wslScriptPath = "$wslHome/$temporaryName"
+    $windowsScriptPath = "\\wsl.localhost\$Distro" + $wslScriptPath.Replace('/', '\')
     try {
         $normalizedScript = $Script.Replace("`r`n", "`n").Replace("`r", "`n")
         [System.IO.File]::WriteAllText(
-            $temporaryScript,
+            $windowsScriptPath,
             $normalizedScript,
             [System.Text.UTF8Encoding]::new($false)
         )
 
-        $wslScriptPath = (& wsl.exe -d $Distro -- wslpath -a -u $temporaryScript).Trim()
-        if ($LASTEXITCODE -ne 0 -or $wslScriptPath -notmatch '^/') {
-            Fail 'Could not map the temporary setup script into WSL'
-        }
-
         & wsl.exe -d $Distro -- bash $wslScriptPath
         if ($LASTEXITCODE -ne 0) { Fail "Ubuntu command failed with exit code $LASTEXITCODE" }
     } finally {
-        Remove-Item -LiteralPath $temporaryScript -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $windowsScriptPath -Force -ErrorAction SilentlyContinue
     }
 }
 

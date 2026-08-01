@@ -1,0 +1,24 @@
+README.md
+  s_71755d8d0bab89::t_c6c4ec1029ba0d 64-73,77-78,83,86-90,94-107,109,112-113,117,124-131,167-168
+docs/troubleshooting.md
+  s_71755d8d0bab89::t_e62b66324834fe 11,15-17,135-138
+  s_71755d8d0bab89::t_c6c4ec1029ba0d 1-10,12-14,18-134,139-169
+docs/windows-wsl.md
+  s_71755d8d0bab89::t_c6c4ec1029ba0d 19-123,148,192-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "edc4ec96951d3b3b968949f938659f1b5cab2ba2",
+  "prompts": {},
+  "sessions": {
+    "s_71755d8d0bab89": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fba65-d026-7702-9af9-5f7244398fd3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Thales Mendes <thalesmendes.dev@gmail.com>"
+    }
+  }
+}

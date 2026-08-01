@@ -22,27 +22,13 @@ if ($launcher -notmatch 'setup\.ps1') {
     exit 1
 }
 foreach ($requiredLauncherControl in @(
-    'wscript.exe //B //NoLogo',
-    'launch-windows-setup.vbs',
+    'DEVBOX_SETUP_ATTACHED',
+    'start "Devbox Bridge Setup"',
     'setup.status',
     'setup.log'
 )) {
     if (-not $launcher.Contains($requiredLauncherControl)) {
         Write-Error "setup.cmd is missing detached-launch control: $requiredLauncherControl"
-        exit 1
-    }
-}
-
-$brokerLauncher = [System.IO.File]::ReadAllText((Join-Path $root 'scripts/launch-windows-setup.vbs'))
-foreach ($requiredBrokerControl in @(
-    'Shell.Application',
-    'ShellExecute powershellPath',
-    '"runas"',
-    'QuoteArgument',
-    'elevation-requested'
-)) {
-    if (-not $brokerLauncher.Contains($requiredBrokerControl)) {
-        Write-Error "Windows elevation broker launcher is missing control: $requiredBrokerControl"
         exit 1
     }
 }

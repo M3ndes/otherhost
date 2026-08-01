@@ -87,5 +87,20 @@ if ($setup.Contains('cd "$HOME/src/devbox-bridge" && ./scripts/bootstrap-wsl.sh 
     Write-Error 'setup still executes the privileged bootstrap from the secondary WSL checkout'
     exit 1
 }
+if ($setup.Contains('-- bash -lc $Script')) {
+    Write-Error 'setup passes a multiline script through Windows native argument quoting'
+    exit 1
+}
+foreach ($requiredWslHandoff in @(
+    '$Script.Replace("`r`n", "`n").Replace("`r", "`n")',
+    '[System.Text.UTF8Encoding]::new($false)',
+    'wslpath -a -u $temporaryScript',
+    '-- bash $wslScriptPath'
+)) {
+    if (-not $setup.Contains($requiredWslHandoff)) {
+        Write-Error "setup is missing safe WSL script handoff control: $requiredWslHandoff"
+        exit 1
+    }
+}
 
 Write-Host 'PowerShell syntax test passed'

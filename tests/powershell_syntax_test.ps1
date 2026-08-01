@@ -94,7 +94,7 @@ if ($setup.Contains('-- bash -lc $Script')) {
 foreach ($requiredWslHandoff in @(
     '$Script.Replace("`r`n", "`n").Replace("`r", "`n")',
     '[System.Text.UTF8Encoding]::new($false)',
-    'wslpath -a -u $temporaryScript',
+    '"\\wsl.localhost\$Distro" + $wslScriptPath.Replace(''/'', ''\'')',
     '-- bash $wslScriptPath'
 )) {
     if (-not $setup.Contains($requiredWslHandoff)) {

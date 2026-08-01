@@ -10,6 +10,12 @@ A future TUI can call the same commands after real usage shows which operations
 need guided interaction. A web or native UI should only be considered if the
 project needs continuous dashboards, multiple devboxes, or non-technical users.
 
+`setup.cmd` is the thin Windows entry point for the common path. Its PowerShell
+orchestrator composes the existing Windows and WSL bootstraps; those lower-level
+commands remain available for diagnostics and manual recovery. The wrapper keeps
+the default path to one command without hiding the checks or the planned host
+changes.
+
 ## Source and compute location
 
 Projects live inside the WSL Linux filesystem, normally under `~/src`. Builds,
@@ -35,5 +41,12 @@ Administrator. SSH accepts public-key authentication only and rejects root login
 it as inert text. Values are deliberately limited to plain strings; quoting,
 variable expansion, and command substitution are unsupported.
 
-Each clone has its own ignored config. Public SSH keys may be imported from a
-GitHub profile, but private keys and secrets never cross machines through Git.
+Each clone has its own ignored config. Windows may discover public keys from an
+explicitly selected GitHub profile, but setup records and authorizes only the
+confirmed fingerprint. Private keys and secrets never cross machines through
+Git.
+
+The Windows launcher records its exact Git revision and pins the operational WSL
+clone to it. The privileged WSL bootstrap runs from the same Windows checkout
+that launched setup, preventing a stale or modified second checkout from becoming
+an implicit code source at the `sudo` boundary.

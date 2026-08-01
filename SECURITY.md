@@ -15,7 +15,11 @@ addresses, exploit details, or private keys.
 - Use this project only on machines and networks you control.
 - Never commit `devbox.local.conf`, `.env` files, tokens, or private SSH keys.
 - Publish only `.pub` keys.
+- Confirm the dedicated Mac key fingerprint during setup; do not authorize an
+  entire GitHub profile.
 - Keep SSH password login disabled.
+- Require the effective `sshd -T` policy to match the hardened settings before
+  enabling the service.
 - Do not forward the SSH port from a public router directly to the WSL host.
 - Review generated SSH and firewall configuration before applying it.
 

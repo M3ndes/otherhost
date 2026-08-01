@@ -127,15 +127,15 @@ nc -vz YOUR_WINDOWS_IP 2222
 
 ## SSH says `Permission denied (publickey)`
 
-Confirm that the Mac public key was added to the configured GitHub profile and
-that WSL imported it:
+Compare the dedicated Mac fingerprint with the exact key selected in WSL:
 
 ```bash
-# Ubuntu
-GITHUB_KEYS=$(mktemp)
-curl -fsSL https://github.com/YOUR_GITHUB_USER.keys > "$GITHUB_KEYS"
-grep -Fxf "$GITHUB_KEYS" ~/.ssh/authorized_keys
-rm -f "$GITHUB_KEYS"
+# Mac
+ssh-keygen -lf ~/.ssh/devbox_bridge_ed25519.pub -E sha256
+
+# Ubuntu / WSL
+ssh-keygen -lf ~/.ssh/authorized_keys -E sha256
+grep '^ssh_public_key=' ~/src/devbox-bridge/devbox.local.conf
 ls -ld ~/.ssh
 ls -l ~/.ssh/authorized_keys
 ```

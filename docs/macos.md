@@ -26,9 +26,16 @@ stable. A local DNS name or private overlay-network address can also be used.
 ## SSH key flow
 
 The default key is `~/.ssh/devbox_bridge_ed25519`. Only its `.pub` counterpart is
-shared. The WSL bootstrap downloads public keys published on the configured GitHub
-profile. Remove an obsolete key from both GitHub and `~/.ssh/authorized_keys` in
-WSL.
+shared. Print its fingerprint before continuing on Windows:
+
+```bash
+ssh-keygen -lf ~/.ssh/devbox_bridge_ed25519.pub -E sha256
+```
+
+Windows discovers keys from the explicitly selected GitHub profile and asks you
+to choose this exact fingerprint. WSL receives and authorizes only that public
+key, never the entire profile. Remove an obsolete key from both GitHub and
+`~/.ssh/authorized_keys` in WSL.
 
 ## Daily use
 

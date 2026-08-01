@@ -1,5 +1,31 @@
 # Windows and WSL host
 
+## One-command setup
+
+From PowerShell in a Windows checkout of the repository, run:
+
+```powershell
+.\setup.cmd
+```
+
+This is the recommended path. It runs the checks below, displays the planned
+changes, asks for one confirmation, elevates through UAC, and orchestrates both
+Windows and Ubuntu. The checkout used to launch it may live on Windows; the
+script pins the operational clone under `~/src` in WSL to that checkout's exact
+Git revision. Privileged bootstrap code runs from the reviewed Windows checkout,
+and setup refuses local changes that are not part of that revision.
+
+The setup asks for the GitHub account and, when it contains multiple keys, the
+dedicated Mac key. Match the fingerprint printed on the Mac. The account is
+never inferred from the repository owner. A fully non-interactive invocation is:
+
+```powershell
+.\setup.cmd -GitHubUser YOUR_USER -GitHubKeyFingerprint SHA256:YOUR_FINGERPRINT -Yes
+```
+
+Use `.\setup.cmd -Check` for a read-only preflight. The sections below document
+the individual layers and provide the manual fallback when troubleshooting.
+
 ## Recommended layout
 
 - Windows 11 22H2 or newer;
@@ -16,7 +42,7 @@ This release automates mirrored networking only. WSL's default NAT mode requires
 a port proxy that follows the distribution's changing address and is intentionally
 left for a later release.
 
-## First-run checklist
+## Manual first-run checklist
 
 ### 1. Check Windows and WSL
 
@@ -47,9 +73,10 @@ cd devbox-bridge
 cp config/devbox.example.conf devbox.local.conf
 ```
 
-Use the `whoami` result as `ssh_user`. Set `github_user` to the GitHub profile
-containing the Mac's public key. Keep repositories under `~/src`; cloning under
-`/mnt/c` causes slower Linux filesystem access and poor bind-mount behavior.
+Use the `whoami` result as `ssh_user`. Set `github_user` to the explicitly chosen
+GitHub profile and `ssh_public_key` to the one complete `.pub` line created on the
+Mac. Keep repositories under `~/src`; cloning under `/mnt/c` causes slower Linux
+filesystem access and poor bind-mount behavior.
 
 Review these configuration values before continuing:
 
@@ -57,7 +84,8 @@ Review these configuration values before continuing:
 | --- | --- | --- |
 | `ssh_user` | Ubuntu user returned by `whoami` | `developer` |
 | `ssh_port` | SSH port allowed through the Hyper-V firewall | `2222` |
-| `github_user` | GitHub profile used to import public SSH keys | `M3ndes` |
+| `github_user` | Explicit GitHub profile used to discover candidate keys | `M3ndes` |
+| `ssh_public_key` | Exact selected Mac public key line | `ssh-ed25519 AAAA... devbox-bridge client` |
 | `wsl_distribution` | Exact name shown by `wsl --list --quiet` | `Ubuntu` |
 | `wsl_memory` | Maximum RAM assigned to WSL | `20GB` |
 | `wsl_processors` | Logical processors assigned to WSL | `8` |
@@ -152,9 +180,10 @@ Use `-Mode Apply` from Administrator PowerShell to update `.wslconfig` and creat
 the inbound Hyper-V firewall rule for the SSH port.
 
 Then run `bootstrap-wsl.sh --apply` inside the configured distribution. It installs
-OpenSSH, imports public keys from `https://github.com/USERNAME.keys`, disables SSH
-passwords, and enables the SSH service. Its optional project clone uses
-`--recurse-submodules` and never overwrites an existing directory.
+OpenSSH, validates and authorizes only `ssh_public_key`, installs an early
+hardening drop-in, checks the effective `sshd -T` policy, and only then enables
+the SSH service. Its optional project clone uses `--recurse-submodules` and never
+overwrites an existing directory.
 
 ## Docker Desktop
 

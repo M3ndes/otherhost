@@ -45,9 +45,9 @@ cp config/devbox.example.conf devbox.local.conf
 ./scripts/bootstrap-mac.sh --apply --generate-key
 ```
 
-Edit `devbox.local.conf`. At minimum, set `host`, `ssh_user`, and later
-`github_user`. Upload the generated public key to GitHub so the WSL bootstrap can
-import it:
+Edit `devbox.local.conf`. At minimum, set `host` and `ssh_user` later. Upload the
+generated public key to GitHub so Windows can discover it without moving any
+private material:
 
 ```bash
 gh ssh-key add ~/.ssh/devbox_bridge_ed25519.pub --title "devbox-bridge Mac"
@@ -56,78 +56,65 @@ gh ssh-key add ~/.ssh/devbox_bridge_ed25519.pub --title "devbox-bridge Mac"
 If you do not use GitHub CLI, add the `.pub` file in GitHub's **SSH and GPG
 keys** settings. Never upload the private key (the file without `.pub`).
 
+Print the dedicated key's fingerprint so you can recognize it during Windows
+setup:
+
+```bash
+ssh-keygen -lf ~/.ssh/devbox_bridge_ed25519.pub -E sha256
+```
+
 Commit and push only the repository files. `devbox.local.conf` remains local on
-each machine, so copy its non-secret values manually when you move to Windows.
+each machine.
 
 ## Continue on Windows
 
-First, confirm WSL and the Ubuntu distribution from PowerShell:
+Open PowerShell in a Windows checkout of this repository and run:
 
 ```powershell
-wsl --version
-wsl --list --verbose
+.\setup.cmd
 ```
 
-If Ubuntu is not installed, run `wsl --install -d Ubuntu` and complete its
-first-launch user setup. Then install Git and clone the repository into the Linux
-filesystem, not under `/mnt/c`:
+The command performs a read-only preflight, asks for one confirmation, requests
+Administrator permission through UAC, and completes the Windows and Ubuntu
+setup. It automatically:
 
-```bash
-# Run inside WSL.
-sudo apt-get update
-sudo apt-get install -y git
-mkdir -p ~/src && cd ~/src
-git clone https://github.com/M3ndes/devbox-bridge.git
-cd devbox-bridge
-cp config/devbox.example.conf devbox.local.conf
-whoami
-```
+- selects a resource policy based on the desktop hardware;
+- keeps the operational clone under `~/src/devbox-bridge` inside WSL;
+- creates the machine-local configuration and detects the Ubuntu user;
+- configures mirrored networking and the Hyper-V firewall;
+- installs and hardens OpenSSH, then authorizes exactly one selected Mac key.
 
-Edit `devbox.local.conf`. Set `ssh_user` to the output of `whoami`, set
-`github_user`, and adjust the WSL memory and processor limits for the desktop.
-
-From an **Administrator PowerShell**, run the read-only check before applying any
-host changes:
+The setup asks for the GitHub account, displays the available key fingerprints,
+and asks you to select the dedicated Mac key. It never treats the repository
+owner as your identity. For a non-interactive run, pass the explicit account and
+fingerprint shown on the Mac:
 
 ```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-$Distro = "Ubuntu"
-$WslUser = (& wsl.exe -d $Distro -- whoami).Trim()
-$RepoPath = "\\wsl.localhost\$Distro\home\$WslUser\src\devbox-bridge"
-
-& "$RepoPath\scripts\bootstrap-windows.ps1" `
-  -Mode Check `
-  -ConfigPath "$RepoPath\devbox.local.conf"
+.\setup.cmd -GitHubUser YOUR_USER -GitHubKeyFingerprint SHA256:YOUR_FINGERPRINT -Yes
 ```
 
-Review the report. If the distribution, RAM, processors, and Docker information
-are correct, run the same command with `Apply`:
+The WSL operational clone is pinned to the exact revision of the Windows
+checkout. Privileged WSL configuration runs from that same reviewed Windows
+checkout instead of executing an unrelated second copy. Setup refuses a dirty
+checkout so the executed scripts match the verified Git revision.
+
+To stop after the read-only report:
 
 ```powershell
-& "$RepoPath\scripts\bootstrap-windows.ps1" `
-  -Mode Apply `
-  -ConfigPath "$RepoPath\devbox.local.conf"
+.\setup.cmd -Check
 ```
 
-Start Docker Desktop and Ubuntu again after WSL is shut down. Inside WSL, check
-first and then apply:
+Docker is not required for SSH connectivity. For container workloads, enable
+**Docker Desktop > Resources > WSL Integration > Ubuntu** after setup.
 
-```bash
-cd ~/src/devbox-bridge
-./scripts/bootstrap-wsl.sh
-./scripts/bootstrap-wsl.sh --apply
-```
-
-The first WSL run may enable systemd and ask for one more `wsl --shutdown`.
-Docker Desktop must have integration enabled for the selected distribution.
-
-The Windows side is ready when all of these are true:
+The SSH bridge is ready when all of these are true:
 
 1. `wsl --list --verbose` shows Ubuntu using WSL 2.
-2. `docker info` works inside Ubuntu.
-3. `systemctl is-active ssh` prints `active`.
-4. `ss -lnt | grep 2222` shows the SSH listener.
-5. `devbox doctor` succeeds from the Mac after its `host` value is set.
+2. `systemctl is-active ssh` prints `active`.
+3. `ss -lnt | grep 2222` shows the SSH listener.
+4. `devbox doctor` succeeds from the Mac after its `host` value is set.
+
+Container workloads are ready when `docker info` also works inside Ubuntu.
 
 ## Connect from the Mac
 
@@ -145,6 +132,8 @@ through `localhost` on the Mac. In another terminal:
 devbox urls
 devbox status
 ```
+
+After the one-time setup, the normal daily workflow is just `devbox connect`.
 
 For editors with Remote SSH support, review the generated block before adding it
 to `~/.ssh/config`:

@@ -100,17 +100,27 @@ if ($config.wsl_networking_mode -eq 'mirrored' -and $build -lt 22621) {
 }
 
 if (-not (Get-Command wsl.exe -ErrorAction SilentlyContinue)) { Fail 'WSL is not installed' }
-$wslVersion = (& wsl.exe --version 2>&1 | Out-String).Trim()
+$wslVersionOutput = @(& wsl.exe --version 2>&1)
+$wslVersion = ($wslVersionOutput -join "`n").Replace([string][char]0, '').Trim()
 Write-Ok "WSL is installed`n$wslVersion"
-$distributions = @(& wsl.exe --list --quiet | ForEach-Object { $_.Trim([char]0).Trim() } | Where-Object { $_ })
+$distributionOutput = @(& wsl.exe --list --quiet)
+$distributions = @(
+    $distributionOutput |
+        ForEach-Object { $_.Trim([char]0).Trim() } |
+        Where-Object { $_ }
+)
 if ($config.wsl_distribution -notin $distributions) {
     Fail "WSL distribution '$($config.wsl_distribution)' is not installed"
 }
 Write-Ok "WSL distribution exists: $($config.wsl_distribution)"
 
 if (Get-Command docker.exe -ErrorAction SilentlyContinue) {
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
     & docker.exe info *> $null
-    if ($LASTEXITCODE -eq 0) {
+    $dockerExitCode = $LASTEXITCODE
+    $ErrorActionPreference = $previousErrorActionPreference
+    if ($dockerExitCode -eq 0) {
         Write-Ok 'Docker Desktop engine is running'
     } else {
         Write-Warn 'Docker CLI exists, but Docker Desktop engine is not ready'

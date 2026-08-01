@@ -225,7 +225,7 @@ function Get-PairingHelper {
         'ARM64' { 'arm64' }
         default { Fail "Unsupported Windows architecture: $env:PROCESSOR_ARCHITECTURE" }
     }
-    $version = 'v0.1.0'
+    $version = 'v0.1.1'
     $asset = "devbox-pair-windows-$architecture.exe"
     $installDirectory = Join-Path $env:LOCALAPPDATA 'devbox-bridge\bin'
     $destination = Join-Path $installDirectory 'devbox-pair.exe'

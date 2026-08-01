@@ -53,6 +53,9 @@ if devbox_assert_sshd_policy "$SAFE_POLICY" 2222 another-user >/dev/null 2>&1; t
 fi
 
 WSL_BOOTSTRAP="$ROOT_DIR/scripts/bootstrap-wsl.sh"
+ROOTLESS_BOOTSTRAP="$ROOT_DIR/scripts/bootstrap-wsl-user.sh"
+ROOTLESS_PAIR="$ROOT_DIR/scripts/pair-wsl.sh"
+ROOTLESS_INSTALLER="$ROOT_DIR/scripts/install-pairing-helper-wsl.sh"
 SETUP_SCRIPT="$ROOT_DIR/setup.ps1"
 grep -F "devbox_authorize_public_key \"\$SSH_PUBLIC_KEY\"" "$WSL_BOOTSTRAP" >/dev/null
 grep -F "if [ -n \"\$SSH_PUBLIC_KEY\" ]; then" "$WSL_BOOTSTRAP" >/dev/null
@@ -63,6 +66,19 @@ if grep -F "https://github.com/\$GITHUB_USER.keys" "$WSL_BOOTSTRAP" >/dev/null; 
   printf '%s\n' 'WSL bootstrap still authorizes an entire GitHub profile' >&2
   exit 1
 fi
+grep -F 'apt-get download openssh-server libwrap0' "$ROOTLESS_BOOTSTRAP" >/dev/null
+grep -F 'AuthenticationMethods publickey' "$ROOTLESS_BOOTSTRAP" >/dev/null
+grep -F 'PasswordAuthentication no' "$ROOTLESS_BOOTSTRAP" >/dev/null
+grep -F 'KbdInteractiveAuthentication no' "$ROOTLESS_BOOTSTRAP" >/dev/null
+grep -F 'AllowTcpForwarding local' "$ROOTLESS_BOOTSTRAP" >/dev/null
+grep -F 'PermitOpen localhost:* 127.0.0.1:* [::1]:*' "$ROOTLESS_BOOTSTRAP" >/dev/null
+grep -F 'systemctl --user enable --now devbox-bridge-sshd.service' "$ROOTLESS_BOOTSTRAP" >/dev/null
+if grep -E '^[[:space:]]*sudo([[:space:]]|$)' "$ROOTLESS_BOOTSTRAP" >/dev/null; then
+  printf '%s\n' 'rootless WSL bootstrap invokes sudo' >&2
+  exit 1
+fi
+grep -F -- "--authorized-keys \"\$AUTHORIZED_KEYS\"" "$ROOTLESS_PAIR" >/dev/null
+grep -F -- "--ssh-host-key \"\$(cat \"\$HOST_KEY\")\"" "$ROOTLESS_PAIR" >/dev/null
 
 awk '
   { sub(/\r$/, "") }
@@ -98,6 +114,13 @@ grep -F "\$version = '$PAIRING_VERSION'" "$SETUP_SCRIPT" >/dev/null || {
   printf '%s\n' 'Windows and macOS pairing helper versions differ' >&2
   exit 1
 }
+ROOTLESS_PAIRING_VERSION=$(sed -n 's/^PAIRING_VERSION=//p' "$ROOTLESS_INSTALLER")
+[ "$ROOTLESS_PAIRING_VERSION" = "$PAIRING_VERSION" ] || {
+  printf '%s\n' 'WSL and macOS pairing helper versions differ' >&2
+  exit 1
+}
+grep -F 'asset: devbox-pair-linux-amd64' "$ROOT_DIR/.github/workflows/release.yml" >/dev/null
+grep -F 'asset: devbox-pair-linux-arm64' "$ROOT_DIR/.github/workflows/release.yml" >/dev/null
 
 if grep -Eni 'private[_ -]?key.*(send|copy|transfer)|ssh_private_key' \
   "$PAIRING_MAIN" "$PAIRING_PROTOCOL" "$PAIRING_HOST" "$PAIRING_CLIENT" >/dev/null; then

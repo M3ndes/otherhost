@@ -139,8 +139,29 @@ function Get-ConfigValue([string]$Path, [string]$Key) {
 }
 
 function Invoke-WslScript([string]$Script) {
-    & wsl.exe -d $Distro -- bash -lc $Script
-    if ($LASTEXITCODE -ne 0) { Fail "Ubuntu command failed with exit code $LASTEXITCODE" }
+    $wslHomeOutput = @(& wsl.exe -d $Distro -- sh -lc 'printf %s "$HOME"')
+    $wslHomeExitCode = $LASTEXITCODE
+    $wslHome = ($wslHomeOutput -join "`n").Trim()
+    if ($wslHomeExitCode -ne 0 -or $wslHome -notmatch '^/') {
+        Fail 'Could not determine the Ubuntu home directory for script handoff'
+    }
+
+    $temporaryName = '.devbox-bridge-' + [guid]::NewGuid().ToString('N') + '.sh'
+    $wslScriptPath = "$wslHome/$temporaryName"
+    $windowsScriptPath = "\\wsl.localhost\$Distro" + $wslScriptPath.Replace('/', '\')
+    try {
+        $normalizedScript = $Script.Replace("`r`n", "`n").Replace("`r", "`n")
+        [System.IO.File]::WriteAllText(
+            $windowsScriptPath,
+            $normalizedScript,
+            [System.Text.UTF8Encoding]::new($false)
+        )
+
+        & wsl.exe -d $Distro -- bash $wslScriptPath
+        if ($LASTEXITCODE -ne 0) { Fail "Ubuntu command failed with exit code $LASTEXITCODE" }
+    } finally {
+        Remove-Item -LiteralPath $windowsScriptPath -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function Invoke-WslCommand([string[]]$Arguments) {
@@ -204,7 +225,7 @@ function Get-PairingHelper {
         'ARM64' { 'arm64' }
         default { Fail "Unsupported Windows architecture: $env:PROCESSOR_ARCHITECTURE" }
     }
-    $version = 'v0.1.0'
+    $version = 'v0.1.1'
     $asset = "devbox-pair-windows-$architecture.exe"
     $installDirectory = Join-Path $env:LOCALAPPDATA 'devbox-bridge\bin'
     $destination = Join-Path $installDirectory 'devbox-pair.exe'

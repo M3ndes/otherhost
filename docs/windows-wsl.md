@@ -22,6 +22,23 @@ enable two-minute private-network discovery:
 .\setup.cmd -Pair
 ```
 
+## Existing mirrored WSL without elevation
+
+If Ubuntu is already installed, PID 1 is systemd, and mirrored networking is
+already active, use the WSL user-scoped host instead of Windows setup:
+
+```bash
+cd ~/src/devbox-bridge
+./scripts/bootstrap-wsl-user.sh --apply
+./scripts/pair-wsl.sh
+```
+
+This path never invokes PowerShell, `sudo`, or an executable installer. It
+extracts OpenSSH from Ubuntu's signed packages into `~/.local`, runs it through
+the systemd user manager, permits public-key authentication only, and limits
+port forwarding to loopback services. It does not install WSL, change the
+Windows firewall, or persist when the WSL user manager is not running.
+
 Windows displays the requesting Mac name and a six-digit code. Confirm only if
 the Mac displays the same code. Temporary Windows Firewall rules are limited to
 the pairing helper, private profiles, and the local subnet. They are removed on

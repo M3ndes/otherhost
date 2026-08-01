@@ -1,0 +1,21 @@
+bin/devbox
+  s_71755d8d0bab89::t_f55473f2084999 4-13
+tests/config_test.sh
+  s_71755d8d0bab89::t_f55473f2084999 50-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "bcd7c1f8ce9f5b682b42fe921c706ccdff6abb9c",
+  "prompts": {},
+  "sessions": {
+    "s_71755d8d0bab89": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fba65-d026-7702-9af9-5f7244398fd3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Thales Mendes <thalesmendes.dev@gmail.com>"
+    }
+  }
+}

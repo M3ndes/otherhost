@@ -15,9 +15,21 @@ script pins the operational clone under `~/src` in WSL to that checkout's exact
 Git revision. Privileged bootstrap code runs from the reviewed Windows checkout,
 and setup refuses local changes that are not part of that revision.
 
-The setup asks for the GitHub account and, when it contains multiple keys, the
-dedicated Mac key. Match the fingerprint printed on the Mac. The account is
-never inferred from the repository owner. A fully non-interactive invocation is:
+Normal host setup does not require a GitHub account or Mac key. After setup,
+enable two-minute private-network discovery:
+
+```powershell
+.\setup.cmd -Pair
+```
+
+Windows displays the requesting Mac name and a six-digit code. Confirm only if
+the Mac displays the same code. Temporary Windows Firewall rules are limited to
+the pairing helper, private profiles, and the local subnet. They are removed on
+success, rejection, error, or timeout.
+
+The GitHub key path remains available for manual recovery. It requires an
+explicit account and exact fingerprint and never infers identity from the
+repository owner:
 
 ```powershell
 .\setup.cmd -GitHubUser YOUR_USER -GitHubKeyFingerprint SHA256:YOUR_FINGERPRINT -Yes
@@ -73,10 +85,9 @@ cd devbox-bridge
 cp config/devbox.example.conf devbox.local.conf
 ```
 
-Use the `whoami` result as `ssh_user`. Set `github_user` to the explicitly chosen
-GitHub profile and `ssh_public_key` to the one complete `.pub` line created on the
-Mac. Keep repositories under `~/src`; cloning under `/mnt/c` causes slower Linux
-filesystem access and poor bind-mount behavior.
+Use the `whoami` result as `ssh_user`. Leave `github_user` and `ssh_public_key`
+empty when using secure pairing. Keep repositories under `~/src`; cloning under
+`/mnt/c` causes slower Linux filesystem access and poor bind-mount behavior.
 
 Review these configuration values before continuing:
 
@@ -84,8 +95,8 @@ Review these configuration values before continuing:
 | --- | --- | --- |
 | `ssh_user` | Ubuntu user returned by `whoami` | `developer` |
 | `ssh_port` | SSH port allowed through the Hyper-V firewall | `2222` |
-| `github_user` | Explicit GitHub profile used to discover candidate keys | `M3ndes` |
-| `ssh_public_key` | Exact selected Mac public key line | `ssh-ed25519 AAAA... devbox-bridge client` |
+| `github_user` | Optional recovery profile used to discover candidate keys | `M3ndes` |
+| `ssh_public_key` | Optional exact recovery public key line | `ssh-ed25519 AAAA... devbox-bridge client` |
 | `wsl_distribution` | Exact name shown by `wsl --list --quiet` | `Ubuntu` |
 | `wsl_memory` | Maximum RAM assigned to WSL | `20GB` |
 | `wsl_processors` | Logical processors assigned to WSL | `8` |
@@ -145,9 +156,8 @@ free -h
 ```
 
 Expected result: Docker returns server information, SSH is `active`, and TCP port
-2222 is listening. On Windows, run `ipconfig` and note the IPv4 address of the
-active Ethernet or Wi-Fi adapter. Use that address as `host` in the Mac's local
-config, then run `devbox doctor` on the Mac.
+2222 is listening. Run `.\setup.cmd -Pair` on Windows and `devbox pair` on the
+Mac. Discovery supplies the correct active Windows address automatically.
 
 ## Resource policy
 
@@ -179,11 +189,12 @@ Run `bootstrap-windows.ps1 -Mode Check` without elevation for a read-only report
 Use `-Mode Apply` from Administrator PowerShell to update `.wslconfig` and create
 the inbound Hyper-V firewall rule for the SSH port.
 
-Then run `bootstrap-wsl.sh --apply` inside the configured distribution. It installs
-OpenSSH, validates and authorizes only `ssh_public_key`, installs an early
-hardening drop-in, checks the effective `sshd -T` policy, and only then enables
-the SSH service. Its optional project clone uses `--recurse-submodules` and never
-overwrites an existing directory.
+Then run `bootstrap-wsl.sh --apply` inside the configured distribution. It
+installs OpenSSH, prepares `authorized_keys`, installs an early hardening
+drop-in, checks the effective `sshd -T` policy, and only then enables the SSH
+service. When a recovery `ssh_public_key` is configured, it validates and
+authorizes only that exact key. Its optional project clone uses
+`--recurse-submodules` and never overwrites an existing directory.
 
 ## Docker Desktop
 

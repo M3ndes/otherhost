@@ -12,8 +12,8 @@ usage() {
   cat <<'EOF'
 Usage: scripts/bootstrap-wsl.sh [--apply] [--config PATH]
 
-The default mode is read-only. --apply installs the SSH server, authorizes the
-single selected Mac public key, hardens SSH, and optionally clones a project.
+The default mode is read-only. --apply installs and hardens the SSH server,
+authorizes a selected Mac public key when present, and optionally clones a project.
 Docker is intentionally supplied by Docker Desktop's WSL integration.
 EOF
 }
@@ -122,14 +122,16 @@ else
 fi
 
 if [ "$MODE" = apply ]; then
-  [ -n "$SSH_PUBLIC_KEY" ] || fail 'set ssh_public_key before applying the WSL bootstrap'
-
   mkdir -p "$HOME/.ssh"
   chmod 700 "$HOME/.ssh"
   touch "$HOME/.ssh/authorized_keys"
   chmod 600 "$HOME/.ssh/authorized_keys"
-  devbox_authorize_public_key "$SSH_PUBLIC_KEY" "$HOME/.ssh/authorized_keys" || fail 'ssh_public_key is not a valid supported SSH public key'
-  ok 'installed the selected Mac public SSH key'
+  if [ -n "$SSH_PUBLIC_KEY" ]; then
+    devbox_authorize_public_key "$SSH_PUBLIC_KEY" "$HOME/.ssh/authorized_keys" || fail 'ssh_public_key is not a valid supported SSH public key'
+    ok 'installed the selected Mac public SSH key'
+  else
+    ok 'prepared authorized_keys; secure pairing will add the Mac public key'
+  fi
 
   SSHD_DROP_IN=$(mktemp)
   cat > "$SSHD_DROP_IN" <<EOF

@@ -1,4 +1,6 @@
 devbox.local.conf
+build/
+dist/
 .env
 .env.*
 *.log

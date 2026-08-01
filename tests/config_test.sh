@@ -11,6 +11,8 @@ export HOME="$TEST_DIR/home with spaces"
 mkdir -p "$HOME/.ssh"
 touch "$HOME/.ssh/test key"
 chmod 600 "$HOME/.ssh/test key"
+touch "$HOME/.ssh/test known hosts"
+chmod 600 "$HOME/.ssh/test known hosts"
 
 CONFIG_FILE="$TEST_DIR/devbox.conf"
 SIDE_EFFECT="$TEST_DIR/must-not-exist"
@@ -21,6 +23,7 @@ host=192.0.2.10
 ssh_user = developer
 ssh_port=2222
 identity_file=.ssh/test key
+known_hosts_file=.ssh/test known hosts
 ports=3000, 8080
 unused=\$(touch $SIDE_EFFECT)
 EOF
@@ -41,6 +44,8 @@ assert_equal "$HOME/.ssh/test key" "$(devbox_resolve_identity_file '.ssh/test ke
 SSH_CONFIG=$(DEVBOX_CONFIG="$CONFIG_FILE" "$ROOT_DIR/bin/devbox" ssh-config)
 printf '%s\n' "$SSH_CONFIG" | grep -F 'Host test-box' >/dev/null
 printf '%s\n' "$SSH_CONFIG" | grep -F "IdentityFile \"$HOME/.ssh/test key\"" >/dev/null
+printf '%s\n' "$SSH_CONFIG" | grep -F "UserKnownHostsFile \"$HOME/.ssh/test known hosts\"" >/dev/null
+printf '%s\n' "$SSH_CONFIG" | grep -F 'StrictHostKeyChecking yes' >/dev/null
 printf '%s\n' "$SSH_CONFIG" | grep -F 'LocalForward 127.0.0.1:8080 127.0.0.1:8080' >/dev/null
 
 URLS=$(DEVBOX_CONFIG="$CONFIG_FILE" "$ROOT_DIR/bin/devbox" urls)

@@ -8,7 +8,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 function Write-Ok([string]$Message) { Write-Host "[ok] $Message" -ForegroundColor Green }
-function Write-Warn([string]$Message) { Write-Warning $Message }
+function Write-Warn([string]$Message) { Write-Host "[warn] $Message" -ForegroundColor Yellow }
 function Fail([string]$Message) { throw $Message }
 
 function Read-DevboxConfig([string]$Path) {

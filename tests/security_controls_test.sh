@@ -111,6 +111,11 @@ grep -F -- "-RemoteAddresses \$RemoteSubnets" "$SETUP_SCRIPT" >/dev/null
 grep -F -- '--user-scoped-wsl' "$SETUP_SCRIPT" >/dev/null
 grep -F "'pairing-latest.log'" "$SETUP_SCRIPT" >/dev/null
 grep -F "Start-Transcript -LiteralPath \$logPath -Force" "$SETUP_SCRIPT" >/dev/null
+grep -F "Invoke-CapturedProcess -FilePath \$helper -Arguments @('host', '-h')" "$SETUP_SCRIPT" >/dev/null
+if grep -F "& \$helper host -h" "$SETUP_SCRIPT" >/dev/null; then
+  printf '%s\n' 'pairing capability probe still writes native stderr into the PowerShell error stream' >&2
+  exit 1
+fi
 grep -F 'does not support user-scoped WSL' "$SETUP_SCRIPT" >/dev/null
 grep -F "\$PairingDiscoveryPort = 25370" "$SETUP_SCRIPT" >/dev/null
 grep -F "\$PairingSessionPort = 25371" "$SETUP_SCRIPT" >/dev/null

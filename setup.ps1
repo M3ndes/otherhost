@@ -380,7 +380,8 @@ function Start-PairingMode {
     }
     Write-Diag "pairing helper: $helperVersion ($helper)"
     if ($userScopedWSL) {
-        $helperCapabilities = ((& $helper host -h 2>&1) | Out-String)
+        $helperCapabilitiesResult = Invoke-CapturedProcess -FilePath $helper -Arguments @('host', '-h')
+        $helperCapabilities = $helperCapabilitiesResult.Output + $helperCapabilitiesResult.Error
         if ($helperCapabilities -notmatch '(?m)user-scoped-wsl') {
             Fail "Installed pairing helper $helperVersion does not support user-scoped WSL; publish and install a helper built from this revision"
         }

@@ -88,6 +88,10 @@ listener diagnostics without private SSH keys. Review it locally before sharing
 because it may contain device names, usernames, LAN addresses, and the temporary
 comparison code.
 
+The Windows launcher captures helper capability output outside PowerShell's
+error stream. This keeps expected `host -h` usage text from terminating pairing
+when the elevated transcript is active under Windows PowerShell 5.1.
+
 If neither method finds the host, disconnect VPN software and verify that the
 access point does not isolate wireless clients. The explicit GitHub public-key
 recovery flow remains documented in [macOS client](macos.md).

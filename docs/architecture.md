@@ -114,6 +114,15 @@ identifies the remote machine. This changes only the child environment; the
 PTY transport, authentication, host verification, and process lifecycle remain
 SSH-backed.
 
+After an interactive Zsh is ready, the PTY submits a constant initialization
+command that wraps Powerlevel10k's final `precmd` renderer and clears
+`RPROMPT`/`RPS1` after each render. Other Zsh themes receive a final `precmd`
+hook with the same effect. This keeps right-side timestamps from colliding
+visually with typed commands in the embedded terminal. The command then clears
+the initial setup line from the display. It does not write to `.zshrc`,
+`.p10k.zsh`, or any other remote file, and non-Zsh shells retain their configured
+prompt.
+
 Creating a terminal requires the dashboard action token and a same-origin POST.
 The response contains a random authorization valid for 30 seconds and one
 WebSocket attachment. Its secret is sent as a WebSocket subprotocol rather than

@@ -70,7 +70,10 @@ inventory. **Close**, closing the page, or stopping `otherhost ui` terminates
 the local PTY and its SSH process. Starting a new session replaces the current
 one in that browser page. The child shell omits OpenSSH's connection marker
 variables so prompt themes render like a local WSL terminal instead of adding a
-redundant `user@host` segment; the transport itself remains SSH.
+redundant `user@host` segment. For Zsh themes such as Powerlevel10k, the session
+also clears the right prompt so timestamps do not compete with the command text.
+These overrides are session-only; the user's Zsh and Powerlevel10k files remain
+unchanged, and the transport itself remains SSH.
 
 The screenshot shows the disconnected empty state because demonstration mode
 intentionally never starts a local or remote shell.

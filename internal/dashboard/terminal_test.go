@@ -24,6 +24,18 @@ func TestRemoteTerminalCommandQuotesInventoryPath(t *testing.T) {
 	}
 }
 
+func TestTerminalInitializationHidesZshRightPrompt(t *testing.T) {
+	command := terminalInitializationCommand()
+	for _, expected := range []string{"ZSH_VERSION", "functions[_otherhost_p9k_precmd_original]", `_p9k_precmd()`, "RPROMPT=", "RPS1=", "precmd_functions+=(_otherhost_hide_rprompt)"} {
+		if !strings.Contains(command, expected) {
+			t.Fatalf("terminal initialization is missing %q: %s", expected, command)
+		}
+	}
+	if !strings.HasSuffix(command, "\r") {
+		t.Fatal("terminal initialization is not submitted to the shell")
+	}
+}
+
 func TestNormalizeTerminalSizeAppliesDefaultsAndBounds(t *testing.T) {
 	size, err := normalizeTerminalSize(0, 0)
 	if err != nil {

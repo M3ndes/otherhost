@@ -59,6 +59,14 @@ func (launcher *SSHTerminalLauncher) StartTerminal(projectPath string, size Term
 	if err != nil {
 		return nil, fmt.Errorf("could not start the remote terminal: %w", err)
 	}
+	if _, err := io.WriteString(terminalFile, terminalInitializationCommand()); err != nil {
+		_ = terminalFile.Close()
+		if command.Process != nil {
+			_ = command.Process.Kill()
+		}
+		_ = command.Wait()
+		return nil, fmt.Errorf("could not initialize the remote terminal: %w", err)
+	}
 
 	process := &sshTerminal{file: terminalFile, command: command, done: make(chan struct{})}
 	go func() {
@@ -96,6 +104,10 @@ func remoteTerminalCommand(projectPath string) string {
 
 func quotePOSIXShell(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", `'"'"'`) + "'"
+}
+
+func terminalInitializationCommand() string {
+	return `if [ -n "${ZSH_VERSION:-}" ]; then if (( $+functions[_p9k_precmd] )); then functions[_otherhost_p9k_precmd_original]=$functions[_p9k_precmd]; _p9k_precmd() { _otherhost_p9k_precmd_original "$@"; RPROMPT=; RPS1=; }; else _otherhost_hide_rprompt() { RPROMPT=; RPS1=; }; precmd_functions+=(_otherhost_hide_rprompt); fi; fi; printf '\033[2J\033[H'` + "\r"
 }
 
 type sshTerminal struct {

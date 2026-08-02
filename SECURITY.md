@@ -74,6 +74,9 @@ The default design intends to preserve these properties:
   exact clean revision launched from Windows before privileged setup runs.
 - **Configuration is data.** Machine-local config is validated and never
   evaluated as Bash or PowerShell code.
+- **Local terminal authorization.** Browser terminals require the per-process
+  dashboard token, exact same-origin checks, and a short-lived, one-use
+  WebSocket authorization that is not placed in the URL.
 
 See [Architecture and decisions](docs/architecture.md) for protocol and boundary
 details.
@@ -116,6 +119,9 @@ disabling strict host-key verification.
   sensitive environment.
 - Keep Docker and application services bound as narrowly as practical. An SSH
   tunnel protects transport; it does not fix an insecure application.
+- Treat the integrated terminal like any other shell logged into WSL. It is not
+  sandboxed and can read, change, or delete anything available to the paired
+  WSL account. Lock the Mac when unattended and close unused sessions.
 
 The setup scripts preserve unrelated configuration and back up `.wslconfig`
 before changing it. Host owners remain responsible for backups, recovery,

@@ -34,6 +34,7 @@ func run() error {
 	}
 
 	var collector dashboard.Collector
+	var terminal dashboard.TerminalLauncher
 	sshAlias := "home-otherhost"
 	if *demo {
 		collector = demoCollector{}
@@ -46,12 +47,13 @@ func run() error {
 			return err
 		}
 		collector = dashboard.NewSSHCollector(config)
+		terminal = dashboard.NewSSHTerminalLauncher(config)
 		sshAlias = config.Name
 	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-	return dashboard.RunServer(ctx, collector, dashboard.VSCodeLauncher{}, sshAlias, *port, !*noOpen)
+	return dashboard.RunServer(ctx, collector, dashboard.VSCodeLauncher{}, terminal, sshAlias, *port, !*noOpen)
 }
 
 type demoCollector struct{}

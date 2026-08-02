@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -47,31 +48,50 @@ func (VSCodeLauncher) OpenProject(sshAlias, projectPath string) error {
 type Handler struct {
 	collector Collector
 	launcher  ProjectLauncher
+	terminal  TerminalLauncher
 	sshAlias  string
 	token     string
 	assets    http.Handler
 
-	mutex    sync.RWMutex
-	projects map[string]struct{}
+	mutex            sync.RWMutex
+	projects         map[string]struct{}
+	terminalSessions map[string]pendingTerminalSession
+	activeTerminals  map[string]Terminal
+	closing          bool
 }
 
 func NewHandler(collector Collector, launcher ProjectLauncher, sshAlias string) (*Handler, error) {
+	return NewHandlerWithTerminal(collector, launcher, nil, sshAlias)
+}
+
+func NewHandlerWithTerminal(collector Collector, launcher ProjectLauncher, terminal TerminalLauncher, sshAlias string) (*Handler, error) {
 	assetRoot, err := fs.Sub(embeddedAssets, "assets")
 	if err != nil {
 		return nil, err
 	}
-	tokenBytes := make([]byte, 32)
-	if _, err := rand.Read(tokenBytes); err != nil {
+	token, err := randomToken(32)
+	if err != nil {
 		return nil, fmt.Errorf("could not create dashboard session: %w", err)
 	}
 	return &Handler{
-		collector: collector,
-		launcher:  launcher,
-		sshAlias:  sshAlias,
-		token:     base64.RawURLEncoding.EncodeToString(tokenBytes),
-		assets:    http.FileServer(http.FS(assetRoot)),
-		projects:  make(map[string]struct{}),
+		collector:        collector,
+		launcher:         launcher,
+		terminal:         terminal,
+		sshAlias:         sshAlias,
+		token:            token,
+		assets:           http.FileServer(http.FS(assetRoot)),
+		projects:         make(map[string]struct{}),
+		terminalSessions: make(map[string]pendingTerminalSession),
+		activeTerminals:  make(map[string]Terminal),
 	}, nil
+}
+
+func randomToken(length int) (string, error) {
+	tokenBytes := make([]byte, length)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(tokenBytes), nil
 }
 
 func (handler *Handler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
@@ -85,7 +105,13 @@ func (handler *Handler) ServeHTTP(response http.ResponseWriter, request *http.Re
 		handler.serveSnapshot(response, request)
 	case "/api/projects/open":
 		handler.openProject(response, request)
+	case "/api/terminals":
+		handler.createTerminal(response, request)
 	default:
+		if strings.HasPrefix(request.URL.Path, "/api/terminals/") {
+			handler.serveTerminalSocket(response, request)
+			return
+		}
 		if request.Method != http.MethodGet && request.Method != http.MethodHead {
 			http.Error(response, "Method not allowed", http.StatusMethodNotAllowed)
 			return
@@ -179,11 +205,11 @@ func setSecurityHeaders(response http.ResponseWriter) {
 	response.Header().Set("X-Frame-Options", "DENY")
 }
 
-func RunServer(ctx context.Context, collector Collector, launcher ProjectLauncher, sshAlias string, port int, openBrowser bool) error {
+func RunServer(ctx context.Context, collector Collector, launcher ProjectLauncher, terminal TerminalLauncher, sshAlias string, port int, openBrowser bool) error {
 	if port < 0 || port > 65535 {
 		return errors.New("dashboard port must be between 0 and 65535")
 	}
-	handler, err := NewHandler(collector, launcher, sshAlias)
+	handler, err := NewHandlerWithTerminal(collector, launcher, terminal, sshAlias)
 	if err != nil {
 		return err
 	}
@@ -211,10 +237,12 @@ func RunServer(ctx context.Context, collector Collector, launcher ProjectLaunche
 
 	select {
 	case <-ctx.Done():
+		handler.CloseTerminals()
 		shutdownContext, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		return server.Shutdown(shutdownContext)
 	case err := <-serveErrors:
+		handler.CloseTerminals()
 		if errors.Is(err, http.ErrServerClosed) {
 			return nil
 		}

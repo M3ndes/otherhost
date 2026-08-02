@@ -57,6 +57,8 @@ detail first.
   an English, localhost-only interface backed by the same pinned SSH connection.
 - **Integrated remote terminal:** start a WSL shell in your home directory or
   directly inside an inventoried project without moving compute back to the Mac.
+- **Explicit project lifecycle:** permanently remove an inventoried checkout
+  from WSL only after reviewing its full path and typing its project name.
 - **Automation-friendly:** Bash, PowerShell, and a small dependency-free Go
   pairing helper; no required GUI or hosted control plane.
 

@@ -14,6 +14,7 @@ const icons = {
   branch: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="5" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="19" r="2"/><path d="M6 7v10m2-6h4a6 6 0 0 0 6-3"/></svg>',
   external: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h5v5m0-5-9 9"/><path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5"/></svg>',
   copy: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5"/></svg>',
   sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
   moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.3A8.5 8.5 0 0 1 9.7 3.5 8.5 8.5 0 1 0 20.5 14.3Z"/></svg>'
 };
@@ -28,6 +29,11 @@ const state = {
   terminalDisposables: [],
   terminalResizeObserver: null,
   terminalGeneration: 0,
+  terminalProjectPath: '',
+  projectDeletionEnabled: false,
+  pendingDeletion: null,
+  deleteTrigger: null,
+  deletingProject: false,
   initialNavigationDone: false
 };
 
@@ -111,6 +117,7 @@ function setConnection(status) {
 
 function renderSnapshot(snapshot) {
   state.snapshot = snapshot;
+  state.projectDeletionEnabled = Boolean(snapshot.projectDeletionEnabled);
   state.loading = false;
   const connected = snapshot.status === 'connected';
   const host = snapshot.host || {};
@@ -224,10 +231,90 @@ function renderProjects() {
     terminalButton.innerHTML = icons.terminal;
     terminalButton.addEventListener('click', () => openProjectTerminal(project));
     actions.append(openButton, terminalButton, copyButton);
+    if (state.projectDeletionEnabled) {
+      const deleteButton = document.createElement('button');
+      deleteButton.className = 'delete-project';
+      deleteButton.type = 'button';
+      deleteButton.title = 'Delete project';
+      deleteButton.setAttribute('aria-label', `Delete ${project.name} permanently`);
+      deleteButton.innerHTML = icons.trash;
+      deleteButton.addEventListener('click', () => openDeleteProject(project, deleteButton));
+      actions.append(deleteButton);
+    }
 
     card.append(top, title, projectPath, tags, actions);
     grid.append(card);
   });
+}
+
+function openDeleteProject(project, trigger) {
+  state.pendingDeletion = project;
+  state.deleteTrigger = trigger;
+  state.deletingProject = false;
+  setText('[data-delete-name]', project.name);
+  setText('[data-delete-confirmation-name]', project.name);
+  setText('[data-delete-path]', project.path);
+  setText('[data-delete-submit-label]', 'Delete permanently');
+  const input = document.querySelector('[data-delete-confirmation]');
+  input.value = '';
+  input.disabled = false;
+  document.querySelector('[data-delete-submit]').disabled = true;
+  document.querySelector('[data-delete-cancel]').disabled = false;
+  document.querySelector('[data-delete-modal]').classList.remove('hidden');
+  document.body.classList.add('modal-open');
+  window.setTimeout(() => input.focus(), 0);
+}
+
+function closeDeleteProject(force = false) {
+  if (state.deletingProject && !force) return;
+  document.querySelector('[data-delete-modal]').classList.add('hidden');
+  document.body.classList.remove('modal-open');
+  const trigger = state.deleteTrigger;
+  state.pendingDeletion = null;
+  state.deleteTrigger = null;
+  state.deletingProject = false;
+  if (trigger?.isConnected) trigger.focus();
+}
+
+function updateDeleteConfirmation() {
+  const project = state.pendingDeletion;
+  const input = document.querySelector('[data-delete-confirmation]');
+  document.querySelector('[data-delete-submit]').disabled = state.deletingProject || !project || input.value !== project.name;
+}
+
+async function deleteProject() {
+  const project = state.pendingDeletion;
+  const input = document.querySelector('[data-delete-confirmation]');
+  if (!project || state.deletingProject || input.value !== project.name) return;
+
+  state.deletingProject = true;
+  input.disabled = true;
+  document.querySelector('[data-delete-cancel]').disabled = true;
+  document.querySelector('[data-delete-submit]').disabled = true;
+  setText('[data-delete-submit-label]', 'Deleting…');
+  try {
+    const response = await fetch('/api/projects/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Otherhost-Token': state.actionToken },
+      body: JSON.stringify({ path: project.path, confirmation: project.name })
+    });
+    if (!response.ok) throw new Error((await response.text()).trim() || 'Could not delete the project.');
+    if (state.terminalProjectPath === project.path) stopTerminal(true);
+    state.snapshot.projects = (state.snapshot.projects || []).filter((candidate) => candidate.path !== project.path);
+    renderProjects();
+    closeDeleteProject(true);
+    showToast(`${project.name} was permanently deleted.`);
+    refresh();
+  } catch (error) {
+    state.deletingProject = false;
+    input.disabled = false;
+    document.querySelector('[data-delete-cancel]').disabled = false;
+    setText('[data-delete-submit-label]', 'Delete permanently');
+    updateDeleteConfirmation();
+    showToast(error.message, true);
+    input.focus();
+    refresh();
+  }
 }
 
 function renderDisks(disks) {
@@ -320,6 +407,7 @@ function stopTerminal(showEmpty = true) {
     state.terminal.dispose();
     state.terminal = null;
   }
+  state.terminalProjectPath = '';
   document.querySelector('[data-terminal-mount]').replaceChildren();
   document.querySelector('[data-terminal-empty]').classList.toggle('hidden', !showEmpty);
   document.querySelector('[data-terminal-close]').disabled = true;
@@ -347,6 +435,7 @@ async function startTerminal(project = null) {
   empty.classList.add('hidden');
   setText('[data-terminal-title]', project ? project.name : 'Remote shell');
   setText('[data-terminal-location]', project ? project.path : 'WSL home');
+  state.terminalProjectPath = project?.path || '';
   setTerminalState('connecting', 'Connecting');
   document.querySelector('[data-terminal-close]').disabled = false;
 
@@ -558,6 +647,18 @@ document.querySelectorAll('[data-refresh]').forEach((button) => button.addEventL
 document.querySelector('[data-terminal-start]').addEventListener('click', () => startTerminal());
 document.querySelector('[data-terminal-new]').addEventListener('click', () => startTerminal());
 document.querySelector('[data-terminal-close]').addEventListener('click', () => stopTerminal(true));
+document.querySelector('[data-delete-confirmation]').addEventListener('input', updateDeleteConfirmation);
+document.querySelector('[data-delete-form]').addEventListener('submit', (event) => {
+  event.preventDefault();
+  deleteProject();
+});
+document.querySelector('[data-delete-cancel]').addEventListener('click', () => closeDeleteProject());
+document.querySelector('[data-delete-modal]').addEventListener('click', (event) => {
+  if (event.target === event.currentTarget) closeDeleteProject();
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && state.pendingDeletion) closeDeleteProject();
+});
 document.querySelector('[data-project-search]').addEventListener('input', (event) => {
   state.query = event.target.value.trim().toLowerCase();
   renderProjects();

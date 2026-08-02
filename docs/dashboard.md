@@ -59,12 +59,18 @@ restart or manual move.
 - **Open in terminal** starts an interactive WSL shell at the exact inventoried
   project path inside the dashboard.
 - **Copy path** copies the Linux path for use in a terminal or another editor.
+- **Delete project** opens a destructive-action dialog with the full remote
+  path. The user must type the exact project name before **Delete permanently**
+  is enabled. Confirmation recursively removes the entire directory from WSL;
+  it does not use a trash folder and cannot be undone by Otherhost.
 - **Search projects** filters the inventory already loaded in the page; it does
   not send the query to the host or an external service.
 
 The dashboard never accepts an arbitrary path from the browser. A project can
-be opened only when its exact path appeared in the latest server-side
-inventory.
+be opened or deleted only when its exact path appeared in the latest
+server-side inventory. Failed deletions leave the card authorized for a retry;
+successful deletions remove it immediately and refresh the remote inventory.
+Back up or push any work that must be retained before confirming deletion.
 
 ## Terminal
 
@@ -126,6 +132,9 @@ settings.
 - Mutating actions require a per-process random token and a same-origin request.
 - Non-loopback HTTP hosts are rejected to reduce DNS-rebinding risk.
 - Project launches are restricted to paths from the latest inventory.
+- Project deletion additionally requires the exact project name, revalidates
+  that the canonical remote path is a primary Git checkout below the WSL home,
+  rejects mount points, and prevents concurrent deletion of the same path.
 - Terminal creation requires the dashboard action token and same-origin POST.
 - WebSocket authorization is random, valid for 30 seconds, consumed on first
   connection, and carried outside the URL.

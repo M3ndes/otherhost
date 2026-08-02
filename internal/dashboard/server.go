@@ -27,6 +27,10 @@ type ProjectLauncher interface {
 	OpenProject(sshAlias, projectPath string) error
 }
 
+type ProjectDeleter interface {
+	DeleteProject(projectPath string) error
+}
+
 type VSCodeLauncher struct{}
 
 func (VSCodeLauncher) OpenProject(sshAlias, projectPath string) error {
@@ -49,12 +53,14 @@ type Handler struct {
 	collector Collector
 	launcher  ProjectLauncher
 	terminal  TerminalLauncher
+	deleter   ProjectDeleter
 	sshAlias  string
 	token     string
 	assets    http.Handler
 
 	mutex            sync.RWMutex
-	projects         map[string]struct{}
+	projects         map[string]Project
+	deletingProjects map[string]struct{}
 	terminalSessions map[string]pendingTerminalSession
 	activeTerminals  map[string]Terminal
 	closing          bool
@@ -65,6 +71,10 @@ func NewHandler(collector Collector, launcher ProjectLauncher, sshAlias string) 
 }
 
 func NewHandlerWithTerminal(collector Collector, launcher ProjectLauncher, terminal TerminalLauncher, sshAlias string) (*Handler, error) {
+	return NewHandlerWithServices(collector, launcher, terminal, nil, sshAlias)
+}
+
+func NewHandlerWithServices(collector Collector, launcher ProjectLauncher, terminal TerminalLauncher, deleter ProjectDeleter, sshAlias string) (*Handler, error) {
 	assetRoot, err := fs.Sub(embeddedAssets, "assets")
 	if err != nil {
 		return nil, err
@@ -77,10 +87,12 @@ func NewHandlerWithTerminal(collector Collector, launcher ProjectLauncher, termi
 		collector:        collector,
 		launcher:         launcher,
 		terminal:         terminal,
+		deleter:          deleter,
 		sshAlias:         sshAlias,
 		token:            token,
 		assets:           http.FileServer(http.FS(assetRoot)),
-		projects:         make(map[string]struct{}),
+		projects:         make(map[string]Project),
+		deletingProjects: make(map[string]struct{}),
 		terminalSessions: make(map[string]pendingTerminalSession),
 		activeTerminals:  make(map[string]Terminal),
 	}, nil
@@ -105,6 +117,8 @@ func (handler *Handler) ServeHTTP(response http.ResponseWriter, request *http.Re
 		handler.serveSnapshot(response, request)
 	case "/api/projects/open":
 		handler.openProject(response, request)
+	case "/api/projects/delete":
+		handler.deleteProject(response, request)
 	case "/api/terminals":
 		handler.createTerminal(response, request)
 	default:
@@ -135,20 +149,91 @@ func (handler *Handler) serveSnapshot(response http.ResponseWriter, request *htt
 	}
 	snapshot := handler.collector.Collect()
 	handler.mutex.Lock()
-	handler.projects = make(map[string]struct{}, len(snapshot.Projects))
+	handler.projects = make(map[string]Project, len(snapshot.Projects))
+	visibleProjects := make([]Project, 0, len(snapshot.Projects))
 	for _, project := range snapshot.Projects {
-		handler.projects[project.Path] = struct{}{}
+		if _, deleting := handler.deletingProjects[project.Path]; !deleting {
+			handler.projects[project.Path] = project
+			visibleProjects = append(visibleProjects, project)
+		}
 	}
+	snapshot.Projects = visibleProjects
 	handler.mutex.Unlock()
 
 	response.Header().Set("Content-Type", "application/json; charset=utf-8")
 	response.Header().Set("Cache-Control", "no-store")
 	if err := json.NewEncoder(response).Encode(struct {
 		Snapshot
-		ActionToken string `json:"actionToken"`
-	}{Snapshot: snapshot, ActionToken: handler.token}); err != nil {
+		ActionToken            string `json:"actionToken"`
+		ProjectDeletionEnabled bool   `json:"projectDeletionEnabled"`
+	}{Snapshot: snapshot, ActionToken: handler.token, ProjectDeletionEnabled: handler.deleter != nil}); err != nil {
 		http.Error(response, "Could not encode the dashboard response", http.StatusInternalServerError)
 	}
+}
+
+func (handler *Handler) deleteProject(response http.ResponseWriter, request *http.Request) {
+	if request.Method != http.MethodPost {
+		http.Error(response, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if request.Header.Get("X-Otherhost-Token") != handler.token || !sameOrigin(request) {
+		http.Error(response, "Action not authorized", http.StatusForbidden)
+		return
+	}
+	if handler.deleter == nil {
+		http.Error(response, "Project deletion is unavailable", http.StatusNotImplemented)
+		return
+	}
+	request.Body = http.MaxBytesReader(response, request.Body, 4096)
+	decoder := json.NewDecoder(request.Body)
+	decoder.DisallowUnknownFields()
+	var payload struct {
+		Path         string `json:"path"`
+		Confirmation string `json:"confirmation"`
+	}
+	if err := decoder.Decode(&payload); err != nil {
+		http.Error(response, "Invalid project deletion request", http.StatusBadRequest)
+		return
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		http.Error(response, "Invalid project deletion request", http.StatusBadRequest)
+		return
+	}
+
+	handler.mutex.Lock()
+	if _, deleting := handler.deletingProjects[payload.Path]; deleting {
+		handler.mutex.Unlock()
+		http.Error(response, "Project deletion is already in progress", http.StatusConflict)
+		return
+	}
+	project, allowed := handler.projects[payload.Path]
+	if !allowed {
+		handler.mutex.Unlock()
+		http.Error(response, "Project is not available", http.StatusNotFound)
+		return
+	}
+	if payload.Confirmation != project.Name {
+		handler.mutex.Unlock()
+		http.Error(response, "Project name confirmation does not match", http.StatusBadRequest)
+		return
+	}
+	handler.deletingProjects[payload.Path] = struct{}{}
+	delete(handler.projects, payload.Path)
+	handler.mutex.Unlock()
+
+	if err := handler.deleter.DeleteProject(payload.Path); err != nil {
+		handler.mutex.Lock()
+		delete(handler.deletingProjects, payload.Path)
+		handler.projects[payload.Path] = project
+		handler.mutex.Unlock()
+		http.Error(response, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	handler.mutex.Lock()
+	delete(handler.deletingProjects, payload.Path)
+	handler.mutex.Unlock()
+	response.Header().Set("Content-Type", "application/json; charset=utf-8")
+	_, _ = response.Write([]byte(`{"status":"deleted"}`))
 }
 
 func (handler *Handler) openProject(response http.ResponseWriter, request *http.Request) {
@@ -205,11 +290,11 @@ func setSecurityHeaders(response http.ResponseWriter) {
 	response.Header().Set("X-Frame-Options", "DENY")
 }
 
-func RunServer(ctx context.Context, collector Collector, launcher ProjectLauncher, terminal TerminalLauncher, sshAlias string, port int, openBrowser bool) error {
+func RunServer(ctx context.Context, collector Collector, launcher ProjectLauncher, terminal TerminalLauncher, deleter ProjectDeleter, sshAlias string, port int, openBrowser bool) error {
 	if port < 0 || port > 65535 {
 		return errors.New("dashboard port must be between 0 and 65535")
 	}
-	handler, err := NewHandlerWithTerminal(collector, launcher, terminal, sshAlias)
+	handler, err := NewHandlerWithServices(collector, launcher, terminal, deleter, sshAlias)
 	if err != nil {
 		return err
 	}

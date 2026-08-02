@@ -1,0 +1,38 @@
+docs/dashboard.md
+  s_71755d8d0bab89::t_fd39f2b02c0918 17-18,63-65
+bin/otherhost
+  s_71755d8d0bab89::t_58b06dbea36fd1 335-337,414-415
+  s_71755d8d0bab89::t_c0728297816ce4 29-30,46,73-76,85-89,161,311,334,338-413,416-419,468-476
+internal/dashboard/server_test.go
+  s_71755d8d0bab89::t_4d360e7c754766 31-70
+cmd/otherhost-ui/main.go
+  s_71755d8d0bab89::t_c1849bde39f0e9 40,56,64
+tests/config_test.sh
+  s_71755d8d0bab89::t_c4006d470346cc 55-71,87-92
+  s_71755d8d0bab89::t_940ce085f118fa 72-86
+README.md
+  s_71755d8d0bab89::t_fd39f2b02c0918 228-229,235-243,266-268,292
+docs/architecture.md
+  s_71755d8d0bab89::t_fd39f2b02c0918 115-119
+internal/dashboard/server.go
+  s_71755d8d0bab89::t_c1849bde39f0e9 34-40,42,47-56,68-91
+  s_71755d8d0bab89::t_9cdd3a253f876d 92
+docs/macos.md
+  s_71755d8d0bab89::t_fd39f2b02c0918 143-144,150-160,184-188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "91bdbe05ab0ade28b3b0a865e29046400f515d17",
+  "prompts": {},
+  "sessions": {
+    "s_71755d8d0bab89": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fba65-d026-7702-9af9-5f7244398fd3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Thales Mendes <thalesmendes.dev@gmail.com>"
+    }
+  }
+}

@@ -63,7 +63,10 @@ grep -F 'Host unrelated.example' "$HOME/.ssh/config" >/dev/null
 grep -F 'Host test-box' "$HOME/.ssh/config" >/dev/null
 grep -F "IdentityFile \"$HOME/.ssh/test key\"" "$HOME/.ssh/config" >/dev/null
 assert_equal 1 "$(grep -Fxc '# BEGIN otherhost: test-box' "$HOME/.ssh/config")"
-permissions=$(stat -f '%Lp' "$HOME/.ssh/config" 2>/dev/null || stat -c '%a' "$HOME/.ssh/config")
+case "$(uname -s)" in
+  Darwin) permissions=$(stat -f '%Lp' "$HOME/.ssh/config") ;;
+  *) permissions=$(stat -c '%a' "$HOME/.ssh/config") ;;
+esac
 assert_equal 600 "$permissions"
 cp "$HOME/.ssh/config" "$TEST_DIR/first-applied-ssh-config"
 OTHERHOST_CONFIG="$CONFIG_FILE" "$ROOT_DIR/bin/otherhost" ssh-config --apply >/dev/null

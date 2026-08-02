@@ -1,5 +1,28 @@
 # Windows and WSL host
 
+The Windows computer is the host. Windows owns power, WSL lifecycle, and network
+policy; Ubuntu inside WSL owns SSH, source code, build tools, and Linux services;
+Docker Desktop supplies the container engine. The Mac connects to Ubuntu through
+the Windows computer's local-network address.
+
+```mermaid
+flowchart LR
+    Mac["Mac client"] -->|"SSH TCP 2222"| Win["Windows network boundary"]
+    Win --> Firewall["Hyper-V firewall rule"] --> WSL["Ubuntu in WSL 2"]
+    WSL --> Source["~/src projects"]
+    WSL --> Docker["Docker Desktop containers"]
+```
+
+Most users should follow the one-command setup. The user-scoped WSL path is an
+advanced alternative for machines whose mirrored network and firewall policy
+already work.
+
+| Host path | Use it when | Required privilege |
+| --- | --- | --- |
+| `setup.cmd` | First setup or Windows policy needs configuration | One Windows UAC approval; WSL may use `sudo` |
+| `bootstrap-wsl-user.sh` | WSL, systemd, mirrored networking, and inbound policy already work | Normal WSL user only |
+| Manual checklist | Diagnosing one layer or reviewing every action | Depends on the layer |
+
 ## One-command setup
 
 From PowerShell in a Windows checkout of the repository, run:
@@ -15,6 +38,15 @@ script pins the operational clone under `~/src` in WSL to that checkout's exact
 Git revision. Privileged bootstrap code runs from the reviewed Windows checkout,
 and setup refuses local changes that are not part of that revision.
 
+The command may restart WSL when resource or networking configuration changes.
+It does not install Docker Desktop, change router settings, or start an
+application project. Read the displayed plan before approving the UAC prompt.
+
+Successful setup ends with WSL configured, a public-key-only SSH listener ready
+on the configured port, and instructions to start pairing. You can rerun the
+same command safely: existing keys and unrelated user configuration are
+preserved.
+
 Normal host setup does not require a GitHub account or Mac key. After setup,
 enable two-minute private-network discovery:
 
@@ -27,6 +59,10 @@ temporary firewall rules, and confirmation that the TCP pairing listener is
 active. Keep the command open while `devbox pair` runs on the Mac. If the helper
 lacks a capability required by the checked-out setup script, pairing stops with
 an explicit version/capability error before changing firewall state.
+
+Pairing mode and normal host setup are deliberately separate. The SSH service
+remains available for an already authorized Mac, while the discovery and pairing
+listener exists only for two minutes.
 
 ## Existing mirrored WSL without elevation
 
@@ -84,6 +120,18 @@ diagnose.
 This release automates mirrored networking only. WSL's default NAT mode requires
 a port proxy that follows the distribution's changing address and is intentionally
 left for a later release.
+
+### What lives where
+
+| Location | Keep here | Avoid here |
+| --- | --- | --- |
+| Windows filesystem | Launcher checkout, Windows tools, `.wslconfig` | Linux build outputs that need high filesystem performance |
+| WSL Linux filesystem | Operational clone, application source, dependencies, SSH state | Mac private keys or Windows credentials |
+| Docker Desktop storage | Images, containers, volumes, and build cache | The only copy of irreplaceable source or data |
+| Mac | Client clone, private SSH key, editor UI | A second manual copy of the WSL working tree |
+
+The Windows checkout is the reviewed source for setup. The operational WSL clone
+is where normal Linux development happens after the host is ready.
 
 ## Manual first-run checklist
 

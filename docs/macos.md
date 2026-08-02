@@ -1,65 +1,186 @@
 # macOS client
 
+The Mac is the interactive client: it discovers and authenticates one Windows
+host, opens SSH sessions, and makes selected WSL services available on Mac
+localhost ports. Source code and containers remain on the Windows/WSL host.
+
+Start with the repository [Quick start](../README.md#quick-start) if this is your
+first setup. This page documents Mac-specific behavior and recovery.
+
 ## Install
 
-Run `./scripts/bootstrap-mac.sh --apply` from the repository. It:
+Requirements are Git, OpenSSH, and a normal macOS terminal. Clone the repository
+and run the installer:
 
-1. links `devbox` into `~/.local/bin`;
-2. creates an ignored local config when needed;
-3. installs the checksum-verified pairing helper for the Mac architecture;
-4. leaves existing configuration and keys untouched.
+```bash
+git clone https://github.com/M3ndes/devbox-bridge.git
+cd devbox-bridge
+./scripts/bootstrap-mac.sh --apply
+```
 
-Add `~/.local/bin` to `PATH` if the script reports it missing:
+The installer:
+
+1. links `bin/devbox` to `~/.local/bin/devbox`;
+2. creates an ignored `devbox.local.conf` when needed;
+3. installs the checksum-verified pairing helper for Intel or Apple Silicon;
+4. leaves existing configuration, command files, and SSH keys untouched.
+
+It fails instead of overwriting an unrelated `~/.local/bin/devbox` file.
+
+If the script reports that `~/.local/bin` is not in `PATH`, add this line to
+`~/.zshrc`:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Place that line in `~/.zshrc` to keep it across terminal sessions.
+Open a new terminal or load the change with `source ~/.zshrc`, then check:
+
+```bash
+devbox help
+```
+
+Running `bootstrap-mac.sh` without `--apply` is a read-only check. The optional
+`--generate-key` flag creates the dedicated SSH identity during installation;
+otherwise `devbox pair` creates it when first needed.
 
 ## Pair with Windows
 
-First run `.\setup.cmd -Pair` in the Windows checkout. Then run:
+Pairing is required once per Mac identity or whenever you intentionally replace
+the host identity. It exchanges public information over an encrypted temporary
+session; it does not copy the Mac private key.
+
+1. On Windows, open the repository checkout, run `.\setup.cmd -Pair`, and keep
+   the PowerShell window open.
+2. On the Mac, run:
+
+   ```bash
+   devbox pair
+   ```
+
+3. Check the device names and the complete six-digit code on both screens.
+4. Confirm on both devices only when they match.
+
+The Mac listens for discovery responses for a short period. It first uses local
+IPv4 multicast and automatically scans a bounded local subnet on TCP port
+`25371` when multicast is unavailable. One compatible host is selected
+automatically; several hosts are displayed as a numbered choice.
+
+Successful pairing writes these authenticated values to the local config:
+
+- Windows address;
+- WSL user;
+- SSH port;
+- dedicated known-hosts path.
+
+It also pins the WSL Ed25519 host key and immediately runs `devbox doctor`.
+Pairing is therefore complete only when the final SSH check succeeds.
+
+## Files created on the Mac
+
+| File | Purpose | Safe to share? |
+| --- | --- | --- |
+| `~/.local/bin/devbox` | Link to this clone's CLI | The link itself contains no secret |
+| `~/.local/lib/devbox-bridge/devbox-pair` | Installed pairing helper | Yes, when obtained from a verified release |
+| `devbox.local.conf` | Machine-local connection settings | Treat as private diagnostic data |
+| `~/.ssh/devbox_bridge_ed25519` | Dedicated private SSH identity | **No** |
+| `~/.ssh/devbox_bridge_ed25519.pub` | Public half installed in WSL | Yes |
+| `~/.ssh/devbox_bridge_known_hosts` | Pinned WSL public host identity | Public key data, but identifies the host |
+
+The default private key is permission-restricted and never leaves the Mac. All
+paired SSH commands use `IdentitiesOnly=yes` and `StrictHostKeyChecking=yes`, so
+an unexpected host identity fails closed instead of prompting the user to trust
+a replacement automatically.
+
+## Daily use
+
+First verify the connection when the host or network has changed:
 
 ```bash
-devbox pair
+devbox doctor
 ```
 
-The Mac searches the private local network for five seconds. It uses multicast
-first and automatically scans a bounded local IPv4 subnet when multicast is
-unavailable. One result is selected automatically; several results are shown as
-a numbered list. Confirm only when the same six-digit code appears on both
-devices.
+Open all configured tunnels:
 
-Successful pairing writes the authenticated Windows address, WSL user, SSH port,
-and dedicated known-hosts path to `devbox.local.conf`. It then runs
-`devbox doctor`, so the command also verifies the new SSH path.
+```bash
+devbox connect
+```
 
-## SSH identities
+Keep that process in a dedicated terminal. SSH keepalives detect a lost host,
+and the command fails immediately when a requested local port cannot be opened.
+`Ctrl-C` closes only the SSH connection; it does not stop applications or
+containers on the Windows host.
 
-The default client key is `~/.ssh/devbox_bridge_ed25519`. `devbox pair` creates it
-when missing. Only its `.pub` counterpart is shared. The private key never leaves
-the Mac.
+In another terminal, inspect the available URLs and remote machine:
 
-The paired WSL host key is saved at
-`~/.ssh/devbox_bridge_known_hosts`. All paired devbox SSH commands use
-`StrictHostKeyChecking=yes`, so a later host-identity change fails closed.
+```bash
+devbox urls
+devbox status
+```
+
+For example, a configured WSL application on port `3000` becomes
+`http://127.0.0.1:3000` on the Mac while `devbox connect` runs. The CLI opens the
+tunnel but does not start that application.
+
+## Use an editor over Remote SSH
+
+Generate an OpenSSH host block:
+
+```bash
+devbox ssh-config
+```
+
+Review the output, then add it to `~/.ssh/config` if appropriate. Editors with
+Remote SSH support can use that host entry to open the WSL workspace. The editor
+server and project commands then run inside WSL, while the editor interface runs
+on the Mac.
+
+## Change forwarded ports
+
+The `ports` field in `devbox.local.conf` is a comma-separated list. For example:
+
+```ini
+ports=3000,5432,8000
+```
+
+Each number maps the same Mac localhost port to the same port on WSL loopback.
+Stop any existing `devbox connect` process, edit the list, run `devbox doctor`,
+and reconnect. If a local port is already in use, choose another application
+port or stop the conflicting Mac process.
+
+Configuration values are plain data. Do not add shell quotes, `$VARIABLES`, or
+command substitutions; the parser intentionally rejects executable syntax.
+
+## Pair again safely
+
+Pair again when the Windows address changes permanently, WSL is rebuilt, the
+Mac key is replaced, or the verified host key intentionally changes. Do not
+delete the known-hosts entry merely to silence an unexplained mismatch.
+
+1. Verify locally that you are connecting to the intended Windows and WSL host.
+2. Start a new pairing window on Windows.
+3. Run `devbox pair` and compare a new code.
+4. Let the final `devbox doctor` verify the replacement state.
+
+An existing Mac identity is preserved unless you intentionally remove it. If a
+Mac is lost or no longer trusted, remove its public key from WSL
+`~/.ssh/authorized_keys` before authorizing another client.
 
 ## Manual recovery
 
-If both automatic discovery methods are blocked, use the explicit GitHub
-public-key recovery flow. Print the dedicated key fingerprint:
+If both automatic discovery methods are blocked, the explicit GitHub public-key
+flow can recover access. It is less convenient because the host address and SSH
+identity must then be configured and verified manually.
+
+Print the dedicated public-key fingerprint:
 
 ```bash
 ssh-keygen -lf ~/.ssh/devbox_bridge_ed25519.pub -E sha256
 ```
 
-Run Windows setup with `-GitHubUser` and `-GitHubKeyFingerprint`. WSL authorizes
-only that exact public key. You must then set the host values and pin its SSH
-identity manually.
+On Windows, run setup with both the selected GitHub account and this exact
+fingerprint. WSL authorizes only the matching public key, not the entire GitHub
+profile. See [Windows and WSL host](windows-wsl.md#one-command-setup).
 
-## Daily use
-
-Run `devbox connect` in a dedicated terminal. The process uses SSH keepalives,
-strict host-key verification, and fails immediately if a requested local forward
-cannot be opened. `Ctrl-C` closes the tunnel without stopping desktop workloads.
+For discovery, authentication, host-key, or port-forward failures, continue with
+[Troubleshooting](troubleshooting.md).

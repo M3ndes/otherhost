@@ -225,12 +225,21 @@ otherhost urls
 otherhost status
 ```
 
-For an editor with Remote SSH support, review the generated host block before
-adding it to `~/.ssh/config`:
+Pairing offers to install a managed OpenSSH host block for editors with Remote
+SSH support. To review it without changing the Mac:
 
 ```bash
 otherhost ssh-config
 ```
+
+To install or refresh that block later:
+
+```bash
+otherhost ssh-config --apply
+```
+
+The managed block is placed before existing SSH rules, is replaced
+idempotently on later runs, and leaves unrelated host entries unchanged.
 
 ### Browse remote projects
 
@@ -254,8 +263,9 @@ cloned from the integrated terminal appears without moving it or restarting the
 dashboard. It also shows the Windows hardware inventory and WSL allocation and
 opens a selected folder through VS Code Remote SSH. Use the terminal icon on a
 project to start an interactive WSL shell in that directory, or open **Terminal**
-to start in the remote home directory. Add the reviewed output from `otherhost
-ssh-config` to `~/.ssh/config` before using **Open project** in VS Code.
+to start in the remote home directory. **Open project** verifies that the
+managed alias still matches the paired host before asking VS Code to connect;
+run `otherhost ssh-config --apply` if the alias is missing or stale.
 
 The UI is entirely in English, loads no remote assets, sends no telemetry, and
 does not expose its local HTTP server to the LAN. Docker remains available in
@@ -279,7 +289,7 @@ and the local security boundaries.
 | `otherhost connect` | Mac | Keep all configured SSH port forwards open |
 | `otherhost status` | Mac | Show remote uptime, memory, disk, and Docker usage |
 | `otherhost urls` | Mac | Print forwarded localhost URLs |
-| `otherhost ssh-config` | Mac | Generate an OpenSSH host block |
+| `otherhost ssh-config [--apply]` | Mac | Review or install the managed OpenSSH host block |
 | `otherhost ui` | Mac | Open the local project, terminal, and machine dashboard |
 
 ## Alternative host mode

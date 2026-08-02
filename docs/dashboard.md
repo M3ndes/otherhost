@@ -14,8 +14,8 @@ connected machine.
 
 ## Start the dashboard
 
-After pairing and adding the reviewed output from `otherhost ssh-config` to
-`~/.ssh/config`, run:
+After pairing, accept the managed Remote SSH host entry or install it later with
+`otherhost ssh-config --apply`. Then run:
 
 ```bash
 otherhost ui
@@ -60,7 +60,9 @@ repository cloned from the general terminal in the WSL home appears without a
 restart or manual move.
 
 - **Open project** asks the local VS Code CLI to open the exact inventoried path
-  through the configured Remote SSH alias.
+  through the configured Remote SSH alias. The alias must match the paired host,
+  user, port, pinned host-key file, and identity; otherwise the action explains
+  how to repair it with `otherhost ssh-config --apply` before VS Code starts.
 - **Open in terminal** starts an interactive WSL shell at the exact inventoried
   project path inside the dashboard.
 - **Copy path** copies the Linux path for use in a terminal or another editor.

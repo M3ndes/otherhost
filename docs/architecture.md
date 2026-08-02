@@ -112,6 +112,11 @@ project can be opened or deleted only when its exact remote path appeared in the
 latest SSH inventory. This prevents another local website from turning the
 dashboard into an arbitrary command launcher. Requests with a non-loopback HTTP
 `Host` are rejected to prevent DNS rebinding from bypassing that local boundary.
+Before launching VS Code, the Mac resolves the selected Remote SSH alias with
+`ssh -G` and verifies its host, user, port, identity, and pinned host-key file
+against the parsed Otherhost configuration. Pairing offers to install the same
+managed alias, while `otherhost ssh-config --apply` can replace it idempotently
+without evaluating the local configuration or modifying unrelated SSH entries.
 
 Deletion is intentionally permanent. The browser shows the complete path and
 requires the exact project name before sending the request. The server removes

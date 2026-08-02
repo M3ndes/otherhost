@@ -140,16 +140,24 @@ tunnel but does not start that application.
 
 ## Use an editor over Remote SSH
 
-Generate an OpenSSH host block:
+Pairing offers to install the OpenSSH host block used by Remote SSH. Review the
+generated block without changing the Mac:
 
 ```bash
 otherhost ssh-config
 ```
 
-Review the output, then add it to `~/.ssh/config` if appropriate. Editors with
-Remote SSH support can use that host entry to open the WSL workspace. The editor
-server and project commands then run inside WSL, while the editor interface runs
-on the Mac.
+Install or refresh it after review:
+
+```bash
+otherhost ssh-config --apply
+```
+
+The command writes a clearly delimited managed block at the beginning of
+`~/.ssh/config`, replaces only that host's previous managed block, preserves
+unrelated entries, and keeps the file private. Editors with Remote SSH support
+can then use that host entry to open the WSL workspace. The editor server and
+project commands run inside WSL, while the editor interface runs on the Mac.
 
 ## Project dashboard
 
@@ -173,9 +181,11 @@ a `.git` directory are shown. Submodules and linked worktrees use a `.git`
 pointer file and are omitted in favor of the primary checkout. The inventory
 refreshes every 30 seconds while the dashboard is visible, when its browser tab
 returns to the foreground, and immediately when **Projects** is opened. **Open
-project** launches a discovered path in VS Code and expects the reviewed
-`otherhost ssh-config` block to already exist in `~/.ssh/config` with the `code`
-command-line tool installed.
+project** launches a discovered path in VS Code. Before launching, Otherhost
+checks that the OpenSSH alias resolves to the configured host, user, port, pinned
+host-key file, and identity. A missing or stale alias returns an actionable
+`otherhost ssh-config --apply` message instead of leaving VS Code with a hostname
+resolution failure. The `code` command-line tool must also be installed.
 
 The **Terminal** view starts an interactive login shell through the configured
 pinned SSH connection. Start a session from that view to use the WSL home

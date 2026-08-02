@@ -52,6 +52,47 @@ printf '%s\n' "$SSH_CONFIG" | grep -F "UserKnownHostsFile \"$HOME/.ssh/test know
 printf '%s\n' "$SSH_CONFIG" | grep -F 'StrictHostKeyChecking yes' >/dev/null
 printf '%s\n' "$SSH_CONFIG" | grep -F 'LocalForward 127.0.0.1:8080 127.0.0.1:8080' >/dev/null
 
+cat > "$HOME/.ssh/config" <<'EOF'
+Host unrelated.example
+  User existing-user
+EOF
+APPLY_OUTPUT=$(OTHERHOST_CONFIG="$CONFIG_FILE" "$ROOT_DIR/bin/otherhost" ssh-config --apply)
+printf '%s\n' "$APPLY_OUTPUT" | grep -F '[ok] installed managed SSH host test-box' >/dev/null
+assert_equal '# BEGIN otherhost: test-box' "$(head -1 "$HOME/.ssh/config")"
+grep -F 'Host unrelated.example' "$HOME/.ssh/config" >/dev/null
+grep -F 'Host test-box' "$HOME/.ssh/config" >/dev/null
+grep -F "IdentityFile \"$HOME/.ssh/test key\"" "$HOME/.ssh/config" >/dev/null
+assert_equal 1 "$(grep -Fxc '# BEGIN otherhost: test-box' "$HOME/.ssh/config")"
+case "$(uname -s)" in
+  Darwin) permissions=$(stat -f '%Lp' "$HOME/.ssh/config") ;;
+  *) permissions=$(stat -c '%a' "$HOME/.ssh/config") ;;
+esac
+assert_equal 600 "$permissions"
+cp "$HOME/.ssh/config" "$TEST_DIR/first-applied-ssh-config"
+OTHERHOST_CONFIG="$CONFIG_FILE" "$ROOT_DIR/bin/otherhost" ssh-config --apply >/dev/null
+cmp "$TEST_DIR/first-applied-ssh-config" "$HOME/.ssh/config"
+
+cat > "$HOME/.ssh/config" <<'EOF'
+# BEGIN otherhost: test-box
+Host test-box
+  HostName stale.example
+Host unrelated.example
+  User existing-user
+EOF
+cp "$HOME/.ssh/config" "$TEST_DIR/malformed-ssh-config"
+if OTHERHOST_CONFIG="$CONFIG_FILE" "$ROOT_DIR/bin/otherhost" ssh-config --apply >"$TEST_DIR/malformed-stdout" 2>"$TEST_DIR/malformed-stderr"; then
+  printf '%s\n' 'malformed managed SSH markers were unexpectedly accepted' >&2
+  exit 1
+fi
+grep -F 'managed SSH block markers are inconsistent' "$TEST_DIR/malformed-stderr" >/dev/null
+cmp "$TEST_DIR/malformed-ssh-config" "$HOME/.ssh/config"
+
+if OTHERHOST_CONFIG="$CONFIG_FILE" "$ROOT_DIR/bin/otherhost" ui --apply >"$TEST_DIR/apply-stdout" 2>"$TEST_DIR/apply-stderr"; then
+  printf '%s\n' '--apply unexpectedly worked with ui' >&2
+  exit 1
+fi
+grep -F -- '--apply is supported only with ssh-config' "$TEST_DIR/apply-stderr" >/dev/null
+
 URLS=$(OTHERHOST_CONFIG="$CONFIG_FILE" "$ROOT_DIR/bin/otherhost" urls)
 assert_equal 'http://localhost:3000
 http://localhost:8080' "$URLS"

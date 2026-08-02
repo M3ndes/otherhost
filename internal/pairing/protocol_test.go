@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdh"
 	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net"
@@ -75,6 +76,25 @@ func TestEncryptedMessagesRejectWrongSessionKey(t *testing.T) {
 	wrongKey[0] = 2
 	if err := openSealed(wrongKey, aad, nonce, ciphertext, &payload); err == nil {
 		t.Fatal("encrypted payload was accepted with the wrong session key")
+	}
+}
+
+func TestWSLKeyInstallScriptPreservesNormalizedPublicKey(t *testing.T) {
+	script, err := wslKeyInstallScript(testPublicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(script, `"$1"`) || strings.Contains(script, "IFS= read") ||
+		strings.Contains(script, "__DEVBOX_PUBLIC_KEY_BASE64__") {
+		t.Fatalf("WSL install script does not embed the encoded key safely: %s", script)
+	}
+	expected := strings.Join(strings.Fields(testPublicKey)[:2], " ")
+	encoded := base64.StdEncoding.EncodeToString([]byte(expected))
+	if !strings.Contains(script, "'"+encoded+"'") {
+		t.Fatal("encoded WSL key was not embedded in the install script")
+	}
+	if strings.Contains(script, testPublicKey) {
+		t.Fatal("raw public key was embedded directly in the WSL command")
 	}
 }
 

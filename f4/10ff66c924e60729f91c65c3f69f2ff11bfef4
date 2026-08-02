@@ -1,0 +1,22 @@
+README.md
+  s_71755d8d0bab89::t_268d66869d6b3f 29-34,250-253,314
+docs/dashboard.md
+  s_71755d8d0bab89::t_66e9d6987354ca 10-11
+  s_71755d8d0bab89::t_268d66869d6b3f 1-9,12-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "f410ff66c924e60729f91c65c3f69f2ff11bfef4",
+  "prompts": {},
+  "sessions": {
+    "s_71755d8d0bab89": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fba65-d026-7702-9af9-5f7244398fd3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Thales Mendes <thalesmendes.dev@gmail.com>"
+    }
+  }
+}

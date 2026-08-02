@@ -100,7 +100,10 @@ and returns at most 200 Git repositories. Direct children of the configured
 usable. Windows mounts and the rest of the remote filesystem are never walked.
 Candidates must own a `.git` directory; `.git` pointer files used by standard
 submodules and linked worktrees are deliberately omitted in favor of their
-primary checkout.
+primary checkout. The operational source checkout is identified by the official
+Otherhost Git remote and omitted as infrastructure rather than presented as a
+user project. Both the current `otherhost` and legacy `devbox-bridge` GitHub URLs
+are recognized so hosts can be upgraded independently of the dashboard client.
 The browser refreshes the full inventory every 30 seconds while visible, when
 its tab returns to the foreground, and when the user opens Projects.
 

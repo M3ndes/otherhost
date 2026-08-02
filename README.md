@@ -245,8 +245,10 @@ It automatically discovers Git repositories within three directory levels of
 the WSL home, while `projects_root` (by default `~/src`) remains the preferred
 location and always has its direct children scanned. Hidden folders, dependency
 trees, Git submodules, linked worktrees, and Windows mounts are excluded. Only
-the primary checkout of each repository relationship is presented. The
-dashboard refreshes every 30 seconds while visible, when the browser returns to
+the primary checkout of each repository relationship is presented. Operational
+Otherhost source checkouts are also excluded, including clones that still use
+the former `devbox-bridge` GitHub URL. The dashboard refreshes every 30 seconds
+while visible, when the browser returns to
 the foreground, and immediately when **Projects** is opened, so a repository
 cloned from the integrated terminal appears without moving it or restarting the
 dashboard. It also shows the Windows hardware inventory and WSL allocation and

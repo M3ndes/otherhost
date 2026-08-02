@@ -46,8 +46,11 @@ root is deeper in the home directory. Hidden directories, `node_modules`,
 `vendor`, and paths outside the WSL home such as Windows mounts are not scanned.
 Git submodules and linked worktrees are omitted because their `.git` entry
 points to the primary checkout instead of owning repository metadata. The
-bounded inventory returns at most 200 primary repositories. Each card shows the
-repository name, remote path, detected technologies, and current Git branch.
+Otherhost source checkout used to install and maintain the host is operational
+tooling rather than a user workspace, so repositories whose origin is the
+official `otherhost` repository or its former `devbox-bridge` URL are omitted.
+The bounded inventory returns at most 200 primary repositories. Each card shows
+the repository name, remote path, detected technologies, and current Git branch.
 
 The visible dashboard refreshes its inventory every 30 seconds. Returning to
 the browser or opening **Projects** triggers an immediate refresh, so a

@@ -292,6 +292,20 @@ discover_project_candidates() {
     # Standard submodules and linked worktrees use a .git pointer file. Only
     # primary repository checkouts own a .git directory and belong in Projects.
     if [ ! -d "$project/.git" ]; then continue; fi
+    # The source checkout that installs and maintains Otherhost is operational
+    # tooling, not a user workspace. Recognize both sides of the repository
+    # rename so older hosts do not expose devbox-bridge as a project.
+    origin=$(git -C "$project" config --get remote.origin.url 2>/dev/null || true)
+    case "$origin" in
+      https://github.com/M3ndes/otherhost|https://github.com/M3ndes/otherhost.git|\
+      git@github.com:M3ndes/otherhost|git@github.com:M3ndes/otherhost.git|\
+      ssh://git@github.com/M3ndes/otherhost|ssh://git@github.com/M3ndes/otherhost.git|\
+      https://github.com/M3ndes/devbox-bridge|https://github.com/M3ndes/devbox-bridge.git|\
+      git@github.com:M3ndes/devbox-bridge|git@github.com:M3ndes/devbox-bridge.git|\
+      ssh://git@github.com/M3ndes/devbox-bridge|ssh://git@github.com/M3ndes/devbox-bridge.git)
+        continue
+        ;;
+    esac
     emit project.path "$project"
     branch=$(git -C "$project" branch --show-current 2>/dev/null || true)
     emit project.branch "$branch"

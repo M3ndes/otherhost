@@ -135,6 +135,30 @@ Remote SSH support can use that host entry to open the WSL workspace. The editor
 server and project commands then run inside WSL, while the editor interface runs
 on the Mac.
 
+## Project dashboard
+
+Build the local dashboard once when working from a source checkout:
+
+```bash
+make build-ui
+devbox ui
+```
+
+Without a local build, `devbox ui` uses `go run` when Go 1.22 or newer is
+available. The dashboard opens at `http://127.0.0.1:7842`, collects its inventory
+through the same pinned SSH identity as the CLI, and stops when its terminal
+process receives `Ctrl-C`.
+
+Repositories are discovered one level below `projects_root`, which defaults to
+`~/src` in WSL. Only directories containing `.git` are shown. The dashboard is
+read-only except for launching a discovered path in VS Code. That action expects
+the reviewed `devbox ssh-config` block to already exist in `~/.ssh/config` and
+the `code` command-line tool to be installed.
+
+The server binds only to Mac loopback, embeds all of its assets, and exposes no
+LAN or internet listener. Its interface, notifications, empty states, and error
+messages are intentionally English-only.
+
 ## Change forwarded ports
 
 The `ports` field in `devbox.local.conf` is a comma-separated list. For example:

@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 GO ?= go
 
-.PHONY: test syntax shellcheck go-test build release-build
+.PHONY: test syntax shellcheck go-test build build-ui release-build
 
 test: syntax go-test
 	./tests/config_test.sh
@@ -13,6 +13,10 @@ go-test:
 build:
 	mkdir -p build
 	$(GO) build -trimpath -o build/devbox-pair ./cmd/devbox-pair
+
+build-ui:
+	mkdir -p build
+	$(GO) build -trimpath -o build/devbox-ui ./cmd/devbox-ui
 
 release-build:
 	mkdir -p dist

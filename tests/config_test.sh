@@ -57,4 +57,16 @@ ln -s "$ROOT_DIR/bin/devbox" "$HOME/.local/bin/devbox"
 INSTALLED_URLS=$(DEVBOX_CONFIG="$CONFIG_FILE" "$HOME/.local/bin/devbox" urls)
 assert_equal "$URLS" "$INSTALLED_URLS"
 
+UI_ARGS="$TEST_DIR/ui-args"
+UI_BIN="$TEST_DIR/devbox-ui"
+cat > "$UI_BIN" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$@" > "$UI_ARGS"
+EOF
+chmod +x "$UI_BIN"
+export UI_ARGS
+DEVBOX_UI_BIN="$UI_BIN" DEVBOX_CONFIG="$CONFIG_FILE" "$ROOT_DIR/bin/devbox" ui
+assert_equal "--config
+$CONFIG_FILE" "$(cat "$UI_ARGS")"
+
 printf '%s\n' 'config tests passed'

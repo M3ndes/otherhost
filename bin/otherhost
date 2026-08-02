@@ -32,6 +32,9 @@ PAIRING_PORT=25371
 
 usage() {
   cat <<'EOF'
+◉  otherhost
+   Make the other host feel local.
+
 Usage: otherhost [--config PATH] COMMAND
 
 Commands:

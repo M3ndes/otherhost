@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/otherhost-mark.svg" width="88" alt="Otherhost orbital mark">
+  <img src="docs/assets/otherhost-icon.png" width="112" alt="Otherhost otter using a laptop">
 </p>
 
 <h1 align="center">otherhost</h1>

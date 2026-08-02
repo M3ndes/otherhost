@@ -119,6 +119,14 @@ ROOTLESS_PAIRING_VERSION=$(sed -n 's/^PAIRING_VERSION=//p' "$ROOTLESS_INSTALLER"
   printf '%s\n' 'WSL and macOS pairing helper versions differ' >&2
   exit 1
 }
+grep -F "PAIRING_VERSION=$PAIRING_VERSION" "$MAC_COMMAND" >/dev/null || {
+  printf '%s\n' 'macOS command and installer pairing helper versions differ' >&2
+  exit 1
+}
+grep -F "PAIRING_VERSION=$PAIRING_VERSION" "$ROOTLESS_BOOTSTRAP" >/dev/null || {
+  printf '%s\n' 'WSL bootstrap and installer pairing helper versions differ' >&2
+  exit 1
+}
 grep -F 'asset: devbox-pair-linux-amd64' "$ROOT_DIR/.github/workflows/release.yml" >/dev/null
 grep -F 'asset: devbox-pair-linux-arm64' "$ROOT_DIR/.github/workflows/release.yml" >/dev/null
 

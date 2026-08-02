@@ -96,8 +96,9 @@ Then, on the Mac:
 devbox pair
 ```
 
-The Mac finds Windows devboxes automatically. Both devices display the same
-six-digit code:
+The Mac finds Windows devboxes automatically. It tries multicast first and then
+falls back to a bounded scan of its local IPv4 subnet when WSL does not receive
+multicast traffic. Both devices display the same six-digit code:
 
 ```text
 Windows                                  Mac

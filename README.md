@@ -40,6 +40,8 @@ detail first.
   UAC, and configures Windows and WSL.
 - **Useful diagnostics:** each layer reports what it checked and where a failure
   occurred.
+- **Project-first dashboard:** browse remote repositories and host capacity from
+  an English, localhost-only interface backed by the same pinned SSH connection.
 - **Automation-friendly:** Bash, PowerShell, and a small dependency-free Go
   pairing helper; no required GUI or hosted control plane.
 
@@ -197,6 +199,25 @@ adding it to `~/.ssh/config`:
 devbox ssh-config
 ```
 
+### Browse remote projects
+
+The optional project dashboard remains backed by the CLI and opens only on the
+Mac loopback interface:
+
+```bash
+devbox ui
+```
+
+It discovers Git repositories directly below `projects_root` (by default
+`~/src` inside WSL), shows the Windows hardware inventory and WSL allocation,
+and opens a selected folder through VS Code Remote SSH. Add the reviewed output
+from `devbox ssh-config` to `~/.ssh/config` before using **Open project**.
+
+The UI is entirely in English, loads no remote assets, sends no telemetry, and
+does not expose its local HTTP server to the LAN. Docker remains available in
+CLI diagnostics but is not treated as a primary machine-health signal in the
+project dashboard.
+
 ## Commands
 
 | Command | Where | Purpose |
@@ -210,6 +231,7 @@ devbox ssh-config
 | `devbox status` | Mac | Show remote uptime, memory, disk, and Docker usage |
 | `devbox urls` | Mac | Print forwarded localhost URLs |
 | `devbox ssh-config` | Mac | Generate an OpenSSH host block |
+| `devbox ui` | Mac | Open the local project and machine dashboard |
 
 ## Alternative host mode
 

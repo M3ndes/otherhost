@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#f4f5f7">
+    <title>Devbox</title>
+    <link rel="stylesheet" href="/app.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Primary navigation">
+        <a class="brand" href="#overview" aria-label="Devbox overview">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" role="img">
+              <path d="M8.4 7.2 16 2.8l7.6 4.4v8.7L16 20.3l-7.6-4.4V7.2Z"/>
+              <path d="m8.4 16.1 7.6 4.4v8.7l-7.6-4.4v-8.7Zm15.2 0v8.7L16 29.2v-8.7l7.6-4.4Z" opacity=".7"/>
+            </svg>
+          </span>
+          <span>devbox</span>
+        </a>
+
+        <nav class="nav-list">
+          <a class="nav-item active" href="#overview" data-section-link="overview">
+            <span class="nav-icon" data-icon="overview"></span>
+            Overview
+          </a>
+          <a class="nav-item" href="#projects" data-section-link="projects">
+            <span class="nav-icon" data-icon="projects"></span>
+            Projects
+          </a>
+          <a class="nav-item" href="#machine" data-section-link="machine">
+            <span class="nav-icon" data-icon="machine"></span>
+            Machine
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="connection-mini">
+            <span class="status-dot loading" data-status-dot></span>
+            <div>
+              <strong data-host-mini>Connecting</strong>
+              <span data-connection-mini>Checking remote host</span>
+            </div>
+          </div>
+          <span class="privacy-note">Private connection over SSH</span>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <a class="mobile-brand brand" href="#overview" aria-label="Devbox overview">
+            <span class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 32 32" role="img">
+                <path d="M8.4 7.2 16 2.8l7.6 4.4v8.7L16 20.3l-7.6-4.4V7.2Z"/>
+                <path d="m8.4 16.1 7.6 4.4v8.7l-7.6-4.4v-8.7Zm15.2 0v8.7L16 29.2v-8.7l7.6-4.4Z" opacity=".7"/>
+              </svg>
+            </span>
+            <span>devbox</span>
+          </a>
+          <div class="topbar-actions">
+            <span class="connection-pill loading" data-connection-pill>
+              <span class="status-dot loading" data-status-dot></span>
+              <span data-connection-label>Connecting</span>
+            </span>
+            <button class="icon-button" type="button" data-theme-toggle aria-label="Switch color theme"></button>
+          </div>
+        </header>
+
+        <div class="content-wrap">
+          <section class="hero" id="overview" aria-labelledby="overview-title">
+            <div class="hero-copy">
+              <span class="eyebrow">Remote development workspace</span>
+              <h1 id="overview-title">Build remotely.<br><span>Stay fast locally.</span></h1>
+              <p>Your projects, toolchains, and heavy workloads run on your Windows desktop while your Mac stays focused on the experience.</p>
+              <div class="hero-actions">
+                <a class="primary-button" href="#projects">
+                  Browse projects
+                  <span data-icon="arrow"></span>
+                </a>
+                <button class="secondary-button" type="button" data-refresh>
+                  <span data-icon="refresh"></span>
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            <article class="host-summary glass-card" aria-label="Connected host summary">
+              <div class="host-summary-top">
+                <div class="device-visual" aria-hidden="true">
+                  <span class="device-screen"><span></span></span>
+                  <span class="device-base"></span>
+                </div>
+                <div class="host-identity">
+                  <span class="overline">Development host</span>
+                  <h2 data-host-name>Connecting…</h2>
+                  <span data-host-os>Waiting for inventory</span>
+                </div>
+                <span class="live-badge" data-live-badge>Checking</span>
+              </div>
+              <div class="host-metrics">
+                <div class="metric">
+                  <span>Processor</span>
+                  <strong data-host-processor>—</strong>
+                </div>
+                <div class="metric">
+                  <span>Memory</span>
+                  <strong data-host-memory>—</strong>
+                </div>
+                <div class="metric">
+                  <span>Graphics</span>
+                  <strong data-host-gpu>—</strong>
+                </div>
+                <div class="metric">
+                  <span>SSH response</span>
+                  <strong data-host-latency>—</strong>
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <div class="notice hidden" data-notice role="status">
+            <span data-icon="alert"></span>
+            <div>
+              <strong>Remote host unavailable</strong>
+              <span data-notice-message>Check that the Windows desktop and WSL are running.</span>
+            </div>
+            <button type="button" data-refresh>Try again</button>
+          </div>
+
+          <section class="section" id="projects" aria-labelledby="projects-title">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">Remote workspaces</span>
+                <h2 id="projects-title">Projects</h2>
+                <p>Source code and development tools stay on the remote machine.</p>
+              </div>
+              <label class="search-field">
+                <span data-icon="search"></span>
+                <span class="sr-only">Search projects</span>
+                <input type="search" placeholder="Search projects" autocomplete="off" data-project-search>
+              </label>
+            </div>
+
+            <div class="project-grid" data-project-grid aria-live="polite">
+              <article class="project-card skeleton-card" aria-hidden="true"></article>
+              <article class="project-card skeleton-card" aria-hidden="true"></article>
+              <article class="project-card skeleton-card" aria-hidden="true"></article>
+            </div>
+            <div class="empty-state hidden" data-project-empty>
+              <span class="empty-icon" data-icon="projects"></span>
+              <h3>No projects found</h3>
+              <p>Clone a Git repository into the configured projects directory on WSL.</p>
+            </div>
+          </section>
+
+          <section class="section" id="machine" aria-labelledby="machine-title">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">Compute capacity</span>
+                <h2 id="machine-title">Machine</h2>
+                <p>The hardware available to your remote development environment.</p>
+              </div>
+              <span class="last-updated" data-last-updated>Waiting for inventory</span>
+            </div>
+
+            <div class="spec-grid">
+              <article class="spec-card">
+                <span class="spec-icon violet" data-icon="cpu"></span>
+                <div>
+                  <span class="overline">Processor</span>
+                  <strong data-spec-cpu>—</strong>
+                  <small data-spec-cpu-detail>Waiting for inventory</small>
+                </div>
+              </article>
+              <article class="spec-card">
+                <span class="spec-icon blue" data-icon="memory"></span>
+                <div>
+                  <span class="overline">Memory</span>
+                  <strong data-spec-memory>—</strong>
+                  <small data-spec-memory-detail>Host capacity</small>
+                </div>
+              </article>
+              <article class="spec-card">
+                <span class="spec-icon coral" data-icon="gpu"></span>
+                <div>
+                  <span class="overline">Graphics</span>
+                  <strong data-spec-gpu>—</strong>
+                  <small data-spec-gpu-detail>GPU acceleration</small>
+                </div>
+              </article>
+            </div>
+
+            <div class="machine-detail-grid">
+              <article class="detail-card">
+                <div class="detail-card-heading">
+                  <div>
+                    <span class="overline">Storage</span>
+                    <h3>Local disks</h3>
+                  </div>
+                  <span class="detail-icon" data-icon="disk"></span>
+                </div>
+                <div class="disk-list" data-disk-list>
+                  <div class="detail-placeholder"></div>
+                  <div class="detail-placeholder short"></div>
+                </div>
+              </article>
+
+              <article class="detail-card">
+                <div class="detail-card-heading">
+                  <div>
+                    <span class="overline">Development environment</span>
+                    <h3>WSL allocation</h3>
+                  </div>
+                  <span class="detail-icon" data-icon="terminal"></span>
+                </div>
+                <dl class="environment-list">
+                  <div><dt>Distribution</dt><dd data-environment-distro>—</dd></div>
+                  <div><dt>Processors</dt><dd data-environment-cpu>—</dd></div>
+                  <div><dt>Memory</dt><dd data-environment-memory>—</dd></div>
+                  <div><dt>Storage available</dt><dd data-environment-disk>—</dd></div>
+                </dl>
+              </article>
+            </div>
+          </section>
+
+          <footer class="footer">
+            <span>Devbox Bridge</span>
+            <span>All workloads remain on your private development host.</span>
+          </footer>
+        </div>
+      </main>
+    </div>
+
+    <div class="toast" data-toast role="status" aria-live="polite"></div>
+    <script src="/app.js" defer></script>
+  </body>
+</html>

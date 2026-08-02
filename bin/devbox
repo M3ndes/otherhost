@@ -31,10 +31,12 @@ Commands:
   ssh-config  Print an OpenSSH config block for this devbox.
   status      Show remote host, memory, disk, and Docker status over SSH.
   urls        Print the forwarded localhost URLs.
+  ui          Open the project dashboard in the local browser.
   help        Show this help.
 
 Environment:
   DEVBOX_CONFIG  Default configuration path.
+  DEVBOX_UI_BIN  Dashboard binary override for local development.
 EOF
 }
 
@@ -49,7 +51,7 @@ while [ "$#" -gt 0 ]; do
       COMMAND=help
       shift
       ;;
-    pair|doctor|connect|ssh-config|status|urls)
+    pair|doctor|connect|ssh-config|status|urls|ui)
       COMMAND=$1
       shift
       ;;
@@ -327,10 +329,27 @@ run_urls() {
   IFS=$old_ifs
 }
 
+run_ui() {
+  if [ -n "${DEVBOX_UI_BIN:-}" ]; then
+    [ -x "$DEVBOX_UI_BIN" ] || { printf '[fail] DEVBOX_UI_BIN is not executable: %s\n' "$DEVBOX_UI_BIN" >&2; exit 1; }
+    exec "$DEVBOX_UI_BIN" --config "$CONFIG_FILE"
+  fi
+  if [ -x "$ROOT_DIR/build/devbox-ui" ]; then
+    exec "$ROOT_DIR/build/devbox-ui" --config "$CONFIG_FILE"
+  fi
+  if command -v go >/dev/null 2>&1; then
+    cd "$ROOT_DIR" || exit 1
+    exec go run ./cmd/devbox-ui --config "$CONFIG_FILE"
+  fi
+  printf '%s\n' '[fail] the dashboard preview requires Go 1.22+ or a local build from make build-ui' >&2
+  exit 1
+}
+
 case "$COMMAND" in
   doctor) run_doctor ;;
   connect) run_connect ;;
   ssh-config) run_ssh_config ;;
   status) run_status ;;
   urls) run_urls ;;
+  ui) run_ui ;;
 esac

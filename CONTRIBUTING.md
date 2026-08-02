@@ -60,12 +60,23 @@ make shellcheck
 controls. CI repeats portable tests on Ubuntu and macOS, runs Go tests with the
 race detector, checks ShellCheck, and parses PowerShell on Windows.
 
+Run the project dashboard against safe demonstration data during UI work:
+
+```bash
+go run ./cmd/devbox-ui --demo
+```
+
+The dashboard must remain usable without external fonts, scripts, CDNs, or
+telemetry. All user-facing copy is English. Keep its local server bound to
+loopback and preserve the per-session authorization check for local actions.
+
 ## Repository map
 
 | Path | Responsibility |
 | --- | --- |
 | `bin/devbox` | Mac user command and OpenSSH orchestration |
 | `cmd/devbox-pair/` | Go discovery and encrypted pairing helper |
+| `cmd/devbox-ui/`, `internal/dashboard/` | Local project dashboard and remote inventory |
 | `lib/` | Shared Bash and PowerShell configuration parsing |
 | `scripts/bootstrap-mac.sh` | Mac client installation |
 | `setup.cmd`, `setup.ps1` | Windows preflight, UAC handoff, and orchestration |

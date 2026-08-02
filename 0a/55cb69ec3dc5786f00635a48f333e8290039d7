@@ -1,0 +1,29 @@
+docs/macos.md
+  s_71755d8d0bab89::t_c2aee626d9fd3f 172-178
+README.md
+  s_71755d8d0bab89::t_c2aee626d9fd3f 245-254
+internal/dashboard/collector.go
+  s_71755d8d0bab89::t_c2aee626d9fd3f 292-294
+internal/dashboard/collector_test.go
+  s_71755d8d0bab89::t_c2aee626d9fd3f 82-85,91-99,123
+docs/architecture.md
+  s_71755d8d0bab89::t_c2aee626d9fd3f 101-103
+docs/dashboard.md
+  s_71755d8d0bab89::t_c2aee626d9fd3f 47-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "0a55cb69ec3dc5786f00635a48f333e8290039d7",
+  "prompts": {},
+  "sessions": {
+    "s_71755d8d0bab89": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fba65-d026-7702-9af9-5f7244398fd3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Thales Mendes <thalesmendes.dev@gmail.com>"
+    }
+  }
+}

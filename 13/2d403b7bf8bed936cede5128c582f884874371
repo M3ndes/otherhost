@@ -5,6 +5,7 @@ internal/dashboard/collector.go
   s_71755d8d0bab89::t_59f0b122e4f034 72
 CONTRIBUTING.md
   s_71755d8d0bab89::t_643dd1737b2bbb 63-72
+  s_71755d8d0bab89::t_1516e9cad1327c 79
 internal/dashboard/collector_test.go
   s_71755d8d0bab89::t_13f85342833d75 1-56,63
   s_71755d8d0bab89::t_52a1da586831ee 60-62
@@ -37,6 +38,8 @@ bin/devbox
   s_71755d8d0bab89::t_4d3c4e0b974262 34,39,54,332-347,354
 README.md
   s_71755d8d0bab89::t_643dd1737b2bbb 202-203,206-210,215-220
+  s_71755d8d0bab89::t_6bfcfd12919c5e 204-205,211-214,234
+  s_71755d8d0bab89::t_1516e9cad1327c 43-44
 Makefile
   s_71755d8d0bab89::t_4d3c4e0b974262 4,17-19
   s_71755d8d0bab89::t_bfbd8a0380daf5 20
@@ -45,6 +48,8 @@ config/devbox.example.conf
 docs/architecture.md
   s_71755d8d0bab89::t_89030274f728c3 98-99
   s_71755d8d0bab89::t_643dd1737b2bbb 88-97,100,187-188
+  s_71755d8d0bab89::t_1516e9cad1327c 82-87
+  s_71755d8d0bab89::t_6bfcfd12919c5e 168,189-190
 internal/dashboard/browser.go
   s_71755d8d0bab89::t_08c11b904829b9 1-22
 internal/dashboard/server.go
@@ -52,6 +57,7 @@ internal/dashboard/server.go
   s_71755d8d0bab89::t_08c11b904829b9 1-78,83-96,105-223
 docs/macos.md
   s_71755d8d0bab89::t_643dd1737b2bbb 137-160
+  s_71755d8d0bab89::t_1516e9cad1327c 161
 ---
 {
   "schema_version": "authorship/3.0.0",

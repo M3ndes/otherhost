@@ -165,27 +165,62 @@ func TestDashboardRefreshesInventoryWhenProjectsOpen(t *testing.T) {
 	}
 }
 
-func TestDashboardLabelsProjectLauncherAsVSCode(t *testing.T) {
+func TestDashboardProvidesBrandedEditorActions(t *testing.T) {
 	handler, err := NewHandler(fixedCollector{}, &recordingLauncher{}, "test-box")
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := httptest.NewRequest(http.MethodGet, "/app.js", nil)
+	for _, asset := range []struct {
+		path     string
+		expected []string
+	}{
+		{"/app.js", []string{
+			"icons.codex",
+			"icons.vscode",
+			"<span>Codex</span>",
+			"<span>VS Code</span>",
+			"`Set up ${project.name} in Codex`",
+			"`Open ${project.name} in VS Code`",
+			"codex://settings/connections/ssh/add?name=",
+			"Opening ${project.name} in VS Code.",
+		}},
+		{"/app.css", []string{".project-editor-actions", ".codex-project", ".vscode-project", ".codex-icon", ".vscode-icon"}},
+	} {
+		request := httptest.NewRequest(http.MethodGet, asset.path, nil)
+		request.Host = "127.0.0.1:7842"
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, request)
+		if response.Code != http.StatusOK {
+			t.Fatalf("%s returned %d", asset.path, response.Code)
+		}
+		for _, expected := range asset.expected {
+			if !strings.Contains(response.Body.String(), expected) {
+				t.Fatalf("%s is missing branded editor action %q", asset.path, expected)
+			}
+		}
+	}
+}
+
+func TestSnapshotIncludesSSHAliasForCodexSetup(t *testing.T) {
+	handler, err := NewHandler(fixedCollector{}, &recordingLauncher{}, "test-box")
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodGet, "/api/snapshot", nil)
 	request.Host = "127.0.0.1:7842"
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
 	if response.Code != http.StatusOK {
 		t.Fatalf("unexpected status: %d", response.Code)
 	}
-	page := response.Body.String()
-	for _, expected := range []string{
-		"Open in VS Code",
-		"`Open ${project.name} in VS Code`",
-		"Opening ${project.name} in VS Code.",
-	} {
-		if !strings.Contains(page, expected) {
-			t.Fatalf("VS Code project action is missing %q", expected)
-		}
+	var payload struct {
+		SSHAlias string `json:"sshAlias"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload.SSHAlias != "test-box" {
+		t.Fatalf("unexpected SSH alias: %q", payload.SSHAlias)
 	}
 }
 

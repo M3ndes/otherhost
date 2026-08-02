@@ -207,7 +207,8 @@ func (handler *Handler) serveSnapshot(response http.ResponseWriter, request *htt
 		Snapshot
 		ActionToken            string `json:"actionToken"`
 		ProjectDeletionEnabled bool   `json:"projectDeletionEnabled"`
-	}{Snapshot: snapshot, ActionToken: handler.token, ProjectDeletionEnabled: handler.deleter != nil}); err != nil {
+		SSHAlias               string `json:"sshAlias"`
+	}{Snapshot: snapshot, ActionToken: handler.token, ProjectDeletionEnabled: handler.deleter != nil, SSHAlias: handler.sshAlias}); err != nil {
 		http.Error(response, "Could not encode the dashboard response", http.StatusInternalServerError)
 	}
 }

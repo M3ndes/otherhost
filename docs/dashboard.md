@@ -59,7 +59,10 @@ the browser or opening **Projects** triggers an immediate refresh, so a
 repository cloned from the general terminal in the WSL home appears without a
 restart or manual move.
 
-- **Open in VS Code** asks the local VS Code CLI to open the exact inventoried path
+- **Codex** uses the desktop app's supported SSH connection deep link for the
+  paired alias. Codex does not currently publish a deep link for an exact remote
+  folder, so select the path shown by Otherhost when saving the remote project.
+- **VS Code** asks the local VS Code CLI to open the exact inventoried path
   through the configured Remote SSH alias. The alias must match the paired host,
   user, port, pinned host-key file, and identity; otherwise the action explains
   how to repair it with `otherhost ssh-config --apply` before VS Code starts.

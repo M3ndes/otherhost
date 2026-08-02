@@ -12,7 +12,8 @@ const icons = {
   disk: '<svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>',
   terminal: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3m6 0h4"/></svg>',
   branch: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="5" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="19" r="2"/><path d="M6 7v10m2-6h4a6 6 0 0 0 6-3"/></svg>',
-  external: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h5v5m0-5-9 9"/><path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5"/></svg>',
+  codex: '<svg class="brand-icon codex-icon" viewBox="0 0 24 24" aria-hidden="true"><g class="codex-mark"><circle cx="12" cy="6.2" r="4.1"/><circle cx="17" cy="9" r="4.1"/><circle cx="17" cy="15" r="4.1"/><circle cx="12" cy="17.8" r="4.1"/><circle cx="7" cy="15" r="4.1"/><circle cx="7" cy="9" r="4.1"/><circle cx="12" cy="12" r="5.2"/></g><path class="codex-terminal" d="m8.8 9.7 2 2.3-2 2.3M13 14.3h2.8"/></svg>',
+  vscode: '<svg class="brand-icon vscode-icon" viewBox="0 0 96 96" aria-hidden="true"><path d="M65.6 89.4c1.3.5 2.8.5 4.1-.2L87 80.9a5.2 5.2 0 0 0 3-4.7V19.8c0-2-1.2-3.9-3-4.7L69.7 6.7a5.2 5.2 0 0 0-5.3.5L30.7 38 16.2 27a3.5 3.5 0 0 0-4.5.2l-4.6 4.2a3.5 3.5 0 0 0 0 5.2L19.6 48 7.1 59.4a3.5 3.5 0 0 0 0 5.2l4.6 4.2a3.5 3.5 0 0 0 4.5.2l14.5-11 33.1 30.3c.5.5 1.1.9 1.8 1.1ZM69 28.9 43.9 48 69 67.1V28.9Z"/></svg>',
   copy: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>',
   trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5"/></svg>',
   sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
@@ -211,13 +212,25 @@ function renderProjects() {
 
     const actions = document.createElement('div');
     actions.className = 'project-actions';
+    const editorActions = document.createElement('div');
+    editorActions.className = 'project-editor-actions';
+    const codexButton = document.createElement('button');
+    codexButton.className = 'editor-project codex-project';
+    codexButton.type = 'button';
+    codexButton.title = 'Connect this host to Codex';
+    codexButton.setAttribute('aria-label', `Set up ${project.name} in Codex`);
+    codexButton.innerHTML = `${icons.codex}<span>Codex</span>`;
+    codexButton.addEventListener('click', () => openCodexProject(project));
     const openButton = document.createElement('button');
-    openButton.className = 'open-project';
+    openButton.className = 'editor-project vscode-project';
     openButton.type = 'button';
     openButton.title = 'Open in VS Code';
     openButton.setAttribute('aria-label', `Open ${project.name} in VS Code`);
-    openButton.innerHTML = `${icons.external}<span>Open in VS Code</span>`;
+    openButton.innerHTML = `${icons.vscode}<span>VS Code</span>`;
     openButton.addEventListener('click', () => openProject(project, openButton));
+    editorActions.append(codexButton, openButton);
+    const utilityActions = document.createElement('div');
+    utilityActions.className = 'project-utility-actions';
     const copyButton = document.createElement('button');
     copyButton.className = 'copy-project';
     copyButton.type = 'button';
@@ -232,7 +245,7 @@ function renderProjects() {
     terminalButton.setAttribute('aria-label', `Open ${project.name} in terminal`);
     terminalButton.innerHTML = icons.terminal;
     terminalButton.addEventListener('click', () => openProjectTerminal(project));
-    actions.append(openButton, terminalButton, copyButton);
+    utilityActions.append(terminalButton, copyButton);
     if (state.projectDeletionEnabled) {
       const deleteButton = document.createElement('button');
       deleteButton.className = 'delete-project';
@@ -241,8 +254,9 @@ function renderProjects() {
       deleteButton.setAttribute('aria-label', `Delete ${project.name} permanently`);
       deleteButton.innerHTML = icons.trash;
       deleteButton.addEventListener('click', () => openDeleteProject(project, deleteButton));
-      actions.append(deleteButton);
+      utilityActions.append(deleteButton);
     }
+    actions.append(editorActions, utilityActions);
 
     card.append(top, title, projectPath, tags, actions);
     grid.append(card);
@@ -369,6 +383,16 @@ async function openProject(project, button) {
     label.textContent = original;
     button.disabled = false;
   }
+}
+
+function openCodexProject(project) {
+  const sshAlias = state.snapshot?.sshAlias;
+  if (!sshAlias) {
+    showToast('The Codex SSH connection is unavailable.', true);
+    return;
+  }
+  window.location.href = `codex://settings/connections/ssh/add?name=${encodeURIComponent(sshAlias)}`;
+  showToast(`Opening Codex SSH setup. Select ${project.path} on ${sshAlias}.`);
 }
 
 function terminalTheme() {

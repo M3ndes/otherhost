@@ -165,10 +165,16 @@ available. The dashboard opens at `http://127.0.0.1:7842`, collects its inventor
 through the same pinned SSH identity as the CLI, and stops when its terminal
 process receives `Ctrl-C`.
 
-Repositories are discovered one level below `projects_root`, which defaults to
-`~/src` in WSL. Only directories containing `.git` are shown. **Open project**
-launches a discovered path in VS Code and expects the reviewed `otherhost
-ssh-config` block to already exist in `~/.ssh/config` with the `code`
+Repositories are automatically discovered within three directory levels of the
+WSL home. The configured `projects_root`, which defaults to `~/src`, remains the
+preferred clone location and always has its direct children scanned. Hidden
+directories and dependency trees are excluded, and only directories containing
+a `.git` directory are shown. Submodules and linked worktrees use a `.git`
+pointer file and are omitted in favor of the primary checkout. The inventory
+refreshes every 30 seconds while the dashboard is visible, when its browser tab
+returns to the foreground, and immediately when **Projects** is opened. **Open
+project** launches a discovered path in VS Code and expects the reviewed
+`otherhost ssh-config` block to already exist in `~/.ssh/config` with the `code`
 command-line tool installed.
 
 The **Terminal** view starts an interactive login shell through the configured

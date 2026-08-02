@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -29,7 +30,7 @@ const (
 	maxConcurrentProbes     = 64
 )
 
-func advertise(ctx context.Context, multicastAddress, instance, name string, port int) error {
+func advertise(ctx context.Context, multicastAddress, instance, name string, port int, logger DiagnosticLog) error {
 	address, err := net.ResolveUDPAddr("udp4", multicastAddress)
 	if err != nil {
 		return err
@@ -54,6 +55,7 @@ func advertise(ctx context.Context, multicastAddress, instance, name string, por
 		}
 		connections = append(connections, connection)
 	}
+	logDiagnostic(logger, "multicast listener active on %s across %d interface(s)", multicastAddress, len(connections))
 	defer func() {
 		for _, connection := range connections {
 			_ = connection.Close()
@@ -235,38 +237,57 @@ func Discover(ctx context.Context, multicastAddress string) ([]Device, error) {
 // DiscoverDevices first uses multicast and then automatically probes the
 // client's local IPv4 subnet. The direct fallback keeps pairing usable when a
 // VM or host firewall does not forward multicast into WSL.
-func DiscoverDevices(ctx context.Context, multicastAddress string, pairPort int) ([]Device, error) {
+func DiscoverDevices(ctx context.Context, multicastAddress string, pairPort int, logger DiagnosticLog) ([]Device, error) {
 	if !validPort(pairPort) {
 		return nil, errors.New("invalid pairing port")
 	}
+	logDiagnostic(logger, "multicast discovery sending to %s for %s", multicastAddress, multicastSearchDuration)
 	multicastContext, cancel := context.WithTimeout(ctx, multicastSearchDuration)
 	devices, multicastErr := Discover(multicastContext, multicastAddress)
 	cancel()
-	if len(devices) > 0 || ctx.Err() != nil {
+	if len(devices) > 0 {
+		logDiagnostic(logger, "multicast discovery found %d compatible devbox(es)", len(devices))
+		return devices, multicastErr
+	}
+	logDiagnostic(logger, "multicast discovery received no compatible response")
+	if ctx.Err() != nil {
 		return devices, multicastErr
 	}
 
-	candidates, err := localSubnetCandidates()
+	plan, err := localSubnetPlan()
 	if err != nil {
 		if multicastErr != nil {
 			return nil, multicastErr
 		}
 		return nil, err
 	}
-	directDevices := discoverAtAddresses(ctx, candidates, pairPort)
+	if len(plan.candidates) == 0 {
+		logDiagnostic(logger, "direct discovery found no eligible local IPv4 subnet")
+		return nil, nil
+	}
+	logDiagnostic(logger, "direct discovery probing %d address(es) on TCP %d in %s",
+		len(plan.candidates), pairPort, strings.Join(plan.networks, ", "))
+	directDevices := discoverAtAddresses(ctx, plan.candidates, pairPort, logger)
 	if len(directDevices) > 0 {
 		return directDevices, nil
 	}
 	return nil, nil
 }
 
-func localSubnetCandidates() ([]string, error) {
+type subnetPlan struct {
+	candidates []string
+	networks   []string
+}
+
+func localSubnetPlan() (subnetPlan, error) {
 	interfaces, err := net.Interfaces()
 	if err != nil {
-		return nil, err
+		return subnetPlan{}, err
 	}
 	seen := make(map[string]struct{})
+	seenNetworks := make(map[string]struct{})
 	result := make([]string, 0, 256)
+	networks := make([]string, 0, 2)
 	for _, networkInterface := range interfaces {
 		if networkInterface.Flags&net.FlagUp == 0 ||
 			networkInterface.Flags&net.FlagLoopback != 0 ||
@@ -298,6 +319,13 @@ func localSubnetCandidates() ([]string, error) {
 			}
 			mask := net.CIDRMask(prefixLength, 32)
 			network := binary.BigEndian.Uint32(localIP) & binary.BigEndian.Uint32(mask)
+			networkBytes := make(net.IP, net.IPv4len)
+			binary.BigEndian.PutUint32(networkBytes, network)
+			networkLabel := (&net.IPNet{IP: networkBytes, Mask: mask}).String()
+			if _, exists := seenNetworks[networkLabel]; !exists {
+				seenNetworks[networkLabel] = struct{}{}
+				networks = append(networks, networkLabel)
+			}
 			addressCount := uint32(1) << uint32(32-prefixLength)
 			localValue := binary.BigEndian.Uint32(localIP)
 			for offset := uint32(1); offset+1 < addressCount; offset++ {
@@ -314,15 +342,28 @@ func localSubnetCandidates() ([]string, error) {
 				seen[candidate] = struct{}{}
 				result = append(result, candidate)
 				if len(result) == maxSubnetCandidates {
-					return result, nil
+					return subnetPlan{candidates: result, networks: networks}, nil
 				}
 			}
 		}
 	}
-	return result, nil
+	return subnetPlan{candidates: result, networks: networks}, nil
 }
 
-func discoverAtAddresses(ctx context.Context, addresses []string, pairPort int) []Device {
+type probeOutcome int
+
+const (
+	probeUnreachable probeOutcome = iota
+	probeInvalidResponse
+	probeCompatible
+)
+
+type addressProbeResult struct {
+	device  Device
+	outcome probeOutcome
+}
+
+func discoverAtAddresses(ctx context.Context, addresses []string, pairPort int, logger DiagnosticLog) []Device {
 	if len(addresses) == 0 {
 		return nil
 	}
@@ -342,19 +383,16 @@ func discoverAtAddresses(ctx context.Context, addresses []string, pairPort int) 
 	defer transport.CloseIdleConnections()
 	client := &http.Client{Transport: transport, Timeout: directProbeTimeout}
 	jobs := make(chan string)
-	results := make(chan Device, workerCount)
+	results := make(chan addressProbeResult, workerCount)
 	var workers sync.WaitGroup
 	for range workerCount {
 		workers.Add(1)
 		go func() {
 			defer workers.Done()
 			for address := range jobs {
-				device, ok := probeDevice(ctx, client, address, pairPort, nonce)
-				if !ok {
-					continue
-				}
+				device, outcome := probeDevice(ctx, client, address, pairPort, nonce)
 				select {
-				case results <- device:
+				case results <- addressProbeResult{device: device, outcome: outcome}:
 				case <-ctx.Done():
 					return
 				}
@@ -378,7 +416,18 @@ func discoverAtAddresses(ctx context.Context, addresses []string, pairPort int) 
 
 	devices := make([]Device, 0)
 	seen := make(map[string]struct{})
-	for device := range results {
+	attempted := 0
+	responded := 0
+	for result := range results {
+		attempted++
+		if result.outcome == probeInvalidResponse {
+			responded++
+		}
+		if result.outcome != probeCompatible {
+			continue
+		}
+		responded++
+		device := result.device
 		key := device.Instance + "@" + device.Address + ":" + strconv.Itoa(device.Port)
 		if _, exists := seen[key]; exists {
 			continue
@@ -392,23 +441,25 @@ func discoverAtAddresses(ctx context.Context, addresses []string, pairPort int) 
 		}
 		return devices[left].Name < devices[right].Name
 	})
+	logDiagnostic(logger, "direct discovery completed %d/%d probe(s): %d endpoint(s) responded, %d compatible devbox(es)",
+		attempted, len(addresses), responded, len(devices))
 	return devices
 }
 
-func probeDevice(ctx context.Context, client *http.Client, address string, pairPort int, nonce string) (Device, bool) {
+func probeDevice(ctx context.Context, client *http.Client, address string, pairPort int, nonce string) (Device, probeOutcome) {
 	endpoint := "http://" + net.JoinHostPort(address, strconv.Itoa(pairPort)) +
 		"/v1/discovery?nonce=" + url.QueryEscape(nonce)
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
-		return Device{}, false
+		return Device{}, probeUnreachable
 	}
 	response, err := client.Do(request)
 	if err != nil {
-		return Device{}, false
+		return Device{}, probeUnreachable
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return Device{}, false
+		return Device{}, probeInvalidResponse
 	}
 	var advertisement DiscoveryResponse
 	decoder := json.NewDecoder(io.LimitReader(response.Body, MaxMessageSize))
@@ -419,18 +470,18 @@ func probeDevice(ctx context.Context, client *http.Client, address string, pairP
 		advertisement.Nonce != nonce ||
 		advertisement.Instance == "" || len(advertisement.Instance) > 64 ||
 		advertisement.Port != pairPort {
-		return Device{}, false
+		return Device{}, probeInvalidResponse
 	}
 	name, err := cleanDeviceName(advertisement.Name)
 	if err != nil {
-		return Device{}, false
+		return Device{}, probeInvalidResponse
 	}
 	return Device{
 		Instance: advertisement.Instance,
 		Name:     name,
 		Address:  address,
 		Port:     advertisement.Port,
-	}, true
+	}, probeCompatible
 }
 
 func isLocalNetworkIP(ip net.IP) bool {

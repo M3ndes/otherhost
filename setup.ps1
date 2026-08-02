@@ -19,6 +19,7 @@ $LinuxRepository = '~/src/devbox-bridge'
 function Write-Ok([string]$Message) { Write-Host "[ok] $Message" -ForegroundColor Green }
 function Write-Step([string]$Message) { Write-Host "`n==> $Message" -ForegroundColor Cyan }
 function Write-Warn([string]$Message) { Write-Host "[warn] $Message" -ForegroundColor Yellow }
+function Write-Diag([string]$Message) { Write-Host "[diag] $Message" -ForegroundColor DarkGray }
 function Fail([string]$Message) { throw $Message }
 
 function Test-IsAdministrator {
@@ -361,6 +362,17 @@ function Start-PairingMode {
     Ensure-HyperVSSHRule -SSHPort ([int]$sshPort) -RemoteSubnets $networkPolicy.RemoteSubnets
 
     $helper = Get-PairingHelper
+    $helperVersion = ((& $helper version 2>&1) | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $helperVersion) {
+        Fail 'Could not read the installed pairing helper version'
+    }
+    Write-Diag "pairing helper: $helperVersion ($helper)"
+    if ($userScopedWSL) {
+        $helperCapabilities = ((& $helper host -h 2>&1) | Out-String)
+        if ($helperCapabilities -notmatch '(?m)user-scoped-wsl') {
+            Fail "Installed pairing helper $helperVersion does not support user-scoped WSL; publish and install a helper built from this revision"
+        }
+    }
     $ruleSuffix = "$PID-$([guid]::NewGuid().ToString('N'))"
     $discoveryRule = "devbox-bridge-pairing-udp-$ruleSuffix"
     $sessionRule = "devbox-bridge-pairing-tcp-$ruleSuffix"
@@ -371,14 +383,17 @@ function Start-PairingMode {
         New-NetFirewallRule -Name $sessionRule -DisplayName 'Devbox Bridge temporary pairing' `
             -Direction Inbound -Action Allow -Program $helper -Protocol TCP -LocalPort 45871 `
             -RemoteAddress $networkPolicy.RemoteSubnets -Profile $networkPolicy.Profiles | Out-Null
+        Write-Diag 'temporary UDP 45870 and TCP 45871 firewall rules are active'
 
         $helperArguments = @('host', '--name', $env:COMPUTERNAME, '--distro', $Distro, '--ssh-user', $wslUser, '--ssh-port', $sshPort)
         if ($userScopedWSL) { $helperArguments += '--user-scoped-wsl' }
+        Write-Diag 'starting the pairing helper; the TCP listener should remain active for two minutes'
         & $helper @helperArguments
         if ($LASTEXITCODE -ne 0) { Fail "Pairing helper failed with exit code $LASTEXITCODE" }
     } finally {
         Remove-NetFirewallRule -Name $discoveryRule -ErrorAction SilentlyContinue
         Remove-NetFirewallRule -Name $sessionRule -ErrorAction SilentlyContinue
+        Write-Diag 'temporary pairing firewall rules were removed'
     }
 }
 

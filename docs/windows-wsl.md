@@ -22,6 +22,12 @@ enable two-minute private-network discovery:
 .\setup.cmd -Pair
 ```
 
+The command prints `[diag]` lines with the installed helper version, the
+temporary firewall rules, and confirmation that the TCP pairing listener is
+active. Keep the command open while `devbox pair` runs on the Mac. If the helper
+lacks a capability required by the checked-out setup script, pairing stops with
+an explicit version/capability error before changing firewall state.
+
 ## Existing mirrored WSL without elevation
 
 If Ubuntu is already installed, PID 1 is systemd, and mirrored networking is

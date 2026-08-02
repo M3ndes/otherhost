@@ -32,6 +32,7 @@ type HostOptions struct {
 	ReadSSHHostPublicKey func() (string, error)
 	DisableDiscovery     bool
 	UserScopedWSL        bool
+	Log                  DiagnosticLog
 }
 
 type hostSession struct {
@@ -92,6 +93,7 @@ func RunHost(ctx context.Context, options HostOptions) error {
 		return fmt.Errorf("could not open pairing port %d: %w", options.PairPort, err)
 	}
 	defer listener.Close()
+	logDiagnostic(options.Log, "TCP pairing listener active on 0.0.0.0:%d for %s", options.PairPort, options.Duration.Round(time.Second))
 
 	router := http.NewServeMux()
 	router.HandleFunc("/v1/discovery", host.handleDiscovery)
@@ -116,7 +118,7 @@ func RunHost(ctx context.Context, options HostOptions) error {
 	}()
 	if !options.DisableDiscovery {
 		go func() {
-			if discoveryErr := advertise(hostContext, options.DiscoveryAddress, instance, options.Name, options.PairPort); discoveryErr != nil {
+			if discoveryErr := advertise(hostContext, options.DiscoveryAddress, instance, options.Name, options.PairPort, options.Log); discoveryErr != nil {
 				host.finish(fmt.Errorf("local discovery failed: %w", discoveryErr))
 			}
 		}()
@@ -150,6 +152,7 @@ func (host *pairingHost) handleDiscovery(writer http.ResponseWriter, request *ht
 		http.Error(writer, "invalid discovery request", http.StatusBadRequest)
 		return
 	}
+	logDiagnostic(host.options.Log, "direct discovery request accepted from %s", remoteHost(request.RemoteAddr))
 	writer.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(writer).Encode(DiscoveryResponse{
 		Magic: DiscoveryMagic, Version: ProtocolVersion, Nonce: nonce,
@@ -206,6 +209,7 @@ func (host *pairingHost) handleHello(writer http.ResponseWriter, request *http.R
 		return
 	}
 	hello.ClientName = clientName
+	logDiagnostic(host.options.Log, "pairing request received from %s (%s)", remoteHost(request.RemoteAddr), clientName)
 	clientPublicKey, err := decode(hello.ClientPublicKey, 32)
 	if err != nil {
 		http.Error(writer, "invalid pairing hello", http.StatusBadRequest)

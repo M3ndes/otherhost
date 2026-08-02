@@ -101,6 +101,22 @@ grep -F 'ecdh.X25519()' "$PAIRING_HOST" >/dev/null
 grep -F 'ecdh.X25519()' "$PAIRING_CLIENT" >/dev/null
 grep -F 'cipher.NewGCM' "$PAIRING_PROTOCOL" >/dev/null
 grep -F 'numeric-comparison/v1' "$PAIRING_PROTOCOL" >/dev/null
+grep -F 'wslKeyInstallScript' "$ROOT_DIR/internal/pairing/ssh.go" >/dev/null
+grep -F 'base64.StdEncoding.EncodeToString([]byte(normalized))' "$ROOT_DIR/internal/pairing/ssh.go" >/dev/null
+grep -F 'runWSLScript(distro, "devbox-pair-key", script)' "$ROOT_DIR/internal/pairing/ssh.go" >/dev/null
+grep -F '"mktemp", "/tmp/"+prefix+".XXXXXX.sh"' "$ROOT_DIR/internal/pairing/ssh.go" >/dev/null
+grep -F 'windowsScriptPath :=' "$ROOT_DIR/internal/pairing/ssh.go" >/dev/null
+grep -F 'wsl.localhost' "$ROOT_DIR/internal/pairing/ssh.go" >/dev/null
+grep -F 'os.WriteFile(windowsScriptPath, []byte(script), 0600)' "$ROOT_DIR/internal/pairing/ssh.go" >/dev/null
+grep -F '"bash", wslScriptPath' "$ROOT_DIR/internal/pairing/ssh.go" >/dev/null
+if grep -F 'command.Stdin = strings.NewReader(normalized' "$ROOT_DIR/internal/pairing/ssh.go" >/dev/null; then
+  printf '%s\n' 'Windows helper still relies on lossy stdin handoff for WSL key installation' >&2
+  exit 1
+fi
+if grep -F '"bash", "-c", script' "$ROOT_DIR/internal/pairing/ssh.go" >/dev/null; then
+  printf '%s\n' 'Windows helper still passes the WSL key installer through lossy bash -c quoting' >&2
+  exit 1
+fi
 grep -F 'StrictHostKeyChecking=yes' "$MAC_COMMAND" >/dev/null
 grep -F 'UserKnownHostsFile' "$MAC_COMMAND" >/dev/null
 grep -F '[fail] pairing stopped before the local connection was updated' "$MAC_COMMAND" >/dev/null
@@ -111,6 +127,11 @@ grep -F -- "-RemoteAddresses \$RemoteSubnets" "$SETUP_SCRIPT" >/dev/null
 grep -F -- '--user-scoped-wsl' "$SETUP_SCRIPT" >/dev/null
 grep -F "'pairing-latest.log'" "$SETUP_SCRIPT" >/dev/null
 grep -F "Start-Transcript -LiteralPath \$logPath -Force" "$SETUP_SCRIPT" >/dev/null
+grep -F "Invoke-CapturedProcess -FilePath \$helper -Arguments @('host', '-h')" "$SETUP_SCRIPT" >/dev/null
+if grep -F "& \$helper host -h" "$SETUP_SCRIPT" >/dev/null; then
+  printf '%s\n' 'pairing capability probe still writes native stderr into the PowerShell error stream' >&2
+  exit 1
+fi
 grep -F 'does not support user-scoped WSL' "$SETUP_SCRIPT" >/dev/null
 grep -F "\$PairingDiscoveryPort = 25370" "$SETUP_SCRIPT" >/dev/null
 grep -F "\$PairingSessionPort = 25371" "$SETUP_SCRIPT" >/dev/null

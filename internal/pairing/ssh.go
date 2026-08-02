@@ -89,12 +89,52 @@ func installKeyInWSL(distro, publicKey string) error {
 	if !validDistroName(distro) {
 		return errors.New("invalid WSL distribution name")
 	}
-	normalized, err := normalizeEd25519PublicKey(publicKey)
+	script, err := wslKeyInstallScript(publicKey)
 	if err != nil {
 		return err
 	}
+	if _, err := runWSLScript(distro, "devbox-pair-key", script); err != nil {
+		return fmt.Errorf("could not install the SSH public key in WSL: %w", err)
+	}
+	return nil
+}
+
+func runWSLScript(distro, prefix, script string) ([]byte, error) {
+	if !validDistroName(distro) {
+		return nil, errors.New("invalid WSL distribution name")
+	}
+	pathCommand := exec.Command("wsl.exe", "-d", distro, "--", "mktemp", "/tmp/"+prefix+".XXXXXX.sh")
+	pathOutput, err := pathCommand.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("could not create the temporary script in WSL: %s", strings.TrimSpace(string(pathOutput)))
+	}
+	wslScriptPath := strings.TrimSpace(string(pathOutput))
+	if !strings.HasPrefix(wslScriptPath, "/tmp/"+prefix+".") ||
+		strings.ContainsAny(wslScriptPath, "\r\n\\") {
+		return nil, errors.New("could not determine the temporary script path in WSL")
+	}
+	windowsScriptPath := `\\wsl.localhost\` + distro + strings.ReplaceAll(wslScriptPath, "/", `\`)
+	defer os.Remove(windowsScriptPath)
+	if err := os.WriteFile(windowsScriptPath, []byte(script), 0600); err != nil {
+		return nil, errors.New("could not write the temporary WSL script")
+	}
+
+	command := exec.Command("wsl.exe", "-d", distro, "--", "bash", wslScriptPath)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("temporary WSL script failed: %s", strings.TrimSpace(string(output)))
+	}
+	return output, nil
+}
+
+func wslKeyInstallScript(publicKey string) (string, error) {
+	normalized, err := normalizeEd25519PublicKey(publicKey)
+	if err != nil {
+		return "", err
+	}
+	encoded := base64.StdEncoding.EncodeToString([]byte(normalized))
 	script := `set -eu
-IFS= read -r public_key
+public_key=$(printf '%s' '__DEVBOX_PUBLIC_KEY_BASE64__' | base64 --decode)
 umask 077
 mkdir -p "$HOME/.ssh"
 touch "$HOME/.ssh/authorized_keys"
@@ -102,12 +142,8 @@ chmod 700 "$HOME/.ssh"
 chmod 600 "$HOME/.ssh/authorized_keys"
 grep -Fqx -- "$public_key" "$HOME/.ssh/authorized_keys" || printf '%s\n' "$public_key" >> "$HOME/.ssh/authorized_keys"
 `
-	command := exec.Command("wsl.exe", "-d", distro, "--", "bash", "-c", script)
-	command.Stdin = strings.NewReader(normalized + "\n")
-	if output, err := command.CombinedOutput(); err != nil {
-		return fmt.Errorf("could not install the SSH public key in WSL: %s", strings.TrimSpace(string(output)))
-	}
-	return nil
+	script = strings.Replace(script, "__DEVBOX_PUBLIC_KEY_BASE64__", encoded, 1)
+	return script, nil
 }
 
 func readWSLHostKey(distro string) (string, error) {

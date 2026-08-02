@@ -1,0 +1,31 @@
+internal/dashboard/server_test.go
+  s_71755d8d0bab89::t_1a1cdc254bb1ce 168,201-209,216-223
+  s_71755d8d0bab89::t_1372d4a068ccda 173-200
+README.md
+  s_71755d8d0bab89::t_1a1cdc254bb1ce 263-270
+docs/dashboard.md
+  s_71755d8d0bab89::t_1a1cdc254bb1ce 62-65
+internal/dashboard/assets/app.css
+  s_71755d8d0bab89::t_1a1cdc254bb1ce 183-196,202-203
+internal/dashboard/server.go
+  s_71755d8d0bab89::t_1a1cdc254bb1ce 210-211
+internal/dashboard/assets/app.js
+  s_71755d8d0bab89::t_1a1cdc254bb1ce 15-16,215-223,225,229,231-233,248,257,259,388-395
+  s_71755d8d0bab89::t_39bd8dc8c2b4ca 396-397
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "eec8f54b8509e99a344fe88156a4e20115b8553a",
+  "prompts": {},
+  "sessions": {
+    "s_71755d8d0bab89": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fba65-d026-7702-9af9-5f7244398fd3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Thales Mendes <thalesmendes.dev@gmail.com>"
+    }
+  }
+}

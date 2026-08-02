@@ -1,0 +1,135 @@
+docs/architecture.md
+  s_71755d8d0bab89::t_e77a732d325266 5,9,27-28,36,66,84,87,132,153-158,173-174,205,210,214,237
+setup.ps1
+  s_71755d8d0bab89::t_4d7b2cf4bfb34b 15-16,20,83-85,90,153,175,242-244,246,256-258,265-271,274-275,280-283,285-287,346,361,368,394-395,397-404,410,439-440,442,445,572,581,594,613,671,689,697
+  s_71755d8d0bab89::t_12e282681c8a7c 355,620,626,641,647-649
+  s_71755d8d0bab89::t_5f229ea2370ec5 135-152,373-377,618,622-625,627-630
+  s_71755d8d0bab89::t_b1c7ec6f4aac11 284
+internal/pairing/protocol_test.go
+  s_71755d8d0bab89::t_5f229ea2370ec5 231,260
+  s_71755d8d0bab89::t_12e282681c8a7c 25-37
+  s_71755d8d0bab89::t_103dba317e1f32 8,21-24,38-50,119,175,320,322,327,339,346-348
+internal/dashboard/assets/app.css
+  s_71755d8d0bab89::t_3d647637e6e1c0 86-91
+docs/how-it-works.md
+  s_71755d8d0bab89::t_a57488fa605be5 1,5,15,39,43,57,94-96,98,107,123,128,136,187,209,211
+internal/dashboard/assets/favicon.svg
+  s_71755d8d0bab89::t_27f3e8ec8070b3 1-14
+internal/pairing/discovery.go
+  s_71755d8d0bab89::t_5f229ea2370ec5 249,444
+docs/troubleshooting.md
+  s_71755d8d0bab89::t_3d647637e6e1c0 12,20-21,27-28,30,56,79,99-100,113,137,141,144,149,175,202,255,276,293
+  s_71755d8d0bab89::t_a57488fa605be5 178,272
+docs/macos.md
+  s_71755d8d0bab89::t_e77a732d325266 16-17,23-24,26-27,29,41,46,59,77,84-89,101,107,115-129,133-134,138,146,160,163,171,180,187,202-203,218
+bin/otherhost
+  s_71755d8d0bab89::t_4d586067ce243f 1-91,93-106,108-376
+  s_71755d8d0bab89::t_3d647637e6e1c0 92,107
+README.md
+  s_71755d8d0bab89::t_e77a732d325266 6,9-10,18,22,25,38,89,95-110,160-161,165,181,200,207,214-215,222,231,237,251-257,266,312
+  s_71755d8d0bab89::t_ffcf1df765347b 1-3,5,7-8,306
+scripts/install-pairing-helper.sh
+  s_71755d8d0bab89::t_b1c7ec6f4aac11 7,31
+  s_71755d8d0bab89::t_8144d1b2313ce7 5-6,22-23,28,30,32-34
+  s_71755d8d0bab89::t_0c8fe2c639507d 29
+cmd/otherhost-ui/main.go
+  s_71755d8d0bab89::t_3d647637e6e1c0 1-85
+internal/pairing/protocol.go
+  s_71755d8d0bab89::t_12e282681c8a7c 22,26-29,141,183-185
+  s_71755d8d0bab89::t_4d586067ce243f 23-24,89-93
+docs/assets/otherhost-mark.svg
+  s_71755d8d0bab89::t_ffcf1df765347b 1-16
+internal/dashboard/config_test.go
+  s_71755d8d0bab89::t_103dba317e1f32 13,16,20-21,35,44-45,54-68
+scripts/install-pairing-helper-wsl.sh
+  s_71755d8d0bab89::t_0c8fe2c639507d 29
+  s_71755d8d0bab89::t_8144d1b2313ce7 5-6,22-23,28,30,32-34
+  s_71755d8d0bab89::t_b1c7ec6f4aac11 7,31
+internal/dashboard/config.go
+  s_71755d8d0bab89::t_4d586067ce243f 58-61,63,72
+docs/brand.md
+  s_71755d8d0bab89::t_ffcf1df765347b 1-42
+bin/devbox
+  s_71755d8d0bab89::t_8144d1b2313ce7 2,15-16
+scripts/pair-wsl.sh
+  s_71755d8d0bab89::t_4d7b2cf4bfb34b 5-6,8-13,19-26,30-37
+internal/dashboard/assets/index.html
+  s_71755d8d0bab89::t_3d647637e6e1c0 8,15,18-22,25,57,60-64,67,81,236-237
+  s_71755d8d0bab89::t_27f3e8ec8070b3 9
+Makefile
+  s_71755d8d0bab89::t_103dba317e1f32 15,19,23-26,29,33
+scripts/bootstrap-mac.sh
+  s_71755d8d0bab89::t_27f3e8ec8070b3 101,108-112
+  s_71755d8d0bab89::t_8144d1b2313ce7 5-6,10-20,28,41,60-88,90-91,93-98,100,119,125-126,128,132,134,136,145,158
+docs/windows-wsl.md
+  s_71755d8d0bab89::t_a57488fa605be5 20-36,76,90,179-181,195,211,215,224,235,256
+lib/otherhost.sh
+  s_71755d8d0bab89::t_8a7ef7b83f2276 73-74
+  s_71755d8d0bab89::t_4d586067ce243f 1-48,52-56,67,75-157
+  s_71755d8d0bab89::t_12e282681c8a7c 49-51,57-66,68-72
+cmd/otherhost-pair/main.go
+  s_71755d8d0bab89::t_4d586067ce243f 1-244
+internal/pairing/config.go
+  s_71755d8d0bab89::t_4d586067ce243f 26,33,64-70,79,96
+.gitignore
+  s_71755d8d0bab89::t_4d586067ce243f 1-2
+tests/config_test.sh
+  s_71755d8d0bab89::t_103dba317e1f32 5-6,17,21,38-41,44,51,56-57,60-71,73,80
+scripts/bootstrap-wsl.sh
+  s_71755d8d0bab89::t_4d7b2cf4bfb34b 5-6,9-12,75,84,86-89,91,133,148-150,155
+scripts/bootstrap-wsl-user.sh
+  s_71755d8d0bab89::t_5f229ea2370ec5 103-108,173-183,185-187,202-204
+  s_71755d8d0bab89::t_4d7b2cf4bfb34b 5-6,9-14,46,48,50,61,155,158,184,190-193,216,227
+scripts/bootstrap-windows.ps1
+  s_71755d8d0bab89::t_12e282681c8a7c 194-195
+  s_71755d8d0bab89::t_5f229ea2370ec5 186,196-201
+  s_71755d8d0bab89::t_4d7b2cf4bfb34b 5,8-14,21,82,171
+config/otherhost.example.conf
+  s_71755d8d0bab89::t_3d647637e6e1c0 1-29
+.github/workflows/release.yml
+  s_71755d8d0bab89::t_eeab3c39ad0c3f 18,21,24,27,30,33,46,63
+AGENTS.md
+  s_71755d8d0bab89::t_6a1202139aad74 4
+CONTRIBUTING.md
+  s_71755d8d0bab89::t_50f4f8b1b942b2 1,48-49,66,77-79,86,113,145,148
+SECURITY.md
+  s_71755d8d0bab89::t_1666155369459a 3,113,131
+go.mod
+  s_71755d8d0bab89::t_0332064e55cf07 1
+internal/dashboard/assets/app.js
+  s_71755d8d0bab89::t_eb467ea7e67446 228,279,293
+internal/dashboard/collector_test.go
+  s_71755d8d0bab89::t_8e11fac506c434 49
+internal/dashboard/server.go
+  s_71755d8d0bab89::t_3bd513afdc9c18 133,195
+internal/dashboard/server_test.go
+  s_71755d8d0bab89::t_2548a0d7939d37 97,107,135
+internal/pairing/client.go
+  s_71755d8d0bab89::t_a8d6274013a4f2 117
+internal/pairing/host.go
+  s_71755d8d0bab89::t_34c9cc6996d8d7 334-338
+internal/pairing/ssh.go
+  s_71755d8d0bab89::t_c92d2f0c3a0316 96,137,145,154
+internal/pairing/wsl_integration_test.go
+  s_71755d8d0bab89::t_b6c84be5b00e45 11-12,14,18-19
+tests/powershell_syntax_test.ps1
+  s_71755d8d0bab89::t_95dc54c2591dd0 5,25,95
+tests/security_controls_test.sh
+  s_71755d8d0bab89::t_ce8da78b34745e 5-6,11-12,18-19,29,43,46,50,60,62,64,75,95,99,106,169-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "48adcc71d4ed57d0181992994b357cabc8de026e",
+  "prompts": {},
+  "sessions": {
+    "s_71755d8d0bab89": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fba65-d026-7702-9af9-5f7244398fd3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Thales Mendes <thalesmendes.dev@gmail.com>"
+    }
+  }
+}

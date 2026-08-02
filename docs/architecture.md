@@ -83,8 +83,9 @@ dependencies, reducing the release and audit surface.
 
 `otherhost ui` starts a small Go HTTP server bound exclusively to `127.0.0.1`; it
 does not replace the CLI or listen on a LAN address. The embedded frontend has
-no CDN dependencies or telemetry. It reads a bounded inventory over the
-existing pinned SSH connection and treats `otherhost.local.conf` as data.
+no CDN dependencies or telemetry. Xterm.js and its fit addon are vendored with
+their licenses. The server reads a bounded inventory over the existing pinned
+SSH connection and treats `otherhost.local.conf` as data.
 
 The dashboard's primary model is a remote project, not an infrastructure
 service. Windows and WSL provide compute capacity; the Mac presents the editor,
@@ -97,6 +98,22 @@ project can be opened only when its exact remote path appeared in the latest SSH
 inventory. This prevents another local website from turning the dashboard into
 an arbitrary command launcher. Requests with a non-loopback HTTP `Host` are
 rejected to prevent DNS rebinding from bypassing that local boundary.
+
+The integrated terminal creates a local PTY whose child is the system OpenSSH
+client. OpenSSH reuses the configured identity, pinned `known_hosts` file,
+strict host-key checking, and keepalives; the remote side starts the WSL user's
+login shell. A project terminal may start only at an exact path from the latest
+inventory. A general terminal intentionally starts in the WSL home directory.
+After login it is a normal shell, not a filesystem sandbox, so the user can
+navigate anywhere their WSL account is permitted to access.
+
+Creating a terminal requires the dashboard action token and a same-origin POST.
+The response contains a random authorization valid for 30 seconds and one
+WebSocket attachment. Its secret is sent as a WebSocket subprotocol rather than
+in the URL, keeping it out of ordinary request logs. The socket repeats the
+loopback `Host` and exact `Origin` checks, bounds input messages and terminal
+dimensions, and limits the process to four pending or active sessions. Closing
+the socket, page, or dashboard closes the PTY and terminates the SSH child.
 
 ## Pairing protocol
 

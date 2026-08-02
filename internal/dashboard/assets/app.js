@@ -18,7 +18,18 @@ const icons = {
   moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.3A8.5 8.5 0 0 1 9.7 3.5 8.5 8.5 0 1 0 20.5 14.3Z"/></svg>'
 };
 
-const state = { snapshot: null, actionToken: '', query: '', loading: true };
+const state = {
+  snapshot: null,
+  actionToken: '',
+  query: '',
+  loading: true,
+  terminal: null,
+  terminalSocket: null,
+  terminalDisposables: [],
+  terminalResizeObserver: null,
+  terminalGeneration: 0,
+  initialNavigationDone: false
+};
 
 function installIcons() {
   document.querySelectorAll('[data-icon]').forEach((element) => {
@@ -179,7 +190,14 @@ function renderProjects() {
     copyButton.setAttribute('aria-label', `Copy path for ${project.name}`);
     copyButton.innerHTML = icons.copy;
     copyButton.addEventListener('click', () => copyPath(project.path));
-    actions.append(openButton, copyButton);
+    const terminalButton = document.createElement('button');
+    terminalButton.className = 'terminal-project';
+    terminalButton.type = 'button';
+    terminalButton.title = 'Open in terminal';
+    terminalButton.setAttribute('aria-label', `Open ${project.name} in terminal`);
+    terminalButton.innerHTML = icons.terminal;
+    terminalButton.addEventListener('click', () => openProjectTerminal(project));
+    actions.append(openButton, terminalButton, copyButton);
 
     card.append(top, title, projectPath, tags, actions);
     grid.append(card);
@@ -238,6 +256,154 @@ async function openProject(project, button) {
   }
 }
 
+function terminalTheme() {
+  if (document.documentElement.dataset.theme === 'dark') {
+    return {
+      background: '#15151c', foreground: '#ececf2', cursor: '#9b8cff', cursorAccent: '#15151c',
+      selectionBackground: '#50469099', black: '#15151c', brightBlack: '#6f6f7c', red: '#ff858b',
+      green: '#69d7aa', yellow: '#e4bf72', blue: '#78afff', magenta: '#a999ff', cyan: '#64ced3', white: '#ececf2'
+    };
+  }
+  return {
+    background: '#181820', foreground: '#ececf2', cursor: '#a999ff', cursorAccent: '#181820',
+    selectionBackground: '#6d5dfc66', black: '#181820', brightBlack: '#767681', red: '#ff858b',
+    green: '#69d7aa', yellow: '#e4bf72', blue: '#78afff', magenta: '#a999ff', cyan: '#64ced3', white: '#ececf2'
+  };
+}
+
+function setTerminalState(kind, label) {
+  const indicator = document.querySelector('[data-terminal-state]');
+  indicator.className = `terminal-state ${kind}`;
+  indicator.querySelector('span').textContent = label;
+}
+
+function stopTerminal(showEmpty = true) {
+  state.terminalGeneration += 1;
+  if (state.terminalSocket) {
+    state.terminalSocket.onclose = null;
+    state.terminalSocket.close(1000, 'Terminal closed');
+    state.terminalSocket = null;
+  }
+  state.terminalDisposables.forEach((disposable) => disposable.dispose());
+  state.terminalDisposables = [];
+  if (state.terminalResizeObserver) {
+    state.terminalResizeObserver.disconnect();
+    state.terminalResizeObserver = null;
+  }
+  if (state.terminal) {
+    state.terminal.dispose();
+    state.terminal = null;
+  }
+  document.querySelector('[data-terminal-mount]').replaceChildren();
+  document.querySelector('[data-terminal-empty]').classList.toggle('hidden', !showEmpty);
+  document.querySelector('[data-terminal-close]').disabled = true;
+  if (showEmpty) {
+    setText('[data-terminal-title]', 'Remote shell');
+    setText('[data-terminal-location]', 'WSL home');
+    setTerminalState('idle', 'Not connected');
+  }
+}
+
+async function startTerminal(project = null) {
+  if (!window.Terminal || !window.FitAddon?.FitAddon) {
+    showToast('The terminal component could not be loaded.', true);
+    return;
+  }
+  if (!state.actionToken) {
+    showToast('Wait for the remote inventory before opening a terminal.', true);
+    return;
+  }
+
+  stopTerminal(false);
+  const generation = state.terminalGeneration;
+  const mount = document.querySelector('[data-terminal-mount]');
+  const empty = document.querySelector('[data-terminal-empty]');
+  empty.classList.add('hidden');
+  setText('[data-terminal-title]', project ? project.name : 'Remote shell');
+  setText('[data-terminal-location]', project ? project.path : 'WSL home');
+  setTerminalState('connecting', 'Connecting');
+  document.querySelector('[data-terminal-close]').disabled = false;
+
+  const terminal = new window.Terminal({
+    cursorBlink: true,
+    cursorStyle: 'bar',
+    fontFamily: '"SFMono-Regular", Menlo, Monaco, Consolas, monospace',
+    fontSize: 13,
+    lineHeight: 1.25,
+    scrollback: 5000,
+    macOptionIsMeta: true,
+    theme: terminalTheme()
+  });
+  const fitAddon = new window.FitAddon.FitAddon();
+  terminal.loadAddon(fitAddon);
+  terminal.open(mount);
+  fitAddon.fit();
+  state.terminal = terminal;
+
+  const resizeObserver = new ResizeObserver(() => {
+    if (state.terminal === terminal) fitAddon.fit();
+  });
+  resizeObserver.observe(mount);
+  state.terminalResizeObserver = resizeObserver;
+
+  let socket;
+  const encoder = new TextEncoder();
+  state.terminalDisposables.push(terminal.onData((data) => {
+    if (socket?.readyState === WebSocket.OPEN) socket.send(encoder.encode(data));
+  }));
+  state.terminalDisposables.push(terminal.onResize(({ cols, rows }) => {
+    if (socket?.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: 'resize', columns: cols, rows }));
+    }
+  }));
+
+  try {
+    const response = await fetch('/api/terminals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Otherhost-Token': state.actionToken },
+      body: JSON.stringify({ path: project?.path || '', columns: terminal.cols, rows: terminal.rows })
+    });
+    if (!response.ok) throw new Error((await response.text()).trim() || 'Could not create the terminal session.');
+    if (state.terminalGeneration !== generation) return;
+    const session = await response.json();
+    const socketURL = new URL(session.socketPath, window.location.href);
+    socketURL.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    socket = new WebSocket(socketURL, session.protocol);
+    socket.binaryType = 'arraybuffer';
+    state.terminalSocket = socket;
+
+    socket.onopen = () => {
+      if (state.terminalGeneration !== generation) return;
+      setTerminalState('connected', 'Connected');
+      socket.send(JSON.stringify({ type: 'resize', columns: terminal.cols, rows: terminal.rows }));
+      terminal.focus();
+    };
+    socket.onmessage = (event) => {
+      if (state.terminalGeneration !== generation) return;
+      terminal.write(new Uint8Array(event.data));
+    };
+    socket.onerror = () => {
+      if (state.terminalGeneration === generation) setTerminalState('unavailable', 'Connection error');
+    };
+    socket.onclose = (event) => {
+      if (state.terminalGeneration !== generation) return;
+      state.terminalSocket = null;
+      setTerminalState('idle', event.code === 1000 ? 'Session ended' : 'Disconnected');
+    };
+  } catch (error) {
+    if (state.terminalGeneration === generation) {
+      stopTerminal(true);
+      showToast(error.message, true);
+    }
+  }
+}
+
+function openProjectTerminal(project) {
+  window.location.hash = 'terminal';
+  document.getElementById('terminal').scrollIntoView();
+  window.setTimeout(() => startTerminal(project), 120);
+}
+
 async function copyPath(path) {
   try {
     await navigator.clipboard.writeText(path);
@@ -267,6 +433,11 @@ async function refresh() {
     const snapshot = await response.json();
     state.actionToken = snapshot.actionToken;
     renderSnapshot(snapshot);
+    if (!state.initialNavigationDone) {
+      state.initialNavigationDone = true;
+      const target = document.getElementById(window.location.hash.slice(1) || 'overview');
+      if (target) window.requestAnimationFrame(() => target.scrollIntoView());
+    }
   } catch (error) {
     renderSnapshot({ status: 'unavailable', message: error.message, host: {}, environment: {}, projects: [], updatedAt: new Date().toISOString() });
   } finally {
@@ -285,6 +456,7 @@ function configureTheme() {
     const dark = document.documentElement.dataset.theme === 'dark';
     button.innerHTML = dark ? icons.sun : icons.moon;
     button.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+    if (state.terminal) state.terminal.options.theme = terminalTheme();
   };
   updateButton();
   button.addEventListener('click', () => {
@@ -298,18 +470,34 @@ function configureTheme() {
 function configureNavigation() {
   const links = Array.from(document.querySelectorAll('[data-section-link]'));
   const sections = links.map((link) => document.getElementById(link.dataset.sectionLink));
-  const observer = new IntersectionObserver((entries) => {
-    const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-    if (!visible) return;
-    links.forEach((link) => link.classList.toggle('active', link.dataset.sectionLink === visible.target.id));
-  }, { rootMargin: '-20% 0px -65% 0px', threshold: [0, .25, .5] });
-  sections.forEach((section) => observer.observe(section));
+  let updateScheduled = false;
+  const update = () => {
+    updateScheduled = false;
+    const marker = window.scrollY + (window.innerHeight * .28);
+    let active = sections[0];
+    sections.forEach((section) => {
+      if (section.offsetTop <= marker) active = section;
+    });
+    links.forEach((link) => link.classList.toggle('active', link.dataset.sectionLink === active.id));
+  };
+  window.addEventListener('scroll', () => {
+    if (updateScheduled) return;
+    updateScheduled = true;
+    window.requestAnimationFrame(update);
+  }, { passive: true });
+  links.forEach((link) => link.addEventListener('click', () => {
+    links.forEach((candidate) => candidate.classList.toggle('active', candidate === link));
+  }));
+  update();
 }
 
 installIcons();
 configureTheme();
 configureNavigation();
 document.querySelectorAll('[data-refresh]').forEach((button) => button.addEventListener('click', refresh));
+document.querySelector('[data-terminal-start]').addEventListener('click', () => startTerminal());
+document.querySelector('[data-terminal-new]').addEventListener('click', () => startTerminal());
+document.querySelector('[data-terminal-close]').addEventListener('click', () => stopTerminal(true));
 document.querySelector('[data-project-search]').addEventListener('input', (event) => {
   state.query = event.target.value.trim().toLowerCase();
   renderProjects();
@@ -317,3 +505,4 @@ document.querySelector('[data-project-search]').addEventListener('input', (event
 state.loading = false;
 refresh();
 setInterval(() => { if (!document.hidden) refresh(); }, 30000);
+window.addEventListener('beforeunload', () => stopTerminal(false));

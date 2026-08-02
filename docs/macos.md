@@ -166,14 +166,23 @@ through the same pinned SSH identity as the CLI, and stops when its terminal
 process receives `Ctrl-C`.
 
 Repositories are discovered one level below `projects_root`, which defaults to
-`~/src` in WSL. Only directories containing `.git` are shown. The dashboard is
-read-only except for launching a discovered path in VS Code. That action expects
-the reviewed `otherhost ssh-config` block to already exist in `~/.ssh/config` and
-the `code` command-line tool to be installed.
+`~/src` in WSL. Only directories containing `.git` are shown. **Open project**
+launches a discovered path in VS Code and expects the reviewed `otherhost
+ssh-config` block to already exist in `~/.ssh/config` with the `code`
+command-line tool installed.
+
+The **Terminal** view starts an interactive login shell through the configured
+pinned SSH connection. Start a session from that view to use the WSL home
+directory, or select the terminal icon on a project card to start in that exact
+inventoried path. The terminal is not a sandbox: after connecting, it has the
+same access as the paired WSL user and can navigate the rest of the remote
+machine. Closing the page, clicking **Close**, or stopping `otherhost ui`
+terminates its SSH process.
 
 The server binds only to Mac loopback, embeds all of its assets, and exposes no
 LAN or internet listener. Its interface, notifications, empty states, and error
-messages are intentionally English-only.
+messages are intentionally English-only. Terminal components are vendored with
+the application and do not load scripts, styles, or telemetry from a CDN.
 
 ## Change forwarded ports
 

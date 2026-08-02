@@ -55,6 +55,8 @@ detail first.
   occurred.
 - **Project-first dashboard:** browse remote repositories and host capacity from
   an English, localhost-only interface backed by the same pinned SSH connection.
+- **Integrated remote terminal:** start a WSL shell in your home directory or
+  directly inside an inventoried project without moving compute back to the Mac.
 - **Automation-friendly:** Bash, PowerShell, and a small dependency-free Go
   pairing helper; no required GUI or hosted control plane.
 
@@ -239,17 +241,22 @@ otherhost ui
 
 It discovers Git repositories directly below `projects_root` (by default
 `~/src` inside WSL), shows the Windows hardware inventory and WSL allocation,
-and opens a selected folder through VS Code Remote SSH. Add the reviewed output
-from `otherhost ssh-config` to `~/.ssh/config` before using **Open project**.
+and opens a selected folder through VS Code Remote SSH. Use the terminal icon on
+a project to start an interactive WSL shell in that directory, or open
+**Terminal** to start in the remote home directory. Once connected, the shell
+has the normal permissions of the paired WSL user and can navigate the rest of
+that user's machine. Add the reviewed output from `otherhost ssh-config` to
+`~/.ssh/config` before using **Open project** in VS Code.
 
 The UI is entirely in English, loads no remote assets, sends no telemetry, and
 does not expose its local HTTP server to the LAN. Docker remains available in
 CLI diagnostics but is not treated as a primary machine-health signal in the
-project dashboard.
+project dashboard. Terminal sessions use the configured pinned SSH identity and
+end when the browser connection or dashboard process closes.
 
 See the [dashboard guide](docs/dashboard.md) for the complete Overview,
-Projects, and Machine experience, including responsive screenshots and the
-local security boundaries.
+Projects, Terminal, and Machine experience, including responsive screenshots
+and the local security boundaries.
 
 ## Commands
 
@@ -264,7 +271,7 @@ local security boundaries.
 | `otherhost status` | Mac | Show remote uptime, memory, disk, and Docker usage |
 | `otherhost urls` | Mac | Print forwarded localhost URLs |
 | `otherhost ssh-config` | Mac | Generate an OpenSSH host block |
-| `otherhost ui` | Mac | Open the local project and machine dashboard |
+| `otherhost ui` | Mac | Open the local project, terminal, and machine dashboard |
 
 ## Alternative host mode
 
@@ -296,6 +303,8 @@ this route.
 - Pairing listeners and Windows firewall exceptions are temporary and restricted
   to the active local subnet.
 - Forwarded applications bind to Mac `127.0.0.1`, not its LAN interfaces.
+- Integrated terminal sessions are same-origin, one-use, and carried through the
+  existing pinned SSH connection.
 - Configuration files are parsed as data and are never executed as shell or
   PowerShell code.
 
@@ -317,6 +326,7 @@ full [security policy and trust model](SECURITY.md).
 | [Brand and visual identity](docs/brand.md) | You need the name, voice, logo, or visual tokens |
 | [Contributing](CONTRIBUTING.md) | You want to report, test, document, or implement a change |
 | [Security policy](SECURITY.md) | You need deployment boundaries or private reporting instructions |
+| [Third-party notices](THIRD_PARTY_NOTICES.md) | You need dependency versions and license details |
 
 ## Scope and non-goals
 

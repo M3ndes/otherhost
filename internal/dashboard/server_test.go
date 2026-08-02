@@ -43,7 +43,7 @@ func TestDashboardServesEnglishEmbeddedUI(t *testing.T) {
 		t.Fatalf("unexpected status: %d", result.StatusCode)
 	}
 	page := string(body)
-	for _, expected := range []string{`<html lang="en">`, "Build remotely.", "Projects", "Machine", `class="brand sidebar-brand"`, `<img src="/favicon.png" alt="">`} {
+	for _, expected := range []string{`<html lang="en">`, "Build remotely.", "Projects", "Terminal", "Machine", `class="brand sidebar-brand"`, `<img src="/favicon.png" alt="">`, `/vendor/xterm/xterm.js`, `/vendor/addon-fit/addon-fit.js`} {
 		if !strings.Contains(page, expected) {
 			t.Fatalf("UI is missing %q", expected)
 		}

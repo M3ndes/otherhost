@@ -84,21 +84,19 @@ func TestWSLKeyInstallArgumentsPreserveNormalizedPublicKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(arguments) != 8 || arguments[0] != "-d" || arguments[1] != "Ubuntu" ||
+	if len(arguments) != 6 || arguments[0] != "-d" || arguments[1] != "Ubuntu" ||
 		arguments[2] != "--" || arguments[3] != "bash" || arguments[4] != "-c" ||
-		arguments[6] != "devbox-bridge" {
+		arguments[5] == "" {
 		t.Fatalf("unexpected WSL command arguments: %#v", arguments)
 	}
-	if !strings.Contains(arguments[5], `"$1"`) || strings.Contains(arguments[5], "IFS= read") {
+	if strings.Contains(arguments[5], `"$1"`) || strings.Contains(arguments[5], "IFS= read") ||
+		strings.Contains(arguments[5], "__DEVBOX_PUBLIC_KEY_BASE64__") {
 		t.Fatalf("WSL install script does not read the encoded argument safely: %s", arguments[5])
 	}
-	decoded, err := base64.StdEncoding.DecodeString(arguments[7])
-	if err != nil {
-		t.Fatal(err)
-	}
 	expected := strings.Join(strings.Fields(testPublicKey)[:2], " ")
-	if string(decoded) != expected {
-		t.Fatalf("encoded WSL key changed after normalization: %q", decoded)
+	encoded := base64.StdEncoding.EncodeToString([]byte(expected))
+	if !strings.Contains(arguments[5], "'"+encoded+"'") {
+		t.Fatal("encoded WSL key was not embedded in the install script")
 	}
 	if strings.Contains(strings.Join(arguments, " "), testPublicKey) {
 		t.Fatal("raw public key was embedded directly in the WSL command")

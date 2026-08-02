@@ -105,8 +105,9 @@ func wslKeyInstallArguments(distro, publicKey string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	encoded := base64.StdEncoding.EncodeToString([]byte(normalized))
 	script := `set -eu
-public_key=$(printf '%s' "$1" | base64 --decode)
+public_key=$(printf '%s' '__DEVBOX_PUBLIC_KEY_BASE64__' | base64 --decode)
 umask 077
 mkdir -p "$HOME/.ssh"
 touch "$HOME/.ssh/authorized_keys"
@@ -114,8 +115,8 @@ chmod 700 "$HOME/.ssh"
 chmod 600 "$HOME/.ssh/authorized_keys"
 grep -Fqx -- "$public_key" "$HOME/.ssh/authorized_keys" || printf '%s\n' "$public_key" >> "$HOME/.ssh/authorized_keys"
 `
-	encoded := base64.StdEncoding.EncodeToString([]byte(normalized))
-	return []string{"-d", distro, "--", "bash", "-c", script, "devbox-bridge", encoded}, nil
+	script = strings.Replace(script, "__DEVBOX_PUBLIC_KEY_BASE64__", encoded, 1)
+	return []string{"-d", distro, "--", "bash", "-c", script}, nil
 }
 
 func readWSLHostKey(distro string) (string, error) {

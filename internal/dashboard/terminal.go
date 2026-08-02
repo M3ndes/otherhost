@@ -87,7 +87,7 @@ func normalizeTerminalSize(columns, rows int) (TerminalSize, error) {
 }
 
 func remoteTerminalCommand(projectPath string) string {
-	loginShell := `exec "${SHELL:-/bin/bash}" -l`
+	loginShell := `unset SSH_CLIENT SSH_CONNECTION SSH_TTY; exec "${SHELL:-/bin/bash}" -l`
 	if projectPath == "" {
 		return loginShell
 	}

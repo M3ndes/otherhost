@@ -107,6 +107,13 @@ inventory. A general terminal intentionally starts in the WSL home directory.
 After login it is a normal shell, not a filesystem sandbox, so the user can
 navigate anywhere their WSL account is permitted to access.
 
+The login shell starts without the `SSH_CLIENT`, `SSH_CONNECTION`, and
+`SSH_TTY` marker variables. Prompt themes therefore render like a local WSL
+terminal instead of repeating `user@host` inside an interface that already
+identifies the remote machine. This changes only the child environment; the
+PTY transport, authentication, host verification, and process lifecycle remain
+SSH-backed.
+
 Creating a terminal requires the dashboard action token and a same-origin POST.
 The response contains a random authorization valid for 30 seconds and one
 WebSocket attachment. Its secret is sent as a WebSocket subprotocol rather than

@@ -68,7 +68,9 @@ normal permissions of the paired WSL user.
 Each session uses the same configured SSH identity and pinned host key as the
 inventory. **Close**, closing the page, or stopping `otherhost ui` terminates
 the local PTY and its SSH process. Starting a new session replaces the current
-one in that browser page.
+one in that browser page. The child shell omits OpenSSH's connection marker
+variables so prompt themes render like a local WSL terminal instead of adding a
+redundant `user@host` segment; the transport itself remains SSH.
 
 The screenshot shows the disconnected empty state because demonstration mode
 intentionally never starts a local or remote shell.

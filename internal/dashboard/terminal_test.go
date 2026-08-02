@@ -18,7 +18,7 @@ import (
 func TestRemoteTerminalCommandQuotesInventoryPath(t *testing.T) {
 	projectPath := "/home/developer/src/it's $(not executable)"
 	command := remoteTerminalCommand(projectPath)
-	expected := `cd -- '/home/developer/src/it'"'"'s $(not executable)' && exec "${SHELL:-/bin/bash}" -l`
+	expected := `cd -- '/home/developer/src/it'"'"'s $(not executable)' && unset SSH_CLIENT SSH_CONNECTION SSH_TTY; exec "${SHELL:-/bin/bash}" -l`
 	if command != expected {
 		t.Fatalf("unexpected remote command:\n%s", command)
 	}

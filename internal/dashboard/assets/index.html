@@ -4,25 +4,18 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
-    <meta name="theme-color" content="#f4f5f7">
+    <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#111116" media="(prefers-color-scheme: dark)">
     <title>Otherhost</title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/favicon.png" type="image/png">
     <link rel="stylesheet" href="/app.css">
   </head>
   <body>
     <div class="app-shell">
       <aside class="sidebar" aria-label="Primary navigation">
-        <a class="brand" href="#overview" aria-label="Otherhost overview">
-          <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 32 32" role="img">
-              <path class="orbit-ring" d="M7.1 23.8A12 12 0 1 1 27.3 17.4"/>
-              <path class="orbit-link" d="m11.2 16 10.1 5.2"/>
-              <circle class="orbit-node" cx="10.8" cy="15.8" r="3.5"/>
-              <circle class="orbit-node orbit-node-remote" cx="21.8" cy="21.5" r="2.6"/>
-              <circle class="orbit-node orbit-node-small" cx="27.2" cy="17.4" r="1.7"/>
-            </svg>
-          </span>
-          <span>otherhost</span>
+        <a class="brand sidebar-brand" href="#overview" aria-label="Otherhost overview">
+          <span class="brand-mark" aria-hidden="true"><img src="/favicon.png" alt=""></span>
+          <span class="brand-wordmark">otherhost</span>
         </a>
 
         <nav class="nav-list">
@@ -55,16 +48,8 @@
       <main class="main-content">
         <header class="topbar">
           <a class="mobile-brand brand" href="#overview" aria-label="Otherhost overview">
-            <span class="brand-mark" aria-hidden="true">
-              <svg viewBox="0 0 32 32" role="img">
-                <path class="orbit-ring" d="M7.1 23.8A12 12 0 1 1 27.3 17.4"/>
-                <path class="orbit-link" d="m11.2 16 10.1 5.2"/>
-                <circle class="orbit-node" cx="10.8" cy="15.8" r="3.5"/>
-                <circle class="orbit-node orbit-node-remote" cx="21.8" cy="21.5" r="2.6"/>
-                <circle class="orbit-node orbit-node-small" cx="27.2" cy="17.4" r="1.7"/>
-              </svg>
-            </span>
-            <span>otherhost</span>
+            <span class="brand-mark" aria-hidden="true"><img src="/favicon.png" alt=""></span>
+            <span class="brand-wordmark">otherhost</span>
           </a>
           <div class="topbar-actions">
             <span class="connection-pill loading" data-connection-pill>

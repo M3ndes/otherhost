@@ -41,6 +41,10 @@ assert_equal '.ssh/test key' "$(otherhost_config_get identity_file "$CONFIG_FILE
 assert_equal "$HOME/.ssh/test key" "$(otherhost_resolve_identity_file '.ssh/test key')"
 [ ! -e "$SIDE_EFFECT" ] || { printf '%s\n' 'configuration executed unexpectedly' >&2; exit 1; }
 
+HELP_OUTPUT=$("$ROOT_DIR/bin/otherhost" help)
+printf '%s\n' "$HELP_OUTPUT" | grep -F '◉  otherhost' >/dev/null
+printf '%s\n' "$HELP_OUTPUT" | grep -F 'Make the other host feel local.' >/dev/null
+
 SSH_CONFIG=$(OTHERHOST_CONFIG="$CONFIG_FILE" "$ROOT_DIR/bin/otherhost" ssh-config)
 printf '%s\n' "$SSH_CONFIG" | grep -F 'Host test-box' >/dev/null
 printf '%s\n' "$SSH_CONFIG" | grep -F "IdentityFile \"$HOME/.ssh/test key\"" >/dev/null

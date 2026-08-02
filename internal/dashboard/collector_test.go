@@ -15,7 +15,7 @@ func reportLine(key, value string) string {
 }
 
 func TestParseRemoteReportBuildsMachineAndProjectInventory(t *testing.T) {
-	windows := `{"osName":"Windows 11 Pro","cpuModel":"Intel Core i7-14700KF","physicalCores":20,"logicalProcessors":28,"memoryBytes":68719476736,"gpuModel":"NVIDIA GeForce RTX 5070","gpuMemoryBytes":12884901888,"disks":[{"name":"C:","totalBytes":1000000000000,"availableBytes":328000000000}]}`
+	windows := `{"osName":"Windows 11 Pro for Workstations","cpuModel":"AMD TR PRO 7995WX","physicalCores":96,"logicalProcessors":192,"memoryBytes":274877906944,"gpuModel":"NVIDIA RTX 6000 Ada","gpuMemoryBytes":51539607552,"disks":[{"name":"C:","totalBytes":4398046511104,"availableBytes":3298534883328}]}`
 	report := strings.Join([]string{
 		reportLine("host.name", "DESKTOP-HOME"),
 		reportLine("host.windows", windows),
@@ -34,10 +34,10 @@ func TestParseRemoteReportBuildsMachineAndProjectInventory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseRemoteReport returned an error: %v", err)
 	}
-	if snapshot.Host.CPU.PhysicalCores != 20 || snapshot.Host.CPU.LogicalProcessors != 28 {
+	if snapshot.Host.CPU.PhysicalCores != 96 || snapshot.Host.CPU.LogicalProcessors != 192 {
 		t.Fatalf("unexpected CPU inventory: %#v", snapshot.Host.CPU)
 	}
-	if snapshot.Host.GPU.Memory != 12*1024*1024*1024 {
+	if snapshot.Host.GPU.Memory != 48*1024*1024*1024 {
 		t.Fatalf("unexpected GPU memory: %d", snapshot.Host.GPU.Memory)
 	}
 	if len(snapshot.Projects) != 2 || snapshot.Projects[0].Name != "alpha" || snapshot.Projects[1].Name != "zeta" {

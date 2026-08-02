@@ -5,10 +5,12 @@ capacity on the connected Windows and WSL host. It remains an optional layer
 over the CLI: pairing, diagnostics, recovery, and SSH continue to work without
 the browser interface.
 
-![Otherhost overview with a connected development host](assets/screenshots/dashboard-overview.png)
+![Otherhost overview with a fictional demonstration host](assets/screenshots/dashboard-overview.jpg)
 
-All screenshots on this page use fixed values from the built-in demonstration
-mode rather than querying a connected machine.
+All screenshots on this page are captured from the built-in demonstration mode.
+The host, hardware, usernames, paths, projects, terminal commands, and command
+output are intentionally fictional; capturing documentation never queries a
+connected machine.
 
 ## Start the dashboard
 
@@ -37,7 +39,7 @@ keeps the last layout stable and presents a retry action with a concise error.
 
 ## Projects
 
-![Otherhost project cards from a demonstration workspace](assets/screenshots/dashboard-projects.png)
+![Otherhost project cards from a fictional demonstration workspace](assets/screenshots/dashboard-projects.jpg)
 
 Projects automatically discovers Git repositories within three directory
 levels of the WSL user's home. The configured `projects_root` remains the
@@ -77,7 +79,7 @@ Back up or push any work that must be retained before confirming deletion.
 
 ## Terminal
 
-![Otherhost integrated terminal ready to start a remote WSL session](assets/screenshots/dashboard-terminal.jpg)
+![Otherhost integrated terminal showing a fictional scripted session](assets/screenshots/dashboard-terminal.jpg)
 
 Terminal keeps the shell interaction on the Mac while commands and workloads
 run inside WSL. **Start terminal** and **New session** begin in the remote WSL
@@ -97,12 +99,13 @@ unchanged, and the transport itself remains SSH. The browser buffers the
 bootstrap output until the session emits its ready marker, so internal setup
 commands never appear in the terminal viewport.
 
-The screenshot shows the disconnected empty state because demonstration mode
-intentionally never starts a local or remote shell.
+In demonstration mode, starting a terminal opens a read-only scripted preview
+with fictional commands and output. It exercises the same terminal presentation
+without launching a local process or connecting to WSL over SSH.
 
 ## Machine
 
-![Otherhost machine capacity and WSL allocation](assets/screenshots/dashboard-machine.png)
+![Otherhost fictional machine capacity and WSL allocation](assets/screenshots/dashboard-machine.jpg)
 
 Machine separates physical host capacity from the resources available to the
 WSL development environment:
@@ -116,10 +119,6 @@ This distinction helps diagnose whether a workload is constrained by the
 desktop itself or by the current WSL allocation.
 
 ## Responsive layout
-
-<p align="center">
-  <img src="assets/screenshots/dashboard-mobile.png" width="390" alt="Otherhost overview in the compact mobile layout">
-</p>
 
 On narrow screens, the fixed sidebar becomes a compact top header while the
 same status, project, and machine information remains available in a single
@@ -157,6 +156,7 @@ make build-ui
 ./build/otherhost-ui --demo --no-open
 ```
 
-Then open `http://127.0.0.1:7842`. Demonstration mode uses fixed sample projects
-and hardware data, performs no SSH connection, and keeps terminal actions
-disabled.
+Then open `http://127.0.0.1:7842`. Demonstration mode uses an intentionally
+fictional host, sample projects under `/home/demo`, and a scripted read-only
+terminal preview. It never opens an SSH connection or runs the displayed
+commands.

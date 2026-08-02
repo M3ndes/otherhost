@@ -3,6 +3,9 @@ package dashboard
 import (
 	"encoding/base64"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -59,5 +62,55 @@ func TestRemoteInventoryScriptDoesNotInterpolateProjectPath(t *testing.T) {
 	}
 	if !strings.Contains(script, "</dev/null") {
 		t.Fatal("Windows inventory command can consume the remaining streamed shell script")
+	}
+}
+
+func TestRemoteInventoryScriptDiscoversRepositoriesWithinHome(t *testing.T) {
+	home := t.TempDir()
+	repositories := []string{
+		"root-repository",
+		"work/nested-repository",
+		"work/group/deep-repository",
+		"custom/deep/root/preferred-repository",
+	}
+	ignored := []string{
+		"work/group/too/deep-repository",
+		".cache/hidden-repository",
+		"work/node_modules/dependency-repository",
+		"work/vendor/dependency-repository",
+	}
+	for _, repository := range append(repositories, ignored...) {
+		if err := os.MkdirAll(filepath.Join(home, repository, ".git"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	command := exec.Command("bash", "-s")
+	command.Env = append(os.Environ(), "HOME="+home)
+	command.Stdin = strings.NewReader(remoteInventoryScript("custom/deep/root"))
+	output, err := command.Output()
+	if err != nil {
+		t.Fatalf("remote inventory script failed: %v", err)
+	}
+	snapshot, err := parseRemoteReport(string(output))
+	if err != nil {
+		t.Fatalf("could not parse remote inventory: %v\n%s", err, output)
+	}
+
+	found := make(map[string]bool, len(snapshot.Projects))
+	for _, project := range snapshot.Projects {
+		found[project.Path] = true
+	}
+	for _, repository := range repositories {
+		path := filepath.Join(home, repository)
+		if !found[path] {
+			t.Errorf("expected repository was not discovered: %s", path)
+		}
+	}
+	for _, repository := range ignored {
+		path := filepath.Join(home, repository)
+		if found[path] {
+			t.Errorf("ignored repository was discovered: %s", path)
+		}
 	}
 }

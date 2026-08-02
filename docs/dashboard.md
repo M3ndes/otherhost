@@ -39,9 +39,18 @@ keeps the last layout stable and presents a retry action with a concise error.
 
 ![Otherhost project cards from a demonstration workspace](assets/screenshots/dashboard-projects.png)
 
-Projects lists direct Git repository children of the configured `projects_root`
-inside WSL. Each card shows the repository name, remote path, detected
-technologies, and current Git branch.
+Projects automatically discovers Git repositories within three directory
+levels of the WSL user's home. The configured `projects_root` remains the
+preferred location and its direct children are always included, even when that
+root is deeper in the home directory. Hidden directories, `node_modules`,
+`vendor`, and paths outside the WSL home such as Windows mounts are not scanned.
+The bounded inventory returns at most 200 repositories. Each card shows the
+repository name, remote path, detected technologies, and current Git branch.
+
+The visible dashboard refreshes its inventory every 30 seconds. Returning to
+the browser or opening **Projects** triggers an immediate refresh, so a
+repository cloned from the general terminal in the WSL home appears without a
+restart or manual move.
 
 - **Open project** asks the local VS Code CLI to open the exact inventoried path
   through the configured Remote SSH alias.

@@ -197,7 +197,7 @@ Review these configuration values before continuing:
 | `wsl_memory` | Maximum RAM assigned to WSL | `20GB` |
 | `wsl_processors` | Logical processors assigned to WSL | `8` |
 | `ports` | Application ports forwarded to the Mac | `3000,3001,8000,8080` |
-| `projects_root` | WSL home directory scanned by the project dashboard | `~/src` |
+| `projects_root` | Preferred WSL project directory whose direct children are always scanned | `~/src` |
 
 ### 3. Check and apply the Windows policy
 

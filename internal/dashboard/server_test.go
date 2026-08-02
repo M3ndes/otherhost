@@ -102,6 +102,29 @@ func TestDashboardBuffersTerminalInitializationOutput(t *testing.T) {
 	}
 }
 
+func TestDashboardRefreshesInventoryWhenProjectsOpen(t *testing.T) {
+	handler, err := NewHandler(fixedCollector{}, &recordingLauncher{}, "test-box")
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodGet, "/app.js", nil)
+	request.Host = "127.0.0.1:7842"
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d", response.Code)
+	}
+	page := response.Body.String()
+	for _, expected := range []string{
+		"link.dataset.sectionLink === 'projects') refresh()",
+		"document.addEventListener('visibilitychange'",
+	} {
+		if !strings.Contains(page, expected) {
+			t.Fatalf("automatic project inventory refresh is missing %q", expected)
+		}
+	}
+}
+
 func TestProjectActionsRequireInventoryTokenAndSameOrigin(t *testing.T) {
 	projectPath := "/home/developer/src/app"
 	collector := fixedCollector{snapshot: Snapshot{

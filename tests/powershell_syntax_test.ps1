@@ -69,6 +69,8 @@ foreach ($requiredControl in @(
     'Invoke-WslCommand -Arguments $bootstrapArguments',
     '[switch]$Pair',
     'Start-PairingMode',
+    'Start-PairingTranscript',
+    "'pairing-latest.log'",
     'Get-ActivePairingNetworkPolicy',
     'Ensure-HyperVSSHRule',
     'pairing helper:',

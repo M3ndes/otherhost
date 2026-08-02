@@ -546,6 +546,7 @@ function configureNavigation() {
   }, { passive: true });
   links.forEach((link) => link.addEventListener('click', () => {
     links.forEach((candidate) => candidate.classList.toggle('active', candidate === link));
+    if (link.dataset.sectionLink === 'projects') refresh();
   }));
   update();
 }
@@ -564,4 +565,5 @@ document.querySelector('[data-project-search]').addEventListener('input', (event
 state.loading = false;
 refresh();
 setInterval(() => { if (!document.hidden) refresh(); }, 30000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
 window.addEventListener('beforeunload', () => stopTerminal(false));

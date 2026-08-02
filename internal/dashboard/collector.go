@@ -116,7 +116,7 @@ type windowsInventory struct {
 func parseRemoteReport(report string) (Snapshot, error) {
 	snapshot := Snapshot{Projects: []Project{}, Host: Host{Disks: []Disk{}}}
 	var currentProject *Project
-	for _, line := range strings.Split(strings.TrimSpace(report), "\n") {
+	for _, line := range strings.Split(strings.Trim(report, "\r\n"), "\n") {
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
@@ -273,9 +273,25 @@ fi
 
 projects_relative=$(printf '%s' '__PROJECTS_ROOT__' | base64 -d)
 projects_root="$HOME/$projects_relative"
-if [ -d "$projects_root" ]; then
-  find "$projects_root" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z | while IFS= read -r -d '' project; do
-    if [ ! -d "$project/.git" ] && [ ! -f "$project/.git" ]; then continue; fi
+
+discover_project_candidates() {
+  search_root=$1
+  search_depth=$2
+  [ -d "$search_root" ] || return 0
+  find "$search_root" -mindepth 1 -maxdepth "$search_depth" \
+    \( -type d \( -name '.*' -o -name node_modules -o -name vendor \) -prune \) -o \
+    -type d -print0
+}
+
+{
+  discover_project_candidates "$HOME" 3
+  discover_project_candidates "$projects_root" 1
+} | sort -zu | {
+  project_count=0
+  while IFS= read -r -d '' project; do
+    # Standard submodules and linked worktrees use a .git pointer file. Only
+    # primary repository checkouts own a .git directory and belong in Projects.
+    if [ ! -d "$project/.git" ]; then continue; fi
     emit project.path "$project"
     branch=$(git -C "$project" branch --show-current 2>/dev/null || true)
     emit project.branch "$branch"
@@ -284,6 +300,8 @@ if [ -d "$projects_root" ]; then
     [ -f "$project/go.mod" ] && emit project.technology 'Go'
     [ -f "$project/Cargo.toml" ] && emit project.technology 'Rust'
     if [ -f "$project/pyproject.toml" ] || [ -f "$project/requirements.txt" ]; then emit project.technology 'Python'; fi
+    project_count=$((project_count + 1))
+    if [ "$project_count" -ge 200 ]; then break; fi
   done
-fi
+}
 `

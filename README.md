@@ -263,7 +263,7 @@ cloned from the integrated terminal appears without moving it or restarting the
 dashboard. It also shows the Windows hardware inventory and WSL allocation and
 opens a selected folder through VS Code Remote SSH. Use the terminal icon on a
 project to start an interactive WSL shell in that directory, or open **Terminal**
-to start in the remote home directory. **Open project** verifies that the
+to start in the remote home directory. **Open in VS Code** verifies that the
 managed alias still matches the paired host before asking VS Code to connect;
 run `otherhost ssh-config --apply` if the alias is missing or stale.
 

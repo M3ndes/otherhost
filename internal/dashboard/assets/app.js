@@ -214,7 +214,9 @@ function renderProjects() {
     const openButton = document.createElement('button');
     openButton.className = 'open-project';
     openButton.type = 'button';
-    openButton.innerHTML = `${icons.external}<span>Open project</span>`;
+    openButton.title = 'Open in VS Code';
+    openButton.setAttribute('aria-label', `Open ${project.name} in VS Code`);
+    openButton.innerHTML = `${icons.external}<span>Open in VS Code</span>`;
     openButton.addEventListener('click', () => openProject(project, openButton));
     const copyButton = document.createElement('button');
     copyButton.className = 'copy-project';

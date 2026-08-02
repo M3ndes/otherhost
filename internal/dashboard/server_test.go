@@ -165,6 +165,30 @@ func TestDashboardRefreshesInventoryWhenProjectsOpen(t *testing.T) {
 	}
 }
 
+func TestDashboardLabelsProjectLauncherAsVSCode(t *testing.T) {
+	handler, err := NewHandler(fixedCollector{}, &recordingLauncher{}, "test-box")
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodGet, "/app.js", nil)
+	request.Host = "127.0.0.1:7842"
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d", response.Code)
+	}
+	page := response.Body.String()
+	for _, expected := range []string{
+		"Open in VS Code",
+		"`Open ${project.name} in VS Code`",
+		"Opening ${project.name} in VS Code.",
+	} {
+		if !strings.Contains(page, expected) {
+			t.Fatalf("VS Code project action is missing %q", expected)
+		}
+	}
+}
+
 func TestDashboardServesProjectDeletionConfirmation(t *testing.T) {
 	handler, err := NewHandler(fixedCollector{}, &recordingLauncher{}, "test-box")
 	if err != nil {

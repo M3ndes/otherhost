@@ -98,6 +98,9 @@ most three directory levels, prunes hidden directories and dependency trees,
 and returns at most 200 Git repositories. Direct children of the configured
 `projects_root` are also scanned so a deliberately deeper project root remains
 usable. Windows mounts and the rest of the remote filesystem are never walked.
+Candidates must own a `.git` directory; `.git` pointer files used by standard
+submodules and linked worktrees are deliberately omitted in favor of their
+primary checkout.
 The browser refreshes the full inventory every 30 seconds while visible, when
 its tab returns to the foreground, and when the user opens Projects.
 

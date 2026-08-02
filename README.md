@@ -242,15 +242,16 @@ otherhost ui
 It automatically discovers Git repositories within three directory levels of
 the WSL home, while `projects_root` (by default `~/src`) remains the preferred
 location and always has its direct children scanned. Hidden folders, dependency
-trees, and Windows mounts are excluded. The dashboard refreshes every 30 seconds
-while visible, when the browser returns to the foreground, and immediately when
-**Projects** is opened, so a repository cloned from the integrated terminal
-appears without moving it or restarting the dashboard. It also shows the Windows
-hardware inventory and WSL allocation and opens a selected folder through VS
-Code Remote SSH. Use the terminal icon on a project to start an interactive WSL
-shell in that directory, or open **Terminal** to start in the remote home
-directory. Add the reviewed output from `otherhost ssh-config` to
-`~/.ssh/config` before using **Open project** in VS Code.
+trees, Git submodules, linked worktrees, and Windows mounts are excluded. Only
+the primary checkout of each repository relationship is presented. The
+dashboard refreshes every 30 seconds while visible, when the browser returns to
+the foreground, and immediately when **Projects** is opened, so a repository
+cloned from the integrated terminal appears without moving it or restarting the
+dashboard. It also shows the Windows hardware inventory and WSL allocation and
+opens a selected folder through VS Code Remote SSH. Use the terminal icon on a
+project to start an interactive WSL shell in that directory, or open **Terminal**
+to start in the remote home directory. Add the reviewed output from `otherhost
+ssh-config` to `~/.ssh/config` before using **Open project** in VS Code.
 
 The UI is entirely in English, loads no remote assets, sends no telemetry, and
 does not expose its local HTTP server to the LAN. Docker remains available in

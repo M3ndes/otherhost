@@ -79,8 +79,21 @@ func TestRemoteInventoryScriptDiscoversRepositoriesWithinHome(t *testing.T) {
 		"work/node_modules/dependency-repository",
 		"work/vendor/dependency-repository",
 	}
+	linkedCheckouts := []string{
+		"platform/linked-submodule",
+		"work/linked-worktree",
+	}
 	for _, repository := range append(repositories, ignored...) {
 		if err := os.MkdirAll(filepath.Join(home, repository, ".git"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, repository := range linkedCheckouts {
+		path := filepath.Join(home, repository)
+		if err := os.MkdirAll(path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(path, ".git"), []byte("gitdir: /tmp/linked-checkout\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -107,7 +120,7 @@ func TestRemoteInventoryScriptDiscoversRepositoriesWithinHome(t *testing.T) {
 			t.Errorf("expected repository was not discovered: %s", path)
 		}
 	}
-	for _, repository := range ignored {
+	for _, repository := range append(ignored, linkedCheckouts...) {
 		path := filepath.Join(home, repository)
 		if found[path] {
 			t.Errorf("ignored repository was discovered: %s", path)

@@ -289,7 +289,9 @@ discover_project_candidates() {
 } | sort -zu | {
   project_count=0
   while IFS= read -r -d '' project; do
-    if [ ! -d "$project/.git" ] && [ ! -f "$project/.git" ]; then continue; fi
+    # Standard submodules and linked worktrees use a .git pointer file. Only
+    # primary repository checkouts own a .git directory and belong in Projects.
+    if [ ! -d "$project/.git" ]; then continue; fi
     emit project.path "$project"
     branch=$(git -C "$project" branch --show-current 2>/dev/null || true)
     emit project.branch "$branch"

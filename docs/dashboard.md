@@ -44,7 +44,9 @@ levels of the WSL user's home. The configured `projects_root` remains the
 preferred location and its direct children are always included, even when that
 root is deeper in the home directory. Hidden directories, `node_modules`,
 `vendor`, and paths outside the WSL home such as Windows mounts are not scanned.
-The bounded inventory returns at most 200 repositories. Each card shows the
+Git submodules and linked worktrees are omitted because their `.git` entry
+points to the primary checkout instead of owning repository metadata. The
+bounded inventory returns at most 200 primary repositories. Each card shows the
 repository name, remote path, detected technologies, and current Git branch.
 
 The visible dashboard refreshes its inventory every 30 seconds. Returning to

@@ -260,12 +260,14 @@ the former `devbox-bridge` GitHub URL. The dashboard refreshes every 30 seconds
 while visible, when the browser returns to
 the foreground, and immediately when **Projects** is opened, so a repository
 cloned from the integrated terminal appears without moving it or restarting the
-dashboard. It also shows the Windows hardware inventory and WSL allocation and
-opens a selected folder through VS Code Remote SSH. Use the terminal icon on a
-project to start an interactive WSL shell in that directory, or open **Terminal**
-to start in the remote home directory. **Open project** verifies that the
-managed alias still matches the paired host before asking VS Code to connect;
-run `otherhost ssh-config --apply` if the alias is missing or stale.
+dashboard. It also shows the Windows hardware inventory and WSL allocation.
+Project cards present branded **Codex** and **VS Code** actions. **Codex** opens
+the desktop app's SSH connection flow for the paired alias; select the displayed
+remote path in Codex to save the project. **VS Code** opens the exact folder over
+Remote SSH and verifies that the managed alias still matches the paired host;
+run `otherhost ssh-config --apply` if the alias is missing or stale. Use the
+terminal icon on a project to start an interactive WSL shell in that directory,
+or open **Terminal** to start in the remote home directory.
 
 The UI is entirely in English, loads no remote assets, sends no telemetry, and
 does not expose its local HTTP server to the LAN. Docker remains available in

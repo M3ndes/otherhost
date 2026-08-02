@@ -273,6 +273,27 @@
       </main>
     </div>
 
+    <div class="modal-backdrop hidden" data-delete-modal>
+      <section class="delete-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-dialog-title" aria-describedby="delete-dialog-description">
+        <div class="delete-dialog-icon" data-icon="trash" aria-hidden="true"></div>
+        <span class="eyebrow">Permanent deletion</span>
+        <h2 id="delete-dialog-title">Delete <span data-delete-name>project</span>?</h2>
+        <p id="delete-dialog-description">This removes the entire project directory from the WSL machine. This action cannot be undone.</p>
+        <code data-delete-path></code>
+        <form data-delete-form>
+          <label for="delete-confirmation">Type <strong data-delete-confirmation-name>project</strong> to confirm</label>
+          <input id="delete-confirmation" type="text" autocomplete="off" spellcheck="false" data-delete-confirmation>
+          <div class="delete-dialog-actions">
+            <button class="secondary-button" type="button" data-delete-cancel>Cancel</button>
+            <button class="danger-button" type="submit" data-delete-submit disabled>
+              <span data-icon="trash"></span>
+              <span data-delete-submit-label>Delete permanently</span>
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+
     <div class="toast" data-toast role="status" aria-live="polite"></div>
     <script src="/vendor/xterm/xterm.js" defer></script>
     <script src="/vendor/addon-fit/addon-fit.js" defer></script>

@@ -105,8 +105,8 @@ grep -F 'StrictHostKeyChecking=yes' "$MAC_COMMAND" >/dev/null
 grep -F 'UserKnownHostsFile' "$MAC_COMMAND" >/dev/null
 grep -F "Remove-NetFirewallRule -Name \$discoveryRule" "$SETUP_SCRIPT" >/dev/null
 grep -F "Remove-NetFirewallRule -Name \$sessionRule" "$SETUP_SCRIPT" >/dev/null
-grep -F -- '-RemoteAddress $networkPolicy.RemoteSubnets -Profile $networkPolicy.Profiles' "$SETUP_SCRIPT" >/dev/null
-grep -F -- '-RemoteAddresses $RemoteSubnets' "$SETUP_SCRIPT" >/dev/null
+grep -F -- "-RemoteAddress \$networkPolicy.RemoteSubnets -Profile \$networkPolicy.Profiles" "$SETUP_SCRIPT" >/dev/null
+grep -F -- "-RemoteAddresses \$RemoteSubnets" "$SETUP_SCRIPT" >/dev/null
 grep -F -- '--user-scoped-wsl' "$SETUP_SCRIPT" >/dev/null
 grep -F 'Pairing is enabled' "$PAIRING_MAIN" >/dev/null
 

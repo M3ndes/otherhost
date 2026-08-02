@@ -79,26 +79,21 @@ func TestEncryptedMessagesRejectWrongSessionKey(t *testing.T) {
 	}
 }
 
-func TestWSLKeyInstallArgumentsPreserveNormalizedPublicKey(t *testing.T) {
-	arguments, err := wslKeyInstallArguments("Ubuntu", testPublicKey)
+func TestWSLKeyInstallScriptPreservesNormalizedPublicKey(t *testing.T) {
+	script, err := wslKeyInstallScript(testPublicKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(arguments) != 6 || arguments[0] != "-d" || arguments[1] != "Ubuntu" ||
-		arguments[2] != "--" || arguments[3] != "bash" || arguments[4] != "-c" ||
-		arguments[5] == "" {
-		t.Fatalf("unexpected WSL command arguments: %#v", arguments)
-	}
-	if strings.Contains(arguments[5], `"$1"`) || strings.Contains(arguments[5], "IFS= read") ||
-		strings.Contains(arguments[5], "__DEVBOX_PUBLIC_KEY_BASE64__") {
-		t.Fatalf("WSL install script does not read the encoded argument safely: %s", arguments[5])
+	if strings.Contains(script, `"$1"`) || strings.Contains(script, "IFS= read") ||
+		strings.Contains(script, "__DEVBOX_PUBLIC_KEY_BASE64__") {
+		t.Fatalf("WSL install script does not embed the encoded key safely: %s", script)
 	}
 	expected := strings.Join(strings.Fields(testPublicKey)[:2], " ")
 	encoded := base64.StdEncoding.EncodeToString([]byte(expected))
-	if !strings.Contains(arguments[5], "'"+encoded+"'") {
+	if !strings.Contains(script, "'"+encoded+"'") {
 		t.Fatal("encoded WSL key was not embedded in the install script")
 	}
-	if strings.Contains(strings.Join(arguments, " "), testPublicKey) {
+	if strings.Contains(script, testPublicKey) {
 		t.Fatal("raw public key was embedded directly in the WSL command")
 	}
 }

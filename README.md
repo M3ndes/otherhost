@@ -1,70 +1,135 @@
 # devbox-bridge
 
-Turn a Windows desktop with WSL 2 and Docker Desktop into a private development
-machine that a Mac can use over SSH.
+[![CI](https://github.com/M3ndes/devbox-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/M3ndes/devbox-bridge/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-The project is CLI-first: setup stays inspectable, automation works in terminals
-and CI, and every machine keeps its own untracked configuration.
+Use a Windows desktop as a private WSL 2 and Docker development machine from
+your Mac. Pair the two computers with a Bluetooth-style six-digit check, then
+connect over SSH with one command.
 
-## What it provides
+```text
+Windows:  .\setup.cmd -Pair       Mac:  devbox pair
+          Code 482 731                  Code 482 731
+                         confirm both
 
-- Bluetooth-style local discovery and six-digit device verification;
-- a macOS command for health checks, SSH tunnels, URLs, and remote status;
-- a PowerShell bootstrap for WSL resources, mirrored networking, and firewall;
-- a WSL bootstrap for systemd, hardened SSH, Docker checks, and optional cloning;
-- configuration parsed as data, never executed as shell or PowerShell code;
-- no passwords, tokens, or private keys committed to Git.
+Mac:      devbox connect
+```
+
+devbox-bridge is open source, CLI-first, and intentionally inspectable. There
+is no cloud relay or project account. Your source, builds, and containers stay
+on the Windows computer; the Mac is the keyboard, editor, and browser.
+
+> **Project status:** early stage. CI covers the portable scripts and pairing
+> protocol; full Windows + WSL + macOS behavior still requires real-machine
+> testing. Command details may evolve before a stable `1.0` release. Bug reports
+> and focused pull requests are welcome.
+
+## Why use it?
+
+A powerful desktop is often a better place to compile code, run containers, or
+host large development databases. A Mac laptop is often a better place to work
+interactively. devbox-bridge joins them without copying a private SSH key,
+opening a public service, or requiring users to understand every networking
+detail first.
+
+- **Fast local pairing:** discover the Windows host and compare one six-digit
+  code on both screens.
+- **Secure by default:** public-key-only SSH, pinned host identity, encrypted
+  pairing, and localhost-only service tunnels.
+- **One Windows setup command:** checks the machine, asks once, elevates through
+  UAC, and configures Windows and WSL.
+- **Useful diagnostics:** each layer reports what it checked and where a failure
+  occurred.
+- **Automation-friendly:** Bash, PowerShell, and a small dependency-free Go
+  pairing helper; no required GUI or hosted control plane.
+
+## The simple mental model
+
+The Windows computer is the **host**. It owns WSL, the source files, build tools,
+and Docker containers. The Mac is the **client**. It reaches WSL through
+OpenSSH and exposes local browser URLs for services running there.
 
 ```mermaid
 flowchart LR
-    Mac["MacBook<br/>editor + browser"]
-    SSH["Encrypted SSH<br/>port forwards"]
-    WSL["Windows desktop / WSL 2<br/>source + build tools"]
-    Docker["Docker Desktop<br/>containers + volumes"]
-    Mac --> SSH --> WSL --> Docker
+    subgraph Client["Mac — client"]
+        Editor["Terminal and editor"]
+        Browser["Browser on localhost"]
+    end
+
+    subgraph Host["Windows desktop — host"]
+        Pair["Temporary pairing helper"]
+        subgraph WSL["WSL 2 / Ubuntu"]
+            SSH["Hardened SSH server"]
+            Code["Source and build tools"]
+            Apps["Apps and Docker containers"]
+        end
+    end
+
+    Editor -.->|"discover and pair once"| Pair
+    Pair -->|"install Mac public key"| SSH
+    Editor -->|"SSH on TCP 2222"| SSH
+    Browser -->|"localhost port forwards"| SSH
+    SSH --> Code
+    SSH --> Apps
 ```
+
+Pairing and daily use are separate:
+
+1. **Pairing** is a temporary, two-minute local-network exchange. It installs
+   the Mac's public key and teaches the Mac which SSH host identity to trust.
+2. **Daily connection** uses normal OpenSSH. `devbox connect` keeps configured
+   port forwards open until you press `Ctrl-C`.
+
+New to SSH, ports, WSL, or tunneling? Read [How it works](docs/how-it-works.md)
+for a plain-language walkthrough.
 
 ## Requirements
 
-- Mac with Git and OpenSSH;
-- Windows 11 22H2 or newer for mirrored WSL networking;
-- WSL 2 with an Ubuntu distribution;
-- Docker Desktop using the WSL 2 backend for container workloads;
-- both devices on the same trusted private network during pairing.
+### Windows host
 
-For access away from home, add a private overlay network such as Tailscale later.
-Do not expose SSH or pairing ports directly on the public internet.
+- Windows 11 22H2 (build 22621) or newer;
+- current WSL 2 with an Ubuntu distribution;
+- Git in the Windows environment used to clone this repository;
+- Docker Desktop with its WSL 2 backend when you need containers.
 
-## 1. Set up the Windows host
+### Mac client
 
-Open PowerShell in a Windows checkout of this repository and run:
+- macOS with Git and OpenSSH;
+- a shell supported by the system-provided Bash and standard macOS tools.
+
+### Network
+
+Both computers should be on the same trusted home or office network for initial
+pairing. They do not need to use the same kind of connection: Windows may use
+Ethernet while the Mac uses Wi-Fi, provided the router allows the two devices to
+communicate. Guest Wi-Fi and client-isolation features commonly block this.
+
+For access away from that network, add a private overlay network such as
+Tailscale after local setup works. Never forward the SSH or pairing ports from a
+public router directly to the host.
+
+## Quick start
+
+### 1. Prepare Windows
+
+Clone this repository on Windows. Open PowerShell in the checkout and run:
 
 ```powershell
 .\setup.cmd
 ```
 
-The command performs a read-only preflight, asks for one confirmation, requests
-Administrator permission through UAC, and prepares Windows, WSL, and hardened
-public-key-only SSH. No GitHub account or Mac key is needed during normal host
-setup.
+The command performs a read-only preflight, shows the planned changes, asks for
+one confirmation, and requests Administrator permission through UAC. It then
+prepares WSL resources, mirrored networking, firewall policy, and a hardened
+SSH server. Normal setup does not require a GitHub account or a Mac SSH key.
 
-### Existing WSL host without elevation
+For a read-only check without applying changes:
 
-When Ubuntu, systemd, and mirrored networking are already active, the host can
-run entirely in the WSL user account without PowerShell, Administrator access,
-or `sudo`:
-
-```bash
-cd ~/src/devbox-bridge
-./scripts/bootstrap-wsl-user.sh --apply
+```powershell
+.\setup.cmd -Check
 ```
 
-This installs OpenSSH from Ubuntu's signed packages under `~/.local`, enables a
-user service on port 2222, disables password authentication, and limits SSH port
-forwarding to WSL loopback services. It does not install WSL or change Windows
-firewall policy.
-
-## 2. Install the Mac client
+### 2. Install the Mac client
 
 ```bash
 git clone https://github.com/M3ndes/devbox-bridge.git
@@ -72,38 +137,27 @@ cd devbox-bridge
 ./scripts/bootstrap-mac.sh --apply
 ```
 
-The installer adds the `devbox` command and downloads the checksum-verified
-pairing helper for the Mac architecture. The dedicated SSH identity is created
-on the first pairing. Its private key never leaves the Mac.
+The installer adds `devbox` under `~/.local/bin` and installs a
+checksum-verified pairing helper for the Mac architecture. Existing
+configuration and keys are preserved. The dedicated SSH private key is created
+on first pairing and never leaves the Mac.
 
-## 3. Pair in seconds
+### 3. Pair the computers
 
-On Windows, enable discovery for two minutes:
+On Windows, start a two-minute discovery window and leave it open:
 
 ```powershell
 .\setup.cmd -Pair
 ```
 
-For the user-scoped WSL host, enable discovery inside WSL instead:
-
-```bash
-./scripts/pair-wsl.sh
-```
-
-Then, on the Mac:
+On the Mac, run:
 
 ```bash
 devbox pair
 ```
 
-Both commands print `[diag]` lines for the helper version, temporary listeners,
-multicast attempt, local IPv4 subnets, and direct TCP probe summary. These lines
-contain no keys or pairing secrets and can be used to identify the network layer
-that stopped the connection.
-
-The Mac finds Windows devboxes automatically. It tries multicast first and then
-falls back to a bounded scan of its local IPv4 subnet when WSL does not receive
-multicast traffic. Both devices display the same six-digit code:
+The Mac tries multicast discovery first and then scans only its local IPv4
+subnet on the fixed pairing port. Both screens display a code:
 
 ```text
 Windows                                  Mac
@@ -112,56 +166,32 @@ Pairing code: 482 731                    Pairing code: 482 731
 Does the Mac show the same code?         Does Windows show the same code?
 ```
 
-Confirm on both devices. Pairing installs the Mac public SSH key, pins the WSL
-SSH host identity, saves the Windows address and Ubuntu user, and runs
-`devbox doctor`. The code is compared; it is never typed or used as a password.
+Confirm **only** when the device name and code match. The code is compared, not
+typed or sent as a password. After confirmation, pairing installs the Mac
+public key, pins the WSL SSH host key, saves the connection details, and runs a
+health check.
 
-Pairing mode accepts one active session and closes after success, rejection, or
-timeout. Windows-hosted pairing removes its temporary private-subnet firewall
-rules; WSL user pairing does not create Windows firewall rules.
+If discovery does not work, keep both commands open and follow the
+[pairing decision guide](docs/troubleshooting.md#devbox-pair-finds-no-windows-devbox).
+The `[diag]` output identifies whether multicast, direct discovery, the listener,
+or SSH failed.
 
-## What Windows setup does
-
-- selects a resource policy based on the desktop hardware;
-- keeps the operational clone under `~/src/devbox-bridge` inside WSL;
-- creates machine-local configuration and detects the Ubuntu user;
-- configures mirrored networking and the Hyper-V firewall;
-- installs and hardens OpenSSH with password login disabled;
-- prepares a permission-restricted `authorized_keys` file for pairing.
-
-The WSL clone is pinned to the exact revision of the Windows checkout. Privileged
-WSL configuration runs from that reviewed checkout, and setup refuses local
-changes so the scripts match the verified revision.
-
-For a read-only preflight:
-
-```powershell
-.\setup.cmd -Check
-```
-
-GitHub key discovery remains available as a manual recovery path:
-
-```powershell
-.\setup.cmd -GitHubUser YOUR_USER -GitHubKeyFingerprint SHA256:YOUR_FINGERPRINT -Yes
-```
-
-## Connect from the Mac
-
-After pairing, the normal daily command is:
+### 4. Connect from the Mac
 
 ```bash
 devbox connect
 ```
 
-Keep it running while using forwarded services. In another terminal:
+Keep that terminal open. Configured services are now available through Mac
+localhost URLs. In another terminal:
 
 ```bash
 devbox urls
 devbox status
 ```
 
-For editors with Remote SSH support, review the generated block before adding it
-to `~/.ssh/config`:
+For an editor with Remote SSH support, review the generated host block before
+adding it to `~/.ssh/config`:
 
 ```bash
 devbox ssh-config
@@ -169,23 +199,85 @@ devbox ssh-config
 
 ## Commands
 
-| Command | Purpose |
+| Command | Where | Purpose |
+| --- | --- | --- |
+| `.\setup.cmd` | Windows | Check and configure the Windows + WSL host |
+| `.\setup.cmd -Check` | Windows | Run the host preflight without changing anything |
+| `.\setup.cmd -Pair` | Windows | Make the host discoverable for two minutes |
+| `devbox pair` | Mac | Discover, verify, and save a host |
+| `devbox doctor` | Mac | Validate configuration, keys, dependencies, and SSH |
+| `devbox connect` | Mac | Keep all configured SSH port forwards open |
+| `devbox status` | Mac | Show remote uptime, memory, disk, and Docker usage |
+| `devbox urls` | Mac | Print forwarded localhost URLs |
+| `devbox ssh-config` | Mac | Generate an OpenSSH host block |
+
+## Alternative host mode
+
+If Ubuntu, systemd, and WSL mirrored networking already work, an experienced
+user can install a user-scoped host without PowerShell, Administrator access, or
+`sudo`:
+
+```bash
+cd ~/src/devbox-bridge
+./scripts/bootstrap-wsl-user.sh --apply
+./scripts/pair-wsl.sh
+```
+
+This mode extracts OpenSSH from Ubuntu's signed packages into `~/.local` and
+runs it as a systemd user service. It does not install WSL or change Windows
+firewall policy. See [Windows and WSL host](docs/windows-wsl.md) before choosing
+this route.
+
+## Security at a glance
+
+- Pairing uses fresh X25519 keys, HKDF-SHA-256, and authenticated AES-256-GCM
+  messages.
+- The six-digit comparison binds the complete session and is never transmitted.
+- Only the Mac's **public** SSH key crosses the network; its private key remains
+  on the Mac.
+- The Mac pins the authenticated WSL Ed25519 host key and fails closed if it
+  later changes.
+- SSH password login and root login are disabled.
+- Pairing listeners and Windows firewall exceptions are temporary and restricted
+  to the active local subnet.
+- Forwarded applications bind to Mac `127.0.0.1`, not its LAN interfaces.
+- Configuration files are parsed as data and are never executed as shell or
+  PowerShell code.
+
+The six-digit code protects against an active device impersonating either side
+only when the user actually compares it. It does not make an untrusted network
+safe for unrelated traffic or secure an already-compromised computer. Read the
+full [security policy and trust model](SECURITY.md).
+
+## Documentation
+
+| Guide | Start here when... |
 | --- | --- |
-| `devbox pair` | Discover, verify, and configure a Windows devbox |
-| `devbox doctor` | Validate config, dependencies, key permissions, and SSH |
-| `devbox connect` | Keep all configured SSH port forwards open |
-| `devbox status` | Show remote uptime, memory, disk, and Docker usage |
-| `devbox urls` | Print forwarded localhost URLs |
-| `devbox ssh-config` | Generate an OpenSSH host block |
+| [How it works](docs/how-it-works.md) | You want the network and security model in plain language |
+| [Windows and WSL host](docs/windows-wsl.md) | You are setting up or operating the Windows computer |
+| [macOS client](docs/macos.md) | You are installing, pairing, or using the Mac command |
+| [Troubleshooting](docs/troubleshooting.md) | A setup, discovery, SSH, or Docker step failed |
+| [Architecture and decisions](docs/architecture.md) | You want protocol details or plan a code change |
+| [Contributing](CONTRIBUTING.md) | You want to report, test, document, or implement a change |
+| [Security policy](SECURITY.md) | You need deployment boundaries or private reporting instructions |
 
-Run `make test` before contributing. See [Windows and WSL setup](docs/windows-wsl.md),
-[troubleshooting](docs/troubleshooting.md), [macOS usage](docs/macos.md), and
-[architecture](docs/architecture.md) for details.
+## Scope and non-goals
 
-## Scope
+devbox-bridge configures a trusted remote-development path. It does **not**:
 
-This project configures a trusted remote development path. It does not install
-Docker Desktop, change router settings, synchronize private keys, or keep a
-Windows machine awake. Those remain explicit host-owner decisions.
+- install Docker Desktop itself;
+- change router settings or expose the host to the public internet;
+- synchronize source code or private keys between devices;
+- provide a cloud relay, account system, or remote wake service;
+- keep Windows awake or manage OS updates and backups;
+- replace a VPN when the computers are on different networks.
+
+## Contributing
+
+Issues and pull requests are welcome. Please search existing issues, describe the
+Windows/WSL/macOS versions involved, and redact private keys, tokens, usernames,
+hostnames, and LAN addresses from logs. Run `make test` before submitting code.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and review
+checklist.
 
 Licensed under the [MIT License](LICENSE).

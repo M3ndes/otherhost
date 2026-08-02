@@ -46,7 +46,7 @@ func TestParseRemoteReportBuildsMachineAndProjectInventory(t *testing.T) {
 }
 
 func TestRemoteInventoryScriptDoesNotInterpolateProjectPath(t *testing.T) {
-	value := `src/$(touch /tmp/devbox-dashboard-unsafe)`
+	value := `src/$(touch /tmp/otherhost-dashboard-unsafe)`
 	script := remoteInventoryScript(value)
 	if strings.Contains(script, value) {
 		t.Fatal("projects root was interpolated into the remote shell script")

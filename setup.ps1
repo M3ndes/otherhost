@@ -12,12 +12,12 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$RepositoryUrl = 'https://github.com/M3ndes/devbox-bridge.git'
-$LinuxRepository = '~/src/devbox-bridge'
+$RepositoryUrl = 'https://github.com/M3ndes/otherhost.git'
+$LinuxRepository = '~/src/otherhost'
 $PairingDiscoveryPort = 25370
 $PairingSessionPort = 25371
 $PairingDiscoveryAddress = "239.255.67.89:$PairingDiscoveryPort"
-. (Join-Path $PSScriptRoot 'lib\devbox-windows.ps1')
+. (Join-Path $PSScriptRoot 'lib\otherhost-windows.ps1')
 
 function Write-Ok([string]$Message) { Write-Host "[ok] $Message" -ForegroundColor Green }
 function Write-Step([string]$Message) { Write-Host "`n==> $Message" -ForegroundColor Cyan }
@@ -80,11 +80,14 @@ function Get-RepositoryRevision {
     $origin = $originResult.Output.Trim()
     $allowedOrigins = @(
         $RepositoryUrl,
+        'git@github.com:M3ndes/otherhost.git',
+        'ssh://git@github.com/M3ndes/otherhost.git',
+        'https://github.com/M3ndes/devbox-bridge.git',
         'git@github.com:M3ndes/devbox-bridge.git',
         'ssh://git@github.com/M3ndes/devbox-bridge.git'
     )
     if ($originResult.ExitCode -ne 0 -or $origin -notin $allowedOrigins) {
-        Fail "This checkout must use the canonical devbox-bridge origin; found: $origin"
+        Fail "This checkout must use the canonical otherhost origin; found: $origin"
     }
     $statusResult = Invoke-CapturedProcess -FilePath $gitExecutable -Arguments @('-C', $PSScriptRoot, 'status', '--porcelain', '--untracked-files=all')
     if ($statusResult.ExitCode -ne 0) { Fail 'Could not verify that the Windows checkout is clean' }
@@ -129,6 +132,25 @@ function Set-ConfigValues([string]$Path, [hashtable]$Values) {
     [System.IO.File]::WriteAllText($Path, $content, $encoding)
 }
 
+function Convert-LegacyConfig([string]$Path) {
+    $lines = [System.IO.File]::ReadAllLines($Path)
+    $hasOtherhostName = $false
+    foreach ($line in $lines) {
+        if ($line -match '^\s*otherhost_name\s*=') { $hasOtherhostName = $true }
+    }
+    for ($index = 0; $index -lt $lines.Length; $index++) {
+        if ($lines[$index] -match '^\s*devbox_name\s*=(.*)$') {
+            if ($hasOtherhostName) {
+                $lines[$index] = '# Legacy machine-name key migrated to otherhost_name'
+            } else {
+                $lines[$index] = 'otherhost_name=' + $Matches[1].Trim()
+                $hasOtherhostName = $true
+            }
+        }
+    }
+    [System.IO.File]::WriteAllLines($Path, $lines, [System.Text.UTF8Encoding]::new($false))
+}
+
 function Get-ConfigValue([string]$Path, [string]$Key) {
     foreach ($line in [System.IO.File]::ReadAllLines($Path)) {
         $trimmed = $line.Trim()
@@ -150,7 +172,7 @@ function Invoke-WslScript([string]$Script) {
         Fail 'Could not determine the Ubuntu home directory for script handoff'
     }
 
-    $temporaryName = '.devbox-bridge-' + [guid]::NewGuid().ToString('N') + '.sh'
+    $temporaryName = '.otherhost-' + [guid]::NewGuid().ToString('N') + '.sh'
     $wslScriptPath = "$wslHome/$temporaryName"
     $windowsScriptPath = "\\wsl.localhost\$Distro" + $wslScriptPath.Replace('/', '\')
     try {
@@ -217,10 +239,11 @@ function Get-LanAddress {
 }
 
 function Get-PairingHelper {
-    if ($env:DEVBOX_PAIR_BIN) {
-        $explicitHelper = [System.IO.Path]::GetFullPath($env:DEVBOX_PAIR_BIN)
+    $pairingBinaryOverride = if ($env:OTHERHOST_PAIR_BIN) { $env:OTHERHOST_PAIR_BIN } else { $env:DEVBOX_PAIR_BIN }
+    if ($pairingBinaryOverride) {
+        $explicitHelper = [System.IO.Path]::GetFullPath($pairingBinaryOverride)
         if (-not (Test-Path -LiteralPath $explicitHelper -PathType Leaf)) {
-            Fail "DEVBOX_PAIR_BIN does not exist: $explicitHelper"
+            Fail "OTHERHOST_PAIR_BIN does not exist: $explicitHelper"
         }
         return $explicitHelper
     }
@@ -230,24 +253,38 @@ function Get-PairingHelper {
         default { Fail "Unsupported Windows architecture: $env:PROCESSOR_ARCHITECTURE" }
     }
     $version = 'v0.1.1'
-    $asset = "devbox-pair-windows-$architecture.exe"
-    $installDirectory = Join-Path $env:LOCALAPPDATA 'devbox-bridge\bin'
-    $destination = Join-Path $installDirectory 'devbox-pair.exe'
+    $asset = "otherhost-pair-windows-$architecture.exe"
+    $installDirectory = Join-Path $env:LOCALAPPDATA 'otherhost\bin'
+    $destination = Join-Path $installDirectory 'otherhost-pair.exe'
     $versionFile = "$destination.version"
     if ((Test-Path -LiteralPath $destination -PathType Leaf) -and
         (Test-Path -LiteralPath $versionFile -PathType Leaf) -and
         ([System.IO.File]::ReadAllText($versionFile).Trim() -eq $version)) {
         return $destination
     }
+    $legacyDestination = Join-Path $env:LOCALAPPDATA 'devbox-bridge\bin\devbox-pair.exe'
+    $legacyVersionFile = "$legacyDestination.version"
+    if ((Test-Path -LiteralPath $legacyDestination -PathType Leaf) -and
+        (Test-Path -LiteralPath $legacyVersionFile -PathType Leaf) -and
+        ([System.IO.File]::ReadAllText($legacyVersionFile).Trim() -eq $version)) {
+        return $legacyDestination
+    }
 
     Write-Step "Installing secure pairing helper $version"
-    $baseUrl = "https://github.com/M3ndes/devbox-bridge/releases/download/$version"
-    $temporaryDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ("devbox-pair-" + [guid]::NewGuid().ToString('N'))
+    $baseUrl = "https://github.com/M3ndes/otherhost/releases/download/$version"
+    $temporaryDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ("otherhost-pair-" + [guid]::NewGuid().ToString('N'))
     [void](New-Item -ItemType Directory -Path $temporaryDirectory)
     try {
         $download = Join-Path $temporaryDirectory $asset
         $checksums = Join-Path $temporaryDirectory 'checksums.txt'
-        Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/$asset" -OutFile $download
+        try {
+            Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/$asset" -OutFile $download
+        } catch {
+            $asset = "devbox-pair-windows-$architecture.exe"
+            $baseUrl = "https://github.com/M3ndes/devbox-bridge/releases/download/$version"
+            $download = Join-Path $temporaryDirectory $asset
+            Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/$asset" -OutFile $download
+        }
         Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/checksums.txt" -OutFile $checksums
         $checksumPattern = '^([0-9a-fA-F]{64})[ \t]+' + [regex]::Escape($asset) + '$'
         $checksumLine = [System.IO.File]::ReadAllLines($checksums) |
@@ -306,7 +343,7 @@ function Get-ActivePairingNetworkPolicy {
 }
 
 function Start-PairingTranscript {
-    $logDirectory = Join-Path $env:LOCALAPPDATA 'devbox-bridge\logs'
+    $logDirectory = Join-Path $env:LOCALAPPDATA 'otherhost\logs'
     [void][System.IO.Directory]::CreateDirectory($logDirectory)
     $logPath = Join-Path $logDirectory 'pairing-latest.log'
     Start-Transcript -LiteralPath $logPath -Force | Out-Null
@@ -315,23 +352,28 @@ function Start-PairingTranscript {
 }
 
 function Ensure-HyperVSSHRule([int]$SSHPort, [string[]]$RemoteSubnets) {
-    foreach ($commandName in @('Get-NetFirewallHyperVRule', 'New-NetFirewallHyperVRule', 'Set-NetFirewallHyperVRule')) {
+    foreach ($commandName in @('Get-NetFirewallHyperVRule', 'New-NetFirewallHyperVRule', 'Set-NetFirewallHyperVRule', 'Remove-NetFirewallHyperVRule')) {
         if (-not (Get-Command $commandName -ErrorAction SilentlyContinue)) {
             Fail "Windows does not provide the required Hyper-V firewall command: $commandName"
         }
     }
     $vmCreatorId = '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}'
-    $ruleName = 'devbox-bridge-ssh'
+    $ruleName = 'otherhost-ssh'
     $existingRule = Get-NetFirewallHyperVRule -Name $ruleName -ErrorAction SilentlyContinue
     if ($existingRule) {
         Set-NetFirewallHyperVRule -Name $ruleName -VMCreatorId $vmCreatorId -Protocol TCP `
             -LocalPorts ([string]$SSHPort) -RemoteAddresses $RemoteSubnets | Out-Null
         Write-Ok "updated Hyper-V SSH rule for TCP $SSHPort and the active local subnet"
     } else {
-        New-NetFirewallHyperVRule -Name $ruleName -DisplayName 'Devbox Bridge SSH' `
+        New-NetFirewallHyperVRule -Name $ruleName -DisplayName 'Otherhost SSH' `
             -Direction Inbound -Action Allow -VMCreatorId $vmCreatorId -Protocol TCP `
             -LocalPorts $SSHPort -RemoteAddresses $RemoteSubnets | Out-Null
         Write-Ok "opened Hyper-V SSH port $SSHPort for the active local subnet"
+    }
+    $legacyRule = Get-NetFirewallHyperVRule -Name 'devbox-bridge-ssh' -ErrorAction SilentlyContinue
+    if ($legacyRule) {
+        Remove-NetFirewallHyperVRule -Name 'devbox-bridge-ssh'
+        Write-Ok 'removed superseded devbox-bridge Hyper-V SSH rule'
     }
 }
 
@@ -349,16 +391,23 @@ function Start-PairingMode {
     if ($Distro -notin $distributions) { Fail "WSL distribution is missing: $Distro" }
     $wslUser = (& wsl.exe -d $Distro -- sh -lc 'id -un').Trim()
     if ($LASTEXITCODE -ne 0 -or -not $wslUser) { Fail 'Could not determine the Ubuntu user' }
-    $repoPath = "\\wsl.localhost\$Distro\home\$wslUser\src\devbox-bridge"
-    $configPath = Join-Path $repoPath 'devbox.local.conf'
+    $repoPath = "\\wsl.localhost\$Distro\home\$wslUser\src\otherhost"
+    $configPath = Join-Path $repoPath 'otherhost.local.conf'
     if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
-        Fail "Windows setup must be completed before pairing: $configPath"
+        $legacyRepoPath = "\\wsl.localhost\$Distro\home\$wslUser\src\devbox-bridge"
+        $legacyConfigPath = Join-Path $legacyRepoPath 'devbox.local.conf'
+        if (Test-Path -LiteralPath $legacyConfigPath -PathType Leaf) {
+            $repoPath = $legacyRepoPath
+            $configPath = $legacyConfigPath
+        } else {
+            Fail "Windows setup must be completed before pairing: $configPath"
+        }
     }
     $sshPort = Get-ConfigValue -Path $configPath -Key 'ssh_port'
     if ($sshPort -notmatch '^[1-9][0-9]*$' -or [int]$sshPort -gt 65535) {
         Fail "Invalid ssh_port in $configPath"
     }
-    $null = & wsl.exe -d $Distro -- sh -lc 'test -r "$HOME/.local/lib/devbox-bridge/ssh_host_ed25519_key.pub" && systemctl --user is-active --quiet devbox-bridge-sshd.service'
+    $null = & wsl.exe -d $Distro -- sh -lc '(test -r "$HOME/.local/lib/otherhost/ssh_host_ed25519_key.pub" && systemctl --user is-active --quiet otherhost-sshd.service) || (test -r "$HOME/.local/lib/devbox-bridge/ssh_host_ed25519_key.pub" && systemctl --user is-active --quiet devbox-bridge-sshd.service)'
     $userScopedWSL = $LASTEXITCODE -eq 0
     if ($userScopedWSL) {
         Write-Ok 'user-scoped WSL SSH host is active'
@@ -387,13 +436,13 @@ function Start-PairingMode {
         }
     }
     $ruleSuffix = "$PID-$([guid]::NewGuid().ToString('N'))"
-    $discoveryRule = "devbox-bridge-pairing-udp-$ruleSuffix"
-    $sessionRule = "devbox-bridge-pairing-tcp-$ruleSuffix"
+    $discoveryRule = "otherhost-pairing-udp-$ruleSuffix"
+    $sessionRule = "otherhost-pairing-tcp-$ruleSuffix"
     try {
-        New-NetFirewallRule -Name $discoveryRule -DisplayName 'Devbox Bridge temporary discovery' `
+        New-NetFirewallRule -Name $discoveryRule -DisplayName 'Otherhost temporary discovery' `
             -Direction Inbound -Action Allow -Program $helper -Protocol UDP -LocalPort $PairingDiscoveryPort `
             -RemoteAddress $networkPolicy.RemoteSubnets -Profile $networkPolicy.Profiles | Out-Null
-        New-NetFirewallRule -Name $sessionRule -DisplayName 'Devbox Bridge temporary pairing' `
+        New-NetFirewallRule -Name $sessionRule -DisplayName 'Otherhost temporary pairing' `
             -Direction Inbound -Action Allow -Program $helper -Protocol TCP -LocalPort $PairingSessionPort `
             -RemoteAddress $networkPolicy.RemoteSubnets -Profile $networkPolicy.Profiles | Out-Null
         Write-Diag "temporary UDP $PairingDiscoveryPort and TCP $PairingSessionPort firewall rules are active"
@@ -520,7 +569,7 @@ Write-Step 'Preparing the repository inside Ubuntu'
 $prepareScript = @'
 set -eu
 expected_revision=__REPOSITORY_REVISION__
-repository="$HOME/src/devbox-bridge"
+repository="$HOME/src/otherhost"
 if ! command -v git >/dev/null 2>&1; then
   sudo apt-get update
   sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y git
@@ -529,7 +578,7 @@ mkdir -p "$HOME/src"
 if [ -d "$repository/.git" ]; then
   origin=$(git -C "$repository" remote get-url origin)
   case "$origin" in
-    https://github.com/M3ndes/devbox-bridge.git|git@github.com:M3ndes/devbox-bridge.git|ssh://git@github.com/M3ndes/devbox-bridge.git) ;;
+    https://github.com/M3ndes/otherhost.git|git@github.com:M3ndes/otherhost.git|ssh://git@github.com/M3ndes/otherhost.git) ;;
     *) printf '[fail] unexpected WSL repository origin: %s\n' "$origin" >&2; exit 1 ;;
   esac
   if [ -n "$(git -c core.fsmonitor=false -c core.hooksPath=/dev/null -C "$repository" status --porcelain)" ]; then
@@ -542,7 +591,7 @@ elif [ -e "$repository" ]; then
   printf '[fail] %s exists but is not a Git repository\n' "$repository" >&2
   exit 1
 else
-  git -c protocol.ext.allow=never clone --no-checkout https://github.com/M3ndes/devbox-bridge.git "$repository"
+  git -c protocol.ext.allow=never clone --no-checkout https://github.com/M3ndes/otherhost.git "$repository"
   git -c core.hooksPath=/dev/null -C "$repository" checkout --detach "$expected_revision"
 fi
 actual_revision=$(git -C "$repository" rev-parse --verify HEAD)
@@ -561,15 +610,24 @@ Write-Ok "Ubuntu user: $WslUser"
 $WslHome = (& wsl.exe -d $Distro -- sh -lc 'printf %s "$HOME"').Trim()
 if ($LASTEXITCODE -ne 0 -or $WslHome -notmatch '^/') { Fail 'Could not determine the Ubuntu home directory' }
 
-$repoPath = "\\wsl.localhost\$Distro\home\$WslUser\src\devbox-bridge"
+$repoPath = "\\wsl.localhost\$Distro\home\$WslUser\src\otherhost"
 if (-not (Test-Path -LiteralPath $repoPath -PathType Container)) {
     Fail "Windows cannot access the WSL repository at $repoPath"
 }
 
-$configPath = Join-Path $repoPath 'devbox.local.conf'
+$configPath = Join-Path $repoPath 'otherhost.local.conf'
 $configCreated = -not (Test-Path -LiteralPath $configPath -PathType Leaf)
+$configMigrated = $false
 if ($configCreated) {
-    Copy-Item -LiteralPath (Join-Path $repoPath 'config\devbox.example.conf') -Destination $configPath
+    $legacyConfigPath = "\\wsl.localhost\$Distro\home\$WslUser\src\devbox-bridge\devbox.local.conf"
+    if (Test-Path -LiteralPath $legacyConfigPath -PathType Leaf) {
+        Copy-Item -LiteralPath $legacyConfigPath -Destination $configPath
+        Convert-LegacyConfig -Path $configPath
+        $configMigrated = $true
+        Write-Ok "migrated legacy configuration: $configPath"
+    } else {
+        Copy-Item -LiteralPath (Join-Path $repoPath 'config\otherhost.example.conf') -Destination $configPath
+    }
 }
 
 $configValues = @{
@@ -580,13 +638,15 @@ if ($SelectedKey) {
     $configValues.github_user = $GitHubUser
     $configValues.ssh_public_key = $SelectedKey.PublicKey
 }
-if ($configCreated) {
+if ($configCreated -and -not $configMigrated) {
     $configValues.wsl_memory = $resources.Memory
     $configValues.wsl_processors = $resources.Processors
     $configValues.wsl_swap = $resources.Swap
 }
 Set-ConfigValues -Path $configPath -Values $configValues
-if ($configCreated) {
+if ($configMigrated) {
+    Write-Ok "updated detected values while preserving migrated configuration: $configPath"
+} elseif ($configCreated) {
     Write-Ok "created configuration: $configPath"
 } else {
     Write-Ok "updated detected values while preserving configuration: $configPath"
@@ -608,7 +668,7 @@ Write-Step 'Configuring Ubuntu and SSH'
 $trustedRepositoryPath = (& wsl.exe -d $Distro -- wslpath -a -u $PSScriptRoot).Trim()
 if ($LASTEXITCODE -ne 0 -or -not $trustedRepositoryPath) { Fail 'Could not map the trusted Windows checkout into WSL' }
 $trustedBootstrapPath = "$trustedRepositoryPath/scripts/bootstrap-wsl.sh"
-$linuxConfigPath = "$WslHome/src/devbox-bridge/devbox.local.conf"
+$linuxConfigPath = "$WslHome/src/otherhost/otherhost.local.conf"
 $bootstrapArguments = @('bash', $trustedBootstrapPath, '--apply', '--config', $linuxConfigPath)
 Invoke-WslCommand -Arguments $bootstrapArguments
 
@@ -626,7 +686,7 @@ $sshReady = $LASTEXITCODE -eq 0
 if (-not $sshReady) { Fail "SSH did not become ready on port $sshPort" }
 
 $lanAddress = Get-LanAddress
-Write-Host "`nDevbox is ready." -ForegroundColor Green
+Write-Host "`nOtherhost is ready." -ForegroundColor Green
 if ($lanAddress) {
     Write-Host "Windows address: $lanAddress"
 } else {
@@ -634,5 +694,5 @@ if ($lanAddress) {
 }
 Write-Host "`nNext:"
 Write-Host '  1. On Windows, run: .\setup.cmd -Pair'
-Write-Host '  2. On the Mac, run: devbox pair'
+Write-Host '  2. On the Mac, run: otherhost pair'
 Write-Host "`nDocker is optional for SSH connectivity. If needed, enable Docker Desktop > Resources > WSL Integration > $Distro."

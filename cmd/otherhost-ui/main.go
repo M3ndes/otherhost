@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/M3ndes/devbox-bridge/internal/dashboard"
+	"github.com/M3ndes/otherhost/internal/dashboard"
 )
 
 func main() {
@@ -21,8 +21,8 @@ func main() {
 }
 
 func run() error {
-	flags := flag.NewFlagSet("devbox-ui", flag.ContinueOnError)
-	configPath := flags.String("config", "", "devbox configuration path")
+	flags := flag.NewFlagSet("otherhost-ui", flag.ContinueOnError)
+	configPath := flags.String("config", "", "otherhost configuration path")
 	port := flags.Int("port", 7842, "local loopback port")
 	noOpen := flags.Bool("no-open", false, "do not open the browser automatically")
 	demo := flags.Bool("demo", false, "use local demonstration data")
@@ -30,11 +30,11 @@ func run() error {
 		return err
 	}
 	if flags.NArg() != 0 {
-		return errors.New("devbox-ui does not accept positional arguments")
+		return errors.New("otherhost-ui does not accept positional arguments")
 	}
 
 	var collector dashboard.Collector
-	sshAlias := "home-devbox"
+	sshAlias := "home-otherhost"
 	if *demo {
 		collector = demoCollector{}
 	} else {
@@ -76,7 +76,7 @@ func (demoCollector) Collect() dashboard.Snapshot {
 		},
 		Projects: []dashboard.Project{
 			{Name: "under-pay", Path: "/home/thales/src/under-pay", Branch: "main", Technologies: []string{"Ruby", "Node.js"}},
-			{Name: "devbox-bridge", Path: "/home/thales/src/devbox-bridge", Branch: "feat/project-dashboard", Technologies: []string{"Go"}},
+			{Name: "otherhost", Path: "/home/thales/src/otherhost", Branch: "feat/otherhost-rebrand", Technologies: []string{"Go"}},
 			{Name: "landing-page", Path: "/home/thales/src/landing-page", Branch: "main", Technologies: []string{"Node.js"}},
 		},
 		SSHResponseMS: 18,

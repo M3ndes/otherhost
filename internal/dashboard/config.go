@@ -55,8 +55,12 @@ func LoadConfig(configPath string) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	name := values["otherhost_name"]
+	if name == "" {
+		name = values["devbox_name"]
+	}
 	config := Config{
-		Name:           values["devbox_name"],
+		Name:           name,
 		Host:           values["host"],
 		SSHUser:        values["ssh_user"],
 		SSHPort:        port,
@@ -65,7 +69,7 @@ func LoadConfig(configPath string) (Config, error) {
 		ProjectsRoot:   root,
 	}
 	if !portableValue(config.Name, "._-") {
-		return Config{}, errors.New("devbox_name contains unsupported characters")
+		return Config{}, errors.New("otherhost_name contains unsupported characters")
 	}
 	if !portableValue(config.Host, ".:-") || config.Host == "CHANGE_ME" {
 		return Config{}, errors.New("host contains unsupported characters")

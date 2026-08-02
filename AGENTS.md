@@ -1,7 +1,7 @@
 # Repository guidance
 
 - Keep the project CLI-first until the command workflow is stable in real use.
-- Treat `devbox.local.conf` as untrusted data; never source, evaluate, or execute it.
+- Treat `otherhost.local.conf` as untrusted data; never source, evaluate, or execute it.
 - Keep macOS shell code compatible with Bash 3.2 and Windows code compatible with
   Windows PowerShell 5.1.
 - All setup operations must be idempotent, preserve unrelated user configuration,

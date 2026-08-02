@@ -2,12 +2,22 @@
 set -eu
 
 ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
-# shellcheck source=../lib/devbox.sh
-. "$ROOT_DIR/lib/devbox.sh"
+# shellcheck source=../lib/otherhost.sh
+. "$ROOT_DIR/lib/otherhost.sh"
 
 MODE=check
 GENERATE_KEY=0
-CONFIG_FILE=${DEVBOX_CONFIG:-"$ROOT_DIR/devbox.local.conf"}
+CONFIG_EXPLICIT=0
+if [ -n "${OTHERHOST_CONFIG:-}" ]; then
+  CONFIG_FILE=$OTHERHOST_CONFIG
+  CONFIG_EXPLICIT=1
+elif [ -n "${DEVBOX_CONFIG:-}" ]; then
+  CONFIG_FILE=$DEVBOX_CONFIG
+  CONFIG_EXPLICIT=1
+else
+  CONFIG_FILE="$ROOT_DIR/otherhost.local.conf"
+fi
+LEGACY_CONFIG_FILE="$ROOT_DIR/devbox.local.conf"
 PAIRING_VERSION=v0.1.1
 
 usage() {
@@ -15,7 +25,7 @@ usage() {
 Usage: scripts/bootstrap-mac.sh [--apply] [--generate-key] [--config PATH]
 
 The default mode only reports what would be needed. --apply installs a symlink
-at ~/.local/bin/devbox, installs the pairing helper, and creates the local config
+at ~/.local/bin/otherhost, installs the pairing helper, and creates the local config
 when it is missing.
 --generate-key also creates the dedicated Ed25519 SSH identity when absent.
 EOF
@@ -28,6 +38,7 @@ while [ "$#" -gt 0 ]; do
     --config)
       [ "$#" -ge 2 ] || { printf '%s\n' '--config requires a path' >&2; exit 2; }
       CONFIG_FILE=$2
+      CONFIG_EXPLICIT=1
       shift 2
       ;;
     -h|--help) usage; exit 0 ;;
@@ -46,50 +57,83 @@ for command_name in git ssh ssh-keygen; do
   ok "$command_name is available"
 done
 
+install_command_link() {
+  command_link=$1
+  command_target=$2
+  if [ -L "$command_link" ]; then
+    existing_target=$(readlink "$command_link")
+    if [ "$existing_target" = "$command_target" ]; then
+      ok "preserved existing command link: $command_link"
+      return
+    fi
+    case "$existing_target" in
+      */devbox-bridge/bin/devbox|*/devbox-bridge/bin/otherhost|*/otherhost/bin/devbox|*/otherhost/bin/otherhost)
+        ln -sf "$command_target" "$command_link"
+        ok "updated legacy command link: $command_link -> $command_target"
+        return
+        ;;
+      *) fail "$command_link is already a different symlink" ;;
+    esac
+  elif [ -e "$command_link" ]; then
+    fail "$command_link already exists and will not be overwritten"
+  else
+    ln -s "$command_target" "$command_link"
+    ok "installed $command_link -> $command_target"
+  fi
+}
+
+if [ "$CONFIG_EXPLICIT" -eq 0 ] && [ ! -f "$CONFIG_FILE" ] && [ -f "$LEGACY_CONFIG_FILE" ]; then
+  if [ "$MODE" = apply ]; then
+    otherhost_migrate_config "$LEGACY_CONFIG_FILE" "$CONFIG_FILE" || fail 'could not migrate the legacy local configuration'
+    ok "migrated local configuration: $LEGACY_CONFIG_FILE -> $CONFIG_FILE"
+  else
+    warn "legacy configuration found; --apply will migrate it to $CONFIG_FILE"
+    CONFIG_FILE=$LEGACY_CONFIG_FILE
+  fi
+fi
+
 if [ "$MODE" = apply ]; then
   mkdir -p "$HOME/.local/bin"
-  COMMAND_LINK="$HOME/.local/bin/devbox"
-  if [ -L "$COMMAND_LINK" ]; then
-    [ "$(readlink "$COMMAND_LINK")" = "$ROOT_DIR/bin/devbox" ] || fail "$COMMAND_LINK is already a different symlink"
-    ok "preserved existing command link: $COMMAND_LINK"
-  elif [ -e "$COMMAND_LINK" ]; then
-    fail "$COMMAND_LINK already exists and will not be overwritten"
-  else
-    ln -s "$ROOT_DIR/bin/devbox" "$COMMAND_LINK"
-    ok "installed $COMMAND_LINK -> $ROOT_DIR/bin/devbox"
-  fi
+  install_command_link "$HOME/.local/bin/otherhost" "$ROOT_DIR/bin/otherhost"
+  install_command_link "$HOME/.local/bin/devbox" "$ROOT_DIR/bin/devbox"
 
-  PAIRING_HELPER="$HOME/.local/lib/devbox-bridge/devbox-pair"
+  PAIRING_HELPER="$HOME/.local/lib/otherhost/otherhost-pair"
+  LEGACY_PAIRING_HELPER="$HOME/.local/lib/devbox-bridge/devbox-pair"
   INSTALLED_PAIRING_VERSION=''
   if [ -x "$PAIRING_HELPER" ]; then
     INSTALLED_PAIRING_VERSION=$("$PAIRING_HELPER" version 2>/dev/null | awk 'NR == 1 { print $2 }')
   fi
   if [ "$INSTALLED_PAIRING_VERSION" = "$PAIRING_VERSION" ]; then
     ok "pairing helper is installed: $PAIRING_HELPER"
+  elif [ -x "$LEGACY_PAIRING_HELPER" ] && [ "$("$LEGACY_PAIRING_HELPER" version 2>/dev/null | awk 'NR == 1 { print $2 }')" = "$PAIRING_VERSION" ]; then
+    mkdir -p "$(dirname -- "$PAIRING_HELPER")"
+    chmod 700 "$(dirname -- "$PAIRING_HELPER")"
+    install -m 700 "$LEGACY_PAIRING_HELPER" "$PAIRING_HELPER"
+    ok "migrated pairing helper: $PAIRING_HELPER"
   else
     "$ROOT_DIR/scripts/install-pairing-helper.sh" "$PAIRING_HELPER"
   fi
 
   if [ ! -f "$CONFIG_FILE" ]; then
     mkdir -p "$(dirname -- "$CONFIG_FILE")"
-    cp "$ROOT_DIR/config/devbox.example.conf" "$CONFIG_FILE"
+    cp "$ROOT_DIR/config/otherhost.example.conf" "$CONFIG_FILE"
     chmod 600 "$CONFIG_FILE"
     ok "created local configuration: $CONFIG_FILE"
   else
     ok "preserved existing configuration: $CONFIG_FILE"
   fi
-elif [ -L "$HOME/.local/bin/devbox" ] || [ -x "$HOME/.local/bin/devbox" ]; then
-  ok 'devbox command is installed in ~/.local/bin'
+elif [ -L "$HOME/.local/bin/otherhost" ] || [ -x "$HOME/.local/bin/otherhost" ]; then
+  ok 'otherhost command is installed in ~/.local/bin'
 else
-  warn 'devbox is not installed; run this script with --apply'
+  warn 'otherhost is not installed; run this script with --apply'
 fi
 
 if [ -f "$CONFIG_FILE" ]; then
-  IDENTITY_CONFIG=$(devbox_config_get identity_file "$CONFIG_FILE")
+  IDENTITY_CONFIG=$(otherhost_config_get identity_file "$CONFIG_FILE")
   [ -n "$IDENTITY_CONFIG" ] || fail "identity_file is missing from $CONFIG_FILE"
-  IDENTITY_FILE=$(devbox_resolve_identity_file "$IDENTITY_CONFIG")
+  IDENTITY_FILE=$(otherhost_resolve_identity_file "$IDENTITY_CONFIG")
 else
-  IDENTITY_FILE="$HOME/.ssh/devbox_bridge_ed25519"
+  IDENTITY_FILE="$HOME/.ssh/otherhost_ed25519"
   warn "local configuration is missing: $CONFIG_FILE"
 fi
 
@@ -98,7 +142,7 @@ if [ -f "$IDENTITY_FILE" ]; then
 elif [ "$MODE" = apply ] && [ "$GENERATE_KEY" -eq 1 ]; then
   mkdir -p "$(dirname -- "$IDENTITY_FILE")"
   chmod 700 "$(dirname -- "$IDENTITY_FILE")"
-  ssh-keygen -t ed25519 -a 64 -f "$IDENTITY_FILE" -C 'devbox-bridge client'
+  ssh-keygen -t ed25519 -a 64 -f "$IDENTITY_FILE" -C 'otherhost client'
   chmod 600 "$IDENTITY_FILE"
   ok "created SSH identity: $IDENTITY_FILE"
 else
@@ -111,4 +155,4 @@ case ":$PATH:" in
   *) warn 'add ~/.local/bin to PATH in ~/.zshrc' ;;
 esac
 
-printf '\nNext: enable pairing on Windows, then run devbox pair.\n'
+printf '\nNext: enable pairing on Windows, then run otherhost pair.\n'

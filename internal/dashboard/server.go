@@ -130,7 +130,7 @@ func (handler *Handler) openProject(response http.ResponseWriter, request *http.
 		http.Error(response, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if request.Header.Get("X-Devbox-Token") != handler.token || !sameOrigin(request) {
+	if request.Header.Get("X-Otherhost-Token") != handler.token || !sameOrigin(request) {
 		http.Error(response, "Action not authorized", http.StatusForbidden)
 		return
 	}
@@ -192,7 +192,7 @@ func RunServer(ctx context.Context, collector Collector, launcher ProjectLaunche
 		return fmt.Errorf("could not start the local dashboard: %w", err)
 	}
 	dashboardURL := "http://" + listener.Addr().String() + "/"
-	fmt.Printf("Devbox dashboard: %s\nPress Ctrl-C to stop.\n", dashboardURL)
+	fmt.Printf("Otherhost dashboard: %s\nPress Ctrl-C to stop.\n", dashboardURL)
 
 	server := &http.Server{
 		Handler:           handler,

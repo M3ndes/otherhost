@@ -1,6 +1,13 @@
-# devbox-bridge
+<p align="center">
+  <img src="docs/assets/otherhost-mark.svg" width="88" alt="Otherhost orbital mark">
+</p>
 
-[![CI](https://github.com/M3ndes/devbox-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/M3ndes/devbox-bridge/actions/workflows/ci.yml)
+<h1 align="center">otherhost</h1>
+
+<p align="center"><strong>Make the other host feel local.</strong></p>
+<p align="center"><code>localhost → otherhost</code></p>
+
+[![CI](https://github.com/M3ndes/otherhost/actions/workflows/ci.yml/badge.svg)](https://github.com/M3ndes/otherhost/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 Use a Windows desktop as a private WSL 2 and Docker development machine from
@@ -8,14 +15,14 @@ your Mac. Pair the two computers with a Bluetooth-style six-digit check, then
 connect over SSH with one command.
 
 ```text
-Windows:  .\setup.cmd -Pair       Mac:  devbox pair
+Windows:  .\setup.cmd -Pair       Mac:  otherhost pair
           Code 482 731                  Code 482 731
                          confirm both
 
-Mac:      devbox connect
+Mac:      otherhost connect
 ```
 
-devbox-bridge is open source, CLI-first, and intentionally inspectable. There
+Otherhost is open source, CLI-first, and intentionally inspectable. There
 is no cloud relay or project account. Your source, builds, and containers stay
 on the Windows computer; the Mac is the keyboard, editor, and browser.
 
@@ -28,7 +35,7 @@ on the Windows computer; the Mac is the keyboard, editor, and browser.
 
 A powerful desktop is often a better place to compile code, run containers, or
 host large development databases. A Mac laptop is often a better place to work
-interactively. devbox-bridge joins them without copying a private SSH key,
+interactively. otherhost joins them without copying a private SSH key,
 opening a public service, or requiring users to understand every networking
 detail first.
 
@@ -79,11 +86,27 @@ Pairing and daily use are separate:
 
 1. **Pairing** is a temporary, two-minute local-network exchange. It installs
    the Mac's public key and teaches the Mac which SSH host identity to trust.
-2. **Daily connection** uses normal OpenSSH. `devbox connect` keeps configured
+2. **Daily connection** uses normal OpenSSH. `otherhost connect` keeps configured
    port forwards open until you press `Ctrl-C`.
 
 New to SSH, ports, WSL, or tunneling? Read [How it works](docs/how-it-works.md)
 for a plain-language walkthrough.
+
+## Upgrading from devbox-bridge
+
+The project and repository are now named **Otherhost**. Existing installations
+remain connected during the transition:
+
+- `devbox` remains a deprecated command alias for `otherhost`;
+- `devbox.local.conf` is read as a fallback and `bootstrap-mac.sh --apply`
+  migrates it to `otherhost.local.conf` without evaluating its contents;
+- existing SSH identity and pinned `known_hosts` paths are reused;
+- already-installed v0.1.1 pairing helpers remain wire-compatible;
+- the former GitHub URL redirects, but existing clones should update their
+  remote with `git remote set-url origin https://github.com/M3ndes/otherhost.git`.
+
+No re-pair is required solely because of the rename. Rerun the platform
+bootstrap on each machine to install the new command and paths.
 
 ## Requirements
 
@@ -134,12 +157,12 @@ For a read-only check without applying changes:
 ### 2. Install the Mac client
 
 ```bash
-git clone https://github.com/M3ndes/devbox-bridge.git
-cd devbox-bridge
+git clone https://github.com/M3ndes/otherhost.git
+cd otherhost
 ./scripts/bootstrap-mac.sh --apply
 ```
 
-The installer adds `devbox` under `~/.local/bin` and installs a
+The installer adds `otherhost` under `~/.local/bin` and installs a
 checksum-verified pairing helper for the Mac architecture. Existing
 configuration and keys are preserved. The dedicated SSH private key is created
 on first pairing and never leaves the Mac.
@@ -155,7 +178,7 @@ On Windows, start a two-minute discovery window and leave it open:
 On the Mac, run:
 
 ```bash
-devbox pair
+otherhost pair
 ```
 
 The Mac tries multicast discovery first and then scans only its local IPv4
@@ -174,29 +197,29 @@ public key, pins the WSL SSH host key, saves the connection details, and runs a
 health check.
 
 If discovery does not work, keep both commands open and follow the
-[pairing decision guide](docs/troubleshooting.md#devbox-pair-finds-no-windows-devbox).
+[pairing decision guide](docs/troubleshooting.md#otherhost-pair-finds-no-windows-otherhost).
 The `[diag]` output identifies whether multicast, direct discovery, the listener,
 or SSH failed.
 
 ### 4. Connect from the Mac
 
 ```bash
-devbox connect
+otherhost connect
 ```
 
 Keep that terminal open. Configured services are now available through Mac
 localhost URLs. In another terminal:
 
 ```bash
-devbox urls
-devbox status
+otherhost urls
+otherhost status
 ```
 
 For an editor with Remote SSH support, review the generated host block before
 adding it to `~/.ssh/config`:
 
 ```bash
-devbox ssh-config
+otherhost ssh-config
 ```
 
 ### Browse remote projects
@@ -205,13 +228,13 @@ The optional project dashboard remains backed by the CLI and opens only on the
 Mac loopback interface:
 
 ```bash
-devbox ui
+otherhost ui
 ```
 
 It discovers Git repositories directly below `projects_root` (by default
 `~/src` inside WSL), shows the Windows hardware inventory and WSL allocation,
 and opens a selected folder through VS Code Remote SSH. Add the reviewed output
-from `devbox ssh-config` to `~/.ssh/config` before using **Open project**.
+from `otherhost ssh-config` to `~/.ssh/config` before using **Open project**.
 
 The UI is entirely in English, loads no remote assets, sends no telemetry, and
 does not expose its local HTTP server to the LAN. Docker remains available in
@@ -225,13 +248,13 @@ project dashboard.
 | `.\setup.cmd` | Windows | Check and configure the Windows + WSL host |
 | `.\setup.cmd -Check` | Windows | Run the host preflight without changing anything |
 | `.\setup.cmd -Pair` | Windows | Make the host discoverable for two minutes |
-| `devbox pair` | Mac | Discover, verify, and save a host |
-| `devbox doctor` | Mac | Validate configuration, keys, dependencies, and SSH |
-| `devbox connect` | Mac | Keep all configured SSH port forwards open |
-| `devbox status` | Mac | Show remote uptime, memory, disk, and Docker usage |
-| `devbox urls` | Mac | Print forwarded localhost URLs |
-| `devbox ssh-config` | Mac | Generate an OpenSSH host block |
-| `devbox ui` | Mac | Open the local project and machine dashboard |
+| `otherhost pair` | Mac | Discover, verify, and save a host |
+| `otherhost doctor` | Mac | Validate configuration, keys, dependencies, and SSH |
+| `otherhost connect` | Mac | Keep all configured SSH port forwards open |
+| `otherhost status` | Mac | Show remote uptime, memory, disk, and Docker usage |
+| `otherhost urls` | Mac | Print forwarded localhost URLs |
+| `otherhost ssh-config` | Mac | Generate an OpenSSH host block |
+| `otherhost ui` | Mac | Open the local project and machine dashboard |
 
 ## Alternative host mode
 
@@ -240,7 +263,7 @@ user can install a user-scoped host without PowerShell, Administrator access, or
 `sudo`:
 
 ```bash
-cd ~/src/devbox-bridge
+cd ~/src/otherhost
 ./scripts/bootstrap-wsl-user.sh --apply
 ./scripts/pair-wsl.sh
 ```
@@ -280,12 +303,13 @@ full [security policy and trust model](SECURITY.md).
 | [macOS client](docs/macos.md) | You are installing, pairing, or using the Mac command |
 | [Troubleshooting](docs/troubleshooting.md) | A setup, discovery, SSH, or Docker step failed |
 | [Architecture and decisions](docs/architecture.md) | You want protocol details or plan a code change |
+| [Brand and visual identity](docs/brand.md) | You need the name, voice, logo, or visual tokens |
 | [Contributing](CONTRIBUTING.md) | You want to report, test, document, or implement a change |
 | [Security policy](SECURITY.md) | You need deployment boundaries or private reporting instructions |
 
 ## Scope and non-goals
 
-devbox-bridge configures a trusted remote-development path. It does **not**:
+otherhost configures a trusted remote-development path. It does **not**:
 
 - install Docker Desktop itself;
 - change router settings or expose the host to the public internet;

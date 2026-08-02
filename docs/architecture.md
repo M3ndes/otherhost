@@ -21,7 +21,9 @@ Pairing uses a numeric-comparison interaction:
 1. `setup.cmd -Pair` opens one TCP and one UDP Windows Firewall rule for the
    private local subnet, or `scripts/pair-wsl.sh` listens directly in an existing
    mirrored-network WSL user session. Either mode is discoverable for two minutes.
-2. `devbox pair` sends a versioned IPv4 multicast request and lists matching
+2. `devbox pair` sends a versioned IPv4 multicast request. If WSL does not
+   receive multicast, the same command probes the fixed pairing port on a
+   bounded set of addresses in the Mac's local IPv4 subnet and lists matching
    Windows hosts.
 3. The devices exchange fresh X25519 public keys and 256-bit random nonces.
 4. Both derive separate AES-256-GCM direction keys and a six-digit comparison
@@ -38,9 +40,12 @@ nonces. A man-in-the-middle has approximately a one-in-one-million chance per
 user-approved attempt of presenting a matching value. Pairing permits one active
 session and closes after success, rejection, or timeout.
 
-The helper listens only while pairing is enabled. Windows mode limits temporary
-firewall rules to the executable, private network profiles, and `LocalSubnet`,
-then removes them in a `finally` block. WSL user mode creates no Windows rules.
+The direct discovery endpoint reveals only the same temporary instance, device
+name, and port as multicast discovery. It accepts local-network requests only
+and closes with pairing mode. The helper listens only while pairing is enabled.
+Windows mode limits temporary firewall rules to the executable, private network
+profiles, and `LocalSubnet`, then removes them in a `finally` block. WSL user
+mode creates no Windows rules.
 
 ## Source and compute location
 

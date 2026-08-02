@@ -114,6 +114,7 @@ func runPair(ctx context.Context, arguments []string) error {
 	configPath := flags.String("config", "", "devbox configuration path")
 	publicKeyPath := flags.String("public-key", "", "Mac SSH public-key path")
 	knownHostsPath := flags.String("known-hosts", "", "dedicated known-hosts path")
+	pairPort := flags.Int("pair-port", pairing.DefaultPairPort, "temporary pairing TCP port")
 	discoveryAddress := flags.String("discovery-address", pairing.DefaultDiscoveryAddress, "local multicast discovery address")
 	discoveryTimeout := flags.Duration("discovery-timeout", 5*time.Second, "device search duration")
 	if err := flags.Parse(arguments); err != nil {
@@ -137,7 +138,7 @@ func runPair(ctx context.Context, arguments []string) error {
 
 	fmt.Println("Searching for Windows devboxes...")
 	discoveryContext, cancel := context.WithTimeout(ctx, *discoveryTimeout)
-	devices, err := pairing.Discover(discoveryContext, *discoveryAddress)
+	devices, err := pairing.DiscoverDevices(discoveryContext, *discoveryAddress, *pairPort)
 	cancel()
 	if err != nil {
 		return fmt.Errorf("local discovery failed: %w", err)

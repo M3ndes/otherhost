@@ -49,13 +49,15 @@ minutes. Confirm that both devices use the same private LAN, the active Windows
 network profile is **Private**, and the Wi-Fi access point does not isolate
 wireless clients.
 
-Pairing uses IPv4 multicast UDP port `45870` for discovery and TCP port `45871`
-for its short-lived encrypted session. Windows creates local-subnet firewall
-rules only while the pairing command runs. Do not expose either port through a
-router.
+Pairing first uses IPv4 multicast UDP port `45870` for discovery. If multicast
+is suppressed, the Mac automatically probes TCP port `45871` on a bounded set of
+addresses in its local IPv4 subnet. The same TCP port carries the short-lived
+encrypted session. Windows creates local-subnet firewall rules only while the
+pairing command runs. Do not expose either port through a router.
 
-If a VPN or managed network suppresses local multicast, use the explicit GitHub
-public-key recovery flow documented in [macOS client](macos.md).
+If neither method finds the host, disconnect VPN software and verify that the
+access point does not isolate wireless clients. The explicit GitHub public-key
+recovery flow remains documented in [macOS client](macos.md).
 
 ## The pairing codes do not match
 

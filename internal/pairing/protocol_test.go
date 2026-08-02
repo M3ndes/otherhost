@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdh"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -122,6 +123,44 @@ func TestPairEndToEnd(t *testing.T) {
 		}
 	case <-time.After(3 * time.Second):
 		t.Fatal("host did not close after successful pairing")
+	}
+}
+
+func TestDirectDiscoveryFindsHostWithoutMulticast(t *testing.T) {
+	port := reserveTCPPort(t)
+	hostResult := make(chan error, 1)
+	hostContext, cancelHost := context.WithCancel(context.Background())
+	go func() {
+		hostResult <- RunHost(hostContext, HostOptions{
+			Instance: "direct-discovery", Name: "WINDOWS-PC", SSHUser: "developer",
+			SSHPort: 2222, PairPort: port, Duration: 20 * time.Second,
+			DisableDiscovery: true,
+			Confirm:          func(string, string) bool { return true },
+			InstallPublicKey: func(string) error { return nil },
+			ReadSSHHostPublicKey: func() (string, error) {
+				return testPublicKey, nil
+			},
+		})
+	}()
+	waitForTCP(t, port)
+	discoveryContext, cancelDiscovery := context.WithTimeout(context.Background(), 2*time.Second)
+	devices := discoverAtAddresses(discoveryContext, []string{"127.0.0.1"}, port)
+	cancelDiscovery()
+	if len(devices) != 1 {
+		t.Fatalf("expected one directly discovered host, got %+v", devices)
+	}
+	if devices[0].Instance != "direct-discovery" || devices[0].Name != "WINDOWS-PC" ||
+		devices[0].Address != "127.0.0.1" || devices[0].Port != port {
+		t.Fatalf("unexpected directly discovered host: %+v", devices[0])
+	}
+	cancelHost()
+	select {
+	case err := <-hostResult:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("unexpected host shutdown result: %v", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("host did not stop after direct discovery test")
 	}
 }
 

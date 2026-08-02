@@ -8,6 +8,7 @@ ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 MODE=check
 GENERATE_KEY=0
 CONFIG_FILE=${DEVBOX_CONFIG:-"$ROOT_DIR/devbox.local.conf"}
+PAIRING_VERSION=v0.1.1
 
 usage() {
   cat <<'EOF'
@@ -59,7 +60,11 @@ if [ "$MODE" = apply ]; then
   fi
 
   PAIRING_HELPER="$HOME/.local/lib/devbox-bridge/devbox-pair"
+  INSTALLED_PAIRING_VERSION=''
   if [ -x "$PAIRING_HELPER" ]; then
+    INSTALLED_PAIRING_VERSION=$("$PAIRING_HELPER" version 2>/dev/null | awk 'NR == 1 { print $2 }')
+  fi
+  if [ "$INSTALLED_PAIRING_VERSION" = "$PAIRING_VERSION" ]; then
     ok "pairing helper is installed: $PAIRING_HELPER"
   else
     "$ROOT_DIR/scripts/install-pairing-helper.sh" "$PAIRING_HELPER"

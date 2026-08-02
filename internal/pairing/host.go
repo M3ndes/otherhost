@@ -90,6 +90,7 @@ func RunHost(ctx context.Context, options HostOptions) error {
 	defer listener.Close()
 
 	router := http.NewServeMux()
+	router.HandleFunc("/v1/discovery", host.handleDiscovery)
 	router.HandleFunc("/v1/hello", host.handleHello)
 	router.HandleFunc("/v1/confirm", host.handleConfirm)
 	router.HandleFunc("/v1/cancel", host.handleCancel)
@@ -133,6 +134,23 @@ func RunHost(ctx context.Context, options HostOptions) error {
 		}
 		return ErrPairingExpired
 	}
+}
+
+func (host *pairingHost) handleDiscovery(writer http.ResponseWriter, request *http.Request) {
+	if request.Method != http.MethodGet || !localHTTPRequest(request) {
+		http.Error(writer, "pairing is available only from the local network", http.StatusForbidden)
+		return
+	}
+	nonce := request.URL.Query().Get("nonce")
+	if nonce == "" || len(nonce) > 64 {
+		http.Error(writer, "invalid discovery request", http.StatusBadRequest)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(writer).Encode(DiscoveryResponse{
+		Magic: DiscoveryMagic, Version: ProtocolVersion, Nonce: nonce,
+		Instance: host.instance, Name: host.options.Name, Port: host.options.PairPort,
+	})
 }
 
 func configureHostCallbacks(options *HostOptions) error {

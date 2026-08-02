@@ -1,92 +1,232 @@
 # Architecture and decisions
 
-## CLI first
+This document describes the system boundaries and design constraints for
+contributors. For a less technical introduction, start with
+[How devbox-bridge works](how-it-works.md).
 
-The project uses small Bash and PowerShell entry points. This makes host changes
-reviewable and keeps diagnostics available without a graphical application.
+## Design goals
 
-`setup.cmd` is the thin Windows entry point. Its PowerShell orchestrator composes
-the Windows and WSL bootstraps; those lower-level commands remain available for
-diagnostics and manual recovery.
+devbox-bridge aims to make a Windows + WSL development host feel simple from a
+Mac without hiding important security or system changes.
 
-The pairing helper is a small Go binary distributed for Windows, WSL Linux, and
-Intel and Apple Silicon Macs. PowerShell and Bash own policy and orchestration.
-The helper owns only local discovery and the short-lived cryptographic pairing
-protocol.
+The implementation favors:
 
-## Device pairing
+- a fast, human-verifiable local pairing flow;
+- standard OpenSSH for persistent access;
+- local operation with no hosted relay or account service;
+- small, inspectable Bash and PowerShell entry points;
+- idempotent setup that preserves unrelated user configuration;
+- inert machine-local configuration rather than executable config files;
+- useful diagnostics at each Windows, WSL, network, SSH, and Docker boundary.
 
-Pairing uses a numeric-comparison interaction:
+## Components
+
+```mermaid
+flowchart TB
+    subgraph Mac["Mac client"]
+        CLI["bin/devbox<br/>Bash orchestration"]
+        MacPair["devbox-pair<br/>Go client"]
+        OpenSSH["system OpenSSH client"]
+        MacState["local config, private key,<br/>and pinned known_hosts"]
+    end
+
+    subgraph Windows["Windows host"]
+        Setup["setup.cmd + setup.ps1<br/>preflight and orchestration"]
+        WinPolicy["bootstrap-windows.ps1<br/>WSL resources and firewall"]
+        WinPair["devbox-pair.exe<br/>temporary pairing host"]
+
+        subgraph WSL["WSL 2 / Ubuntu"]
+            WSLSetup["bootstrap-wsl.sh or<br/>bootstrap-wsl-user.sh"]
+            SSHD["hardened sshd"]
+            Auth["authorized_keys"]
+            Workspace["~/src projects and tools"]
+            Containers["Docker Desktop containers"]
+        end
+    end
+
+    CLI --> MacPair
+    CLI --> OpenSSH
+    CLI --> MacState
+    Setup --> WinPolicy
+    Setup --> WinPair
+    Setup --> WSLSetup
+    MacPair -.->|"encrypted pairing requests"| WinPair
+    WinPair -.->|"encrypted pairing replies"| MacPair
+    WinPair --> Auth
+    OpenSSH -->|"daily SSH"| SSHD
+    SSHD --> Auth
+    SSHD --> Workspace
+    Workspace --> Containers
+```
+
+`setup.cmd` is a thin Windows entry point. `setup.ps1` performs preflight,
+revision verification, UAC handoff, and orchestration. Lower-level Windows and
+WSL bootstraps remain callable for diagnostics and manual recovery.
+
+`bin/devbox` is the Mac-facing control plane. It parses configuration, invokes
+the pairing helper, validates local state, and constructs explicit OpenSSH
+commands. The Go helper owns only discovery and the short-lived cryptographic
+pairing protocol; it is not part of daily SSH connections.
+
+## Why CLI first
+
+A terminal interface makes every host change reviewable, works over remote or
+recovery sessions, and keeps diagnostics available in CI. A future graphical
+interface can call the same primitives, but security policy and recovery must
+not depend on a GUI.
+
+The project targets the system Bash available on supported macOS releases and
+Windows PowerShell 5.1. The Go pairing helper has no third-party Go module
+dependencies, reducing the release and audit surface.
+
+## Pairing protocol
+
+Pairing uses numeric comparison rather than a shared password.
+
+```mermaid
+sequenceDiagram
+    participant M as Mac helper
+    participant W as Windows or WSL host helper
+    participant S as WSL SSH state
+
+    M->>W: Versioned discovery request
+    W-->>M: Device name, instance ID, and pairing endpoint
+    M->>W: Session ID, ephemeral X25519 key, and nonce
+    W-->>M: Ephemeral X25519 key and nonce
+    Note over M,W: HKDF-SHA-256 derives separate<br/>AES-256-GCM direction keys and comparison value
+    M->>M: Display six-digit value and ask user
+    W->>W: Display six-digit value and ask user
+    M->>W: Authenticated confirmation
+    W->>M: Authenticated confirmation
+    M->>W: Encrypted Mac SSH public key
+    W->>S: Install normalized public key
+    W-->>M: Encrypted address, user, SSH port, and host key
+    M->>M: Persist config and pinned known_hosts entry
+```
+
+The flow is:
 
 1. `setup.cmd -Pair` opens one TCP and one UDP Windows Firewall rule for the
-   private local subnet, or `scripts/pair-wsl.sh` listens directly in an existing
-   mirrored-network WSL user session. Either mode is discoverable for two minutes.
-2. `devbox pair` sends a versioned IPv4 multicast request. If WSL does not
-   receive multicast, the same command probes the fixed pairing port on a
-   bounded set of addresses in the Mac's local IPv4 subnet and lists matching
-   Windows hosts. The fixed UDP and TCP ports remain below common ephemeral
-   ranges so mirrored WSL networking cannot reserve them from the Windows host.
+   active private local subnet, or `scripts/pair-wsl.sh` listens directly in an
+   existing mirrored-network WSL user session. Either mode is discoverable for
+   two minutes.
+2. `devbox pair` sends a versioned IPv4 multicast request. If no compatible
+   reply arrives, it probes the fixed pairing TCP port on a bounded set of
+   addresses in the Mac's local IPv4 subnet and accepts only protocol-valid
+   responses.
 3. The devices exchange fresh X25519 public keys and 256-bit random nonces.
 4. Both derive separate AES-256-GCM direction keys and a six-digit comparison
-   value from the complete transcript using HKDF-SHA-256.
-5. The same value is displayed on both devices. Both users must confirm it.
-6. The Mac public SSH key and host connection details travel in authenticated,
-   encrypted messages only after confirmation.
-7. The Mac pins the authenticated WSL Ed25519 host key before its first SSH
-   connection.
+   value from the complete transcript with HKDF-SHA-256.
+5. The operator must confirm the same device identity and comparison value on
+   both screens.
+6. Only after confirmation does the Mac send its public SSH key in an
+   authenticated encrypted message.
+7. The host installs that public key and returns authenticated connection data,
+   including its WSL Ed25519 SSH host key.
+8. The Mac pins that host key before the first OpenSSH connection.
 
-The six digits are not a password and are never sent over the network. They bind
-the device names, discovery instance, session identifier, ephemeral keys, and
-nonces. A man-in-the-middle has approximately a one-in-one-million chance per
-user-approved attempt of presenting a matching value. Pairing permits one active
-session and closes after success, rejection, or timeout.
+The six digits are never transmitted. They bind the device names, discovery
+instance, session identifier, ephemeral keys, and nonces. An active
+man-in-the-middle has approximately a one-in-one-million chance per
+user-approved attempt of presenting a matching value. This property depends on
+the user rejecting a mismatched code or unexpected device.
 
-The direct discovery endpoint reveals only the same temporary instance, device
-name, and port as multicast discovery. It accepts local-network requests only
-and closes with pairing mode. The helper listens only while pairing is enabled.
-Windows mode limits temporary firewall rules to the helper executable, the
-active network profile, and the active IPv4 subnet, then removes them in a
-`finally` block. It does not change the network category. WSL user mode creates
-no Windows rules.
+Pairing permits one active session and closes after success, rejection, error,
+or timeout. A discovered endpoint reveals only the temporary instance, device
+name, and pairing port. Windows mode limits temporary firewall rules to the
+helper executable, active network profile, and active IPv4 subnet, then removes
+them in a `finally` path. It does not change the network category. Direct WSL
+user mode creates no Windows Firewall rules.
 
-## Source and compute location
+## Network surfaces
 
-Projects live inside the WSL Linux filesystem, normally under `~/src`. Builds,
-dependency installation, Git operations, and containers run on the desktop. The
-Mac remains the interactive client.
+| Surface | Default | Exposure | Lifecycle |
+| --- | --- | --- | --- |
+| Multicast discovery | UDP `239.255.67.89:25370` | Local multicast scope | Pairing window only |
+| Direct discovery and pairing | TCP `25371` | Active local IPv4 subnet | Pairing window only |
+| WSL SSH | TCP `2222` | Allowed local subnet through Hyper-V firewall | Persistent host service |
+| Forwarded applications | Configured ports such as `3000` | Mac `127.0.0.1` only | While `devbox connect` runs |
 
-This matters for Docker Compose projects with bind mounts: a remote Docker engine
-alone is insufficient because the source paths must exist beside the engine.
+The fixed pairing ports remain below common ephemeral ranges so mirrored WSL
+networking cannot reserve them for outbound connections. Neither pairing nor SSH
+ports should be forwarded from a public router.
 
-## Network model
-
-The Mac reaches OpenSSH inside WSL. `devbox connect` forwards selected service
-ports to the Mac loopback interface. Binding only to `127.0.0.1` keeps forwarded
-applications off the Mac's LAN interfaces.
-
-Windows mirrored networking gives WSL direct LAN reachability. The bootstrap adds
-one inbound Hyper-V firewall rule for the configured SSH port when run as
-Administrator. SSH accepts public-key authentication only, rejects root login,
-and uses the host identity pinned during pairing.
+Windows mirrored networking gives WSL direct LAN reachability. The elevated
+bootstrap adds one inbound Hyper-V firewall rule for the configured SSH port.
+SSH accepts public-key authentication only, rejects root login, and uses the
+host identity pinned during pairing.
 
 On a host where mirrored networking and inbound policy already permit WSL LAN
 traffic, `bootstrap-wsl-user.sh` extracts Ubuntu's signed OpenSSH packages into
 the user home and runs `sshd` as a systemd user service on an unprivileged port.
-That mode requires neither Windows elevation nor Linux `sudo`; it restricts port
+That mode requires neither Windows elevation nor Linux `sudo`; it restricts
 forwarding destinations to WSL loopback addresses.
 
-## Configuration model
+## Source and compute location
+
+Projects live inside the WSL Linux filesystem, normally under `~/src`. Builds,
+dependency installation, Git operations, databases, and containers run on the
+desktop. The Mac remains the interactive client.
+
+This is important for Docker Compose bind mounts: a remote Docker engine alone
+is insufficient because source paths must exist beside the engine. Keeping
+Linux workloads out of `/mnt/c` also avoids cross-filesystem metadata and I/O
+penalties.
+
+## Configuration and persistent state
 
 `devbox.local.conf` is a portable `key=value` file. Bash and PowerShell parse it
 as inert text. Values are deliberately limited to plain strings; quoting,
 variable expansion, and command substitution are unsupported.
 
-Each clone has its own ignored config. Secure pairing is the default key
-exchange. Windows may still discover public keys from an explicitly selected
-GitHub profile during manual recovery, but setup authorizes only the confirmed
-fingerprint. Private keys and secrets never cross devices.
+Each clone owns an ignored local config. The repository contains only
+`config/devbox.example.conf` as a documented template.
 
-The Windows launcher records its exact Git revision and pins the operational WSL
-clone to it. The privileged WSL bootstrap runs from the same Windows checkout
-that launched setup, preventing a stale or modified second checkout from becoming
-an implicit code source at the `sudo` boundary.
+| State | Owner | Security property |
+| --- | --- | --- |
+| `devbox.local.conf` | Each machine | Ignored by Git; treated as untrusted input |
+| Mac private SSH key | Mac | Mode-restricted and never transmitted |
+| Mac public SSH key | Mac, then WSL | Explicitly safe to share; installed only after confirmation |
+| WSL SSH host private key | WSL | Never returned to the Mac |
+| Pinned WSL host public key | Mac | Enforces strict host-key verification |
+| `.wslconfig` | Windows user | Unrelated content preserved; backup created before changes |
+| Windows pairing transcript | Windows user profile | Diagnostic data; may identify devices, paths, addresses, and code |
+
+Secure pairing is the default key exchange. Windows can discover public keys
+from an explicitly selected GitHub profile only as a manual recovery route; it
+authorizes only the user-confirmed fingerprint. Private keys and application
+secrets never belong in project configuration.
+
+## Revision and privilege boundary
+
+The Windows launcher records its exact clean Git revision and pins the
+operational WSL clone to it. Privileged WSL configuration runs from the reviewed
+Windows checkout that launched setup. Setup refuses local changes so a stale or
+modified second checkout cannot silently become the code source at the `sudo`
+boundary.
+
+This constraint means contributors testing host changes should commit them on a
+branch before exercising the full Windows launcher. Local helper binaries are
+used only through the explicit `DEVBOX_PAIR_BIN` development override.
+
+## Failure model
+
+Diagnostics should identify the failing boundary without printing secret
+material:
+
+```mermaid
+flowchart LR
+    Preflight["Windows preflight"] --> WSL["WSL policy"] --> Listener["Pairing listener"] --> Discovery["Mac discovery"] --> Auth["SSH authentication"] --> Tunnel["Application tunnel"]
+```
+
+Each arrow is independently testable. Changes should preserve this separation:
+do not turn a network timeout into an authentication error, silently fall back
+from strict host-key checking, or bypass a failed policy check. See
+[Troubleshooting](troubleshooting.md) for the operator-facing checks.
+
+## Intentionally out of scope
+
+The current architecture does not provide NAT-mode WSL proxies, internet relay,
+account management, key synchronization, project synchronization, remote wake,
+or automatic VPN setup. These features require separate threat models and
+should not be smuggled into the local pairing path as incidental behavior.

@@ -3,6 +3,69 @@
 Work from the host outward: Windows, WSL, Docker and SSH, then the Mac client.
 Avoid changing several layers at once; rerun the relevant check after each fix.
 
+## Start with the symptom
+
+```mermaid
+flowchart TD
+    Start["What failed?"]
+    Setup["setup.cmd did not complete"]
+    Find["Mac found no devbox"]
+    Code["Codes did not match"]
+    SSH["Pairing completed but SSH failed"]
+    App["SSH works but an app URL failed"]
+
+    Start --> Setup --> SetupCheck["Run setup.cmd -Check<br/>inspect the first failed preflight"]
+    Start --> Find --> DiscoverCheck["Keep pairing mode open<br/>read listener and probe diagnostics"]
+    Start --> Code --> Reject["Reject both prompts<br/>start a new session"]
+    Start --> SSH --> Doctor["Run devbox doctor<br/>check host key, listener, and public key"]
+    Start --> App --> Service["Keep devbox connect open<br/>check the service inside WSL"]
+```
+
+| Symptom | Most likely layer | Go to |
+| --- | --- | --- |
+| Windows setup preflight fails | Windows, WSL, or required software | [Windows setup fails](#windows-setup-does-not-complete) |
+| `devbox pair` reports zero endpoints | Pairing listener, route, or firewall | [Discovery finds no host](#devbox-pair-finds-no-windows-devbox) |
+| An endpoint responds but is incompatible | Stale helper or another service on the port | [Discovery diagnostics](#devbox-pair-finds-no-windows-devbox) |
+| Codes differ | Wrong device or altered session | [Codes do not match](#the-pairing-codes-do-not-match) |
+| Host-key error | WSL identity changed | [Host-key error](#pairing-succeeds-but-devbox-doctor-reports-a-host-key-error) |
+| SSH timeout | Address, listener, or Hyper-V firewall | [SSH timeout](#ssh-times-out-from-the-mac) |
+| `Permission denied (publickey)` | Key installation or identity selection | [Public-key failure](#ssh-says-permission-denied-publickey) |
+| Local URL is unavailable | Tunnel, port conflict, or application | [Forwarded port conflict](#a-forwarded-port-is-already-in-use-on-the-mac) |
+
+Do not disable host-key checking, enable SSH passwords, broadly open the
+firewall, or expose a port through the router as a diagnostic shortcut. Those
+changes hide the failed layer and weaken the final system.
+
+## Windows setup does not complete
+
+Run the read-only preflight from the Windows checkout:
+
+```powershell
+.\setup.cmd -Check
+```
+
+Address the first `[fail]` result rather than rerunning with different manual
+policy. Common causes are an unsupported Windows build, missing or uninitialized
+Ubuntu distribution, inactive systemd, a dirty launcher checkout, or Docker
+Desktop not being available for container checks.
+
+If normal setup completed but `.\setup.cmd -Pair` ends with `Windows pairing
+mode failed`, review the preserved elevated transcript:
+
+```powershell
+Get-Content "$env:LOCALAPPDATA\devbox-bridge\logs\pairing-latest.log" -Tail 100
+```
+
+The final detailed error before the generic launcher message identifies the
+failed helper, firewall, WSL key handoff, or listener step. Do not share the
+transcript without reviewing it: it may contain device names, usernames, local
+paths, LAN addresses, and the temporary comparison code.
+
+Setup verifies that its checkout is clean and that the WSL operational clone is
+at the same revision. Commit or discard intentional development changes before
+testing the privileged launcher; never bypass the revision check with an
+unreviewed script copy.
+
 ## Collect a safe diagnostic snapshot
 
 From PowerShell:

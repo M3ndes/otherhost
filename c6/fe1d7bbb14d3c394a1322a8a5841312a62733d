@@ -1,0 +1,47 @@
+internal/dashboard/assets/app.js
+  s_71755d8d0bab89::t_4e151719e0b6e5 568
+  s_71755d8d0bab89::t_706778bdd404dc 549
+docs/dashboard.md
+  s_71755d8d0bab89::t_4e151719e0b6e5 50-53
+  s_71755d8d0bab89::t_7007b38036dcf0 42-49
+config/otherhost.example.conf
+  s_71755d8d0bab89::t_ef4913fbb5f40f 24
+internal/dashboard/collector_test.go
+  s_71755d8d0bab89::t_31d39da9a27cdb 97
+  s_71755d8d0bab89::t_706778bdd404dc 6-8,67-96,98-115
+  s_71755d8d0bab89::t_276479fb1ff8bd 116
+internal/dashboard/collector.go
+  s_71755d8d0bab89::t_706778bdd404dc 276-291,301-302,304
+  s_71755d8d0bab89::t_05cb861c70c700 119
+README.md
+  s_71755d8d0bab89::t_4e151719e0b6e5 246-248
+  s_71755d8d0bab89::t_f3ec10ac5c2bdd 249-252
+  s_71755d8d0bab89::t_7007b38036dcf0 242-245
+docs/windows-wsl.md
+  s_71755d8d0bab89::t_7007b38036dcf0 200
+docs/macos.md
+  s_71755d8d0bab89::t_7007b38036dcf0 168-172
+  s_71755d8d0bab89::t_4e151719e0b6e5 173-176
+docs/architecture.md
+  s_71755d8d0bab89::t_7007b38036dcf0 96-100,103
+  s_71755d8d0bab89::t_4e151719e0b6e5 101-102
+internal/dashboard/server_test.go
+  s_71755d8d0bab89::t_4e151719e0b6e5 118-124
+  s_71755d8d0bab89::t_706778bdd404dc 105-117,125-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "c6fe1d7bbb14d3c394a1322a8a5841312a62733d",
+  "prompts": {},
+  "sessions": {
+    "s_71755d8d0bab89": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fba65-d026-7702-9af9-5f7244398fd3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Thales Mendes <thalesmendes.dev@gmail.com>"
+    }
+  }
+}

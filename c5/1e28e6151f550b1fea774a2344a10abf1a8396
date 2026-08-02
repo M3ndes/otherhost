@@ -1,0 +1,72 @@
+internal/dashboard/collector.go
+  s_71755d8d0bab89::t_9c4dae3232552c 1-71,73-253,255,262-280
+  s_71755d8d0bab89::t_52a1da586831ee 261
+  s_71755d8d0bab89::t_d61f865fdeeae6 254,256-260
+  s_71755d8d0bab89::t_59f0b122e4f034 72
+CONTRIBUTING.md
+  s_71755d8d0bab89::t_643dd1737b2bbb 27-36
+internal/dashboard/collector_test.go
+  s_71755d8d0bab89::t_13f85342833d75 1-56,63
+  s_71755d8d0bab89::t_52a1da586831ee 60-62
+  s_71755d8d0bab89::t_d61f865fdeeae6 57-59
+internal/dashboard/config.go
+  s_71755d8d0bab89::t_9c4dae3232552c 1-126
+internal/dashboard/model.go
+  s_71755d8d0bab89::t_9c4dae3232552c 1-5,13-15,22-24,27-59
+  s_71755d8d0bab89::t_59f0b122e4f034 6-12,16-21,25-26
+cmd/devbox-ui/main.go
+  s_71755d8d0bab89::t_08c11b904829b9 1-63,65,67-81,83-85
+  s_71755d8d0bab89::t_59f0b122e4f034 64,66,82
+internal/dashboard/assets/index.html
+  s_71755d8d0bab89::t_da335bda9797af 1-239
+tests/config_test.sh
+  s_71755d8d0bab89::t_13f85342833d75 60-71
+docs/windows-wsl.md
+  s_71755d8d0bab89::t_89030274f728c3 135
+internal/dashboard/server_test.go
+  s_71755d8d0bab89::t_89030274f728c3 37,72,124-126,143-155
+  s_71755d8d0bab89::t_13f85342833d75 1-36,38-71,73-123,127-142
+internal/dashboard/config_test.go
+  s_71755d8d0bab89::t_13f85342833d75 1-63
+internal/dashboard/assets/app.css
+  s_71755d8d0bab89::t_da335bda9797af 1-273
+internal/dashboard/assets/app.js
+  s_71755d8d0bab89::t_59f0b122e4f034 40-45,96,140
+  s_71755d8d0bab89::t_da335bda9797af 1-39,46-95,97-139,141-319
+bin/devbox
+  s_71755d8d0bab89::t_4d3c4e0b974262 34,39,54,332-347,354
+README.md
+  s_71755d8d0bab89::t_89030274f728c3 13-14
+  s_71755d8d0bab89::t_643dd1737b2bbb 172-191,202
+Makefile
+  s_71755d8d0bab89::t_4d3c4e0b974262 4,17-19
+  s_71755d8d0bab89::t_bfbd8a0380daf5 20
+config/devbox.example.conf
+  s_71755d8d0bab89::t_4d3c4e0b974262 24-26
+docs/architecture.md
+  s_71755d8d0bab89::t_89030274f728c3 32-33
+  s_71755d8d0bab89::t_643dd1737b2bbb 17-31,34,72-74
+internal/dashboard/browser.go
+  s_71755d8d0bab89::t_08c11b904829b9 1-22
+internal/dashboard/server.go
+  s_71755d8d0bab89::t_89030274f728c3 79-82,97-104
+  s_71755d8d0bab89::t_08c11b904829b9 1-78,83-96,105-223
+docs/macos.md
+  s_71755d8d0bab89::t_643dd1737b2bbb 66-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "c51e28e6151f550b1fea774a2344a10abf1a8396",
+  "prompts": {},
+  "sessions": {
+    "s_71755d8d0bab89": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fba65-d026-7702-9af9-5f7244398fd3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Thales Mendes <thalesmendes.dev@gmail.com>"
+    }
+  }
+}

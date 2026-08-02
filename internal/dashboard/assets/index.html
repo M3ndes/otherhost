@@ -8,6 +8,7 @@
     <meta name="theme-color" content="#111116" media="(prefers-color-scheme: dark)">
     <title>Otherhost</title>
     <link rel="icon" href="/favicon.png" type="image/png">
+    <link rel="stylesheet" href="/vendor/xterm/xterm.css">
     <link rel="stylesheet" href="/app.css">
   </head>
   <body>
@@ -26,6 +27,10 @@
           <a class="nav-item" href="#projects" data-section-link="projects">
             <span class="nav-icon" data-icon="projects"></span>
             Projects
+          </a>
+          <a class="nav-item" href="#terminal" data-section-link="terminal">
+            <span class="nav-icon" data-icon="terminal"></span>
+            Terminal
           </a>
           <a class="nav-item" href="#machine" data-section-link="machine">
             <span class="nav-icon" data-icon="machine"></span>
@@ -147,6 +152,49 @@
             </div>
           </section>
 
+          <section class="section" id="terminal" aria-labelledby="terminal-title">
+            <div class="section-heading terminal-heading">
+              <div>
+                <span class="eyebrow">Remote shell</span>
+                <h2 id="terminal-title">Terminal</h2>
+                <p>Work inside WSL without moving the workload back to your Mac.</p>
+              </div>
+              <button class="secondary-button terminal-new" type="button" data-terminal-new>
+                <span data-icon="terminal"></span>
+                New session
+              </button>
+            </div>
+
+            <article class="terminal-card" data-terminal-card>
+              <header class="terminal-toolbar">
+                <div class="terminal-identity">
+                  <span class="terminal-lights" aria-hidden="true"><i></i><i></i><i></i></span>
+                  <div>
+                    <strong data-terminal-title>Remote shell</strong>
+                    <span data-terminal-location>WSL home</span>
+                  </div>
+                </div>
+                <div class="terminal-controls">
+                  <span class="terminal-state idle" data-terminal-state><i></i><span>Not connected</span></span>
+                  <button type="button" data-terminal-close disabled>Close</button>
+                </div>
+              </header>
+              <div class="terminal-stage">
+                <div class="terminal-mount" data-terminal-mount aria-label="Interactive remote terminal"></div>
+                <div class="terminal-empty" data-terminal-empty>
+                  <span class="terminal-empty-icon" data-icon="terminal"></span>
+                  <h3>Your WSL shell, right here.</h3>
+                  <p>Start in your home directory, or use the terminal button on a project to open its workspace directly.</p>
+                  <button class="primary-button" type="button" data-terminal-start>Start terminal</button>
+                </div>
+              </div>
+              <footer class="terminal-footer">
+                <span><i></i> Encrypted through your pinned SSH connection</span>
+                <span data-terminal-hint>Sessions end when you close this page.</span>
+              </footer>
+            </article>
+          </section>
+
           <section class="section" id="machine" aria-labelledby="machine-title">
             <div class="section-heading">
               <div>
@@ -226,6 +274,8 @@
     </div>
 
     <div class="toast" data-toast role="status" aria-live="polite"></div>
+    <script src="/vendor/xterm/xterm.js" defer></script>
+    <script src="/vendor/addon-fit/addon-fit.js" defer></script>
     <script src="/app.js" defer></script>
   </body>
 </html>

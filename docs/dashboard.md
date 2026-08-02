@@ -45,6 +45,8 @@ technologies, and current Git branch.
 
 - **Open project** asks the local VS Code CLI to open the exact inventoried path
   through the configured Remote SSH alias.
+- **Open in terminal** starts an interactive WSL shell at the exact inventoried
+  project path inside the dashboard.
 - **Copy path** copies the Linux path for use in a terminal or another editor.
 - **Search projects** filters the inventory already loaded in the page; it does
   not send the query to the host or an external service.
@@ -52,6 +54,31 @@ technologies, and current Git branch.
 The dashboard never accepts an arbitrary path from the browser. A project can
 be opened only when its exact path appeared in the latest server-side
 inventory.
+
+## Terminal
+
+![Otherhost integrated terminal ready to start a remote WSL session](assets/screenshots/dashboard-terminal.jpg)
+
+Terminal keeps the shell interaction on the Mac while commands and workloads
+run inside WSL. **Start terminal** and **New session** begin in the remote WSL
+home directory. The terminal icon on a project card begins in that repository.
+Once connected, the shell can navigate the rest of the remote machine with the
+normal permissions of the paired WSL user.
+
+Each session uses the same configured SSH identity and pinned host key as the
+inventory. **Close**, closing the page, or stopping `otherhost ui` terminates
+the local PTY and its SSH process. Starting a new session replaces the current
+one in that browser page. The child shell omits OpenSSH's connection marker
+variables so prompt themes render like a local WSL terminal instead of adding a
+redundant `user@host` segment. For Zsh themes such as Powerlevel10k, the session
+also clears the right prompt so timestamps do not compete with the command text.
+These overrides are session-only; the user's Zsh and Powerlevel10k files remain
+unchanged, and the transport itself remains SSH. The browser buffers the
+bootstrap output until the session emits its ready marker, so internal setup
+commands never appear in the terminal viewport.
+
+The screenshot shows the disconnected empty state because demonstration mode
+intentionally never starts a local or remote shell.
 
 ## Machine
 
@@ -76,8 +103,9 @@ desktop itself or by the current WSL allocation.
 
 On narrow screens, the fixed sidebar becomes a compact top header while the
 same status, project, and machine information remains available in a single
-column. The dashboard supports light and dark system preferences and respects
-reduced-motion settings.
+column. The terminal adapts its rows and columns to the available viewport. The
+dashboard supports light and dark system preferences and respects reduced-motion
+settings.
 
 ## Privacy and security boundaries
 
@@ -87,10 +115,15 @@ reduced-motion settings.
 - Mutating actions require a per-process random token and a same-origin request.
 - Non-loopback HTTP hosts are rejected to reduce DNS-rebinding risk.
 - Project launches are restricted to paths from the latest inventory.
+- Terminal creation requires the dashboard action token and same-origin POST.
+- WebSocket authorization is random, valid for 30 seconds, consumed on first
+  connection, and carried outside the URL.
+- At most four terminal sessions may be pending or active at once.
 
 The dashboard is a trusted local control surface, not a hosted account or
-public administration panel. For the full reasoning and threat boundaries, see
-[Architecture and decisions](architecture.md) and the [security policy](../SECURITY.md).
+public administration panel. Its terminal is a normal WSL shell, not a sandbox.
+For the full reasoning and threat boundaries, see [Architecture and
+decisions](architecture.md) and the [security policy](../SECURITY.md).
 
 ## Run with demonstration data
 
@@ -102,4 +135,5 @@ make build-ui
 ```
 
 Then open `http://127.0.0.1:7842`. Demonstration mode uses fixed sample projects
-and hardware data and performs no SSH connection.
+and hardware data, performs no SSH connection, and keeps terminal actions
+disabled.

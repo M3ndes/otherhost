@@ -75,22 +75,31 @@ func (collector *SSHCollector) Collect() Snapshot {
 }
 
 func (collector *SSHCollector) sshArguments() []string {
+	arguments := sshConnectionArguments(collector.config)
+	return append(arguments, sshTarget(collector.config), "bash -s")
+}
+
+func sshConnectionArguments(config Config) []string {
 	arguments := []string{
-		"-p", strconv.Itoa(collector.config.SSHPort),
-		"-i", collector.config.IdentityFile,
+		"-p", strconv.Itoa(config.SSHPort),
+		"-i", config.IdentityFile,
 		"-o", "IdentitiesOnly=yes",
 		"-o", "BatchMode=yes",
+		"-o", "StrictHostKeyChecking=yes",
 		"-o", "ConnectTimeout=5",
 		"-o", "ServerAliveInterval=5",
 		"-o", "ServerAliveCountMax=1",
 	}
-	if collector.config.KnownHostsFile != "" {
+	if config.KnownHostsFile != "" {
 		arguments = append(arguments,
-			"-o", "UserKnownHostsFile="+collector.config.KnownHostsFile,
-			"-o", "StrictHostKeyChecking=yes",
+			"-o", "UserKnownHostsFile="+config.KnownHostsFile,
 		)
 	}
-	return append(arguments, collector.config.SSHUser+"@"+collector.config.Host, "bash -s")
+	return arguments
+}
+
+func sshTarget(config Config) string {
+	return config.SSHUser + "@" + config.Host
 }
 
 type windowsInventory struct {

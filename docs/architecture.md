@@ -83,8 +83,9 @@ dependencies, reducing the release and audit surface.
 
 `otherhost ui` starts a small Go HTTP server bound exclusively to `127.0.0.1`; it
 does not replace the CLI or listen on a LAN address. The embedded frontend has
-no CDN dependencies or telemetry. It reads a bounded inventory over the
-existing pinned SSH connection and treats `otherhost.local.conf` as data.
+no CDN dependencies or telemetry. Xterm.js and its fit addon are vendored with
+their licenses. The server reads a bounded inventory over the existing pinned
+SSH connection and treats `otherhost.local.conf` as data.
 
 The dashboard's primary model is a remote project, not an infrastructure
 service. Windows and WSL provide compute capacity; the Mac presents the editor,
@@ -97,6 +98,47 @@ project can be opened only when its exact remote path appeared in the latest SSH
 inventory. This prevents another local website from turning the dashboard into
 an arbitrary command launcher. Requests with a non-loopback HTTP `Host` are
 rejected to prevent DNS rebinding from bypassing that local boundary.
+
+The integrated terminal creates a local PTY whose child is the system OpenSSH
+client. OpenSSH reuses the configured identity, pinned `known_hosts` file,
+strict host-key checking, and keepalives; the remote side starts the WSL user's
+login shell. A project terminal may start only at an exact path from the latest
+inventory. A general terminal intentionally starts in the WSL home directory.
+After login it is a normal shell, not a filesystem sandbox, so the user can
+navigate anywhere their WSL account is permitted to access.
+
+The login shell starts without the `SSH_CLIENT`, `SSH_CONNECTION`, and
+`SSH_TTY` marker variables. Prompt themes therefore render like a local WSL
+terminal instead of repeating `user@host` inside an interface that already
+identifies the remote machine. This changes only the child environment; the
+PTY transport, authentication, host verification, and process lifecycle remain
+SSH-backed.
+
+After an interactive Zsh is ready, the PTY submits a constant initialization
+command that wraps Powerlevel10k's final `precmd` renderer and clears
+`RPROMPT`/`RPS1` after each render. Other Zsh themes receive a final `precmd`
+hook with the same effect. This keeps right-side timestamps from colliding
+visually with typed commands in the embedded terminal. The command then clears
+the initial setup line from the display. It does not write to `.zshrc`,
+`.p10k.zsh`, or any other remote file, and non-Zsh shells retain their configured
+prompt.
+
+The browser does not stream bootstrap bytes into Xterm.js immediately. It
+buffers them until the initialization command emits its final clear-screen
+sequence, treats that sequence as the ready marker, discards everything before
+it, and renders only the actual interactive prompt and later output. Keyboard
+input remains disabled during this short preparation window, preventing user
+commands from interleaving with session setup. A bounded buffer and timeout turn
+a missing marker into a visible initialization error instead of leaving the
+browser waiting indefinitely.
+
+Creating a terminal requires the dashboard action token and a same-origin POST.
+The response contains a random authorization valid for 30 seconds and one
+WebSocket attachment. Its secret is sent as a WebSocket subprotocol rather than
+in the URL, keeping it out of ordinary request logs. The socket repeats the
+loopback `Host` and exact `Origin` checks, bounds input messages and terminal
+dimensions, and limits the process to four pending or active sessions. Closing
+the socket, page, or dashboard closes the PTY and terminates the SSH child.
 
 ## Pairing protocol
 

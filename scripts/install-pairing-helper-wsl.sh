@@ -2,8 +2,9 @@
 set -eu
 
 PAIRING_VERSION=v0.1.1
-DESTINATION=${1:-"$HOME/.local/lib/devbox-bridge/devbox-pair"}
-REPOSITORY=https://github.com/M3ndes/devbox-bridge
+DESTINATION=${1:-"$HOME/.local/lib/otherhost/otherhost-pair"}
+REPOSITORY=https://github.com/M3ndes/otherhost
+LEGACY_REPOSITORY=https://github.com/M3ndes/devbox-bridge
 
 fail() { printf '[fail] %s\n' "$*" >&2; exit 1; }
 
@@ -18,13 +19,19 @@ for command_name in curl sha256sum; do
   command -v "$command_name" >/dev/null 2>&1 || fail "$command_name is required"
 done
 
-ASSET="devbox-pair-linux-$ARCHITECTURE"
+ASSET="otherhost-pair-linux-$ARCHITECTURE"
+LEGACY_ASSET="devbox-pair-linux-$ARCHITECTURE"
 BASE_URL="$REPOSITORY/releases/download/$PAIRING_VERSION"
 TEMPORARY_DIRECTORY=$(mktemp -d)
 trap 'rm -rf "$TEMPORARY_DIRECTORY"' EXIT HUP INT TERM
 
-curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
-  "$BASE_URL/$ASSET" --output "$TEMPORARY_DIRECTORY/$ASSET"
+if ! curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+  "$BASE_URL/$ASSET" --output "$TEMPORARY_DIRECTORY/$ASSET" 2>/dev/null; then
+  ASSET=$LEGACY_ASSET
+  BASE_URL="$LEGACY_REPOSITORY/releases/download/$PAIRING_VERSION"
+  curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+    "$BASE_URL/$ASSET" --output "$TEMPORARY_DIRECTORY/$ASSET"
+fi
 curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
   "$BASE_URL/checksums.txt" --output "$TEMPORARY_DIRECTORY/checksums.txt"
 

@@ -93,7 +93,7 @@ func installKeyInWSL(distro, publicKey string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := runWSLScript(distro, "devbox-pair-key", script); err != nil {
+	if _, err := runWSLScript(distro, "otherhost-pair-key", script); err != nil {
 		return fmt.Errorf("could not install the SSH public key in WSL: %w", err)
 	}
 	return nil
@@ -134,7 +134,7 @@ func wslKeyInstallScript(publicKey string) (string, error) {
 	}
 	encoded := base64.StdEncoding.EncodeToString([]byte(normalized))
 	script := `set -eu
-public_key=$(printf '%s' '__DEVBOX_PUBLIC_KEY_BASE64__' | base64 --decode)
+public_key=$(printf '%s' '__OTHERHOST_PUBLIC_KEY_BASE64__' | base64 --decode)
 umask 077
 mkdir -p "$HOME/.ssh"
 touch "$HOME/.ssh/authorized_keys"
@@ -142,7 +142,7 @@ chmod 700 "$HOME/.ssh"
 chmod 600 "$HOME/.ssh/authorized_keys"
 grep -Fqx -- "$public_key" "$HOME/.ssh/authorized_keys" || printf '%s\n' "$public_key" >> "$HOME/.ssh/authorized_keys"
 `
-	script = strings.Replace(script, "__DEVBOX_PUBLIC_KEY_BASE64__", encoded, 1)
+	script = strings.Replace(script, "__OTHERHOST_PUBLIC_KEY_BASE64__", encoded, 1)
 	return script, nil
 }
 
@@ -151,7 +151,7 @@ func readWSLHostKey(distro string) (string, error) {
 }
 
 func readWSLUserHostKey(distro string) (string, error) {
-	return readWSLHostKeyCommand(distro, `cat "$HOME/.local/lib/devbox-bridge/ssh_host_ed25519_key.pub"`)
+	return readWSLHostKeyCommand(distro, `cat "$HOME/.local/lib/otherhost/ssh_host_ed25519_key.pub"`)
 }
 
 func readWSLHostKeyCommand(distro, script string) (string, error) {

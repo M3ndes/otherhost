@@ -331,11 +331,11 @@ func (host *pairingHost) handleConfirm(writer http.ResponseWriter, request *http
 		return
 	}
 	result := PairResult{
-		DevboxName: host.options.Name,
-		Host:       localHTTPAddress(request),
-		SSHUser:    host.options.SSHUser,
-		SSHPort:    host.options.SSHPort,
-		SSHHostKey: hostKey,
+		OtherhostName: host.options.Name,
+		Host:          localHTTPAddress(request),
+		SSHUser:       host.options.SSHUser,
+		SSHPort:       host.options.SSHPort,
+		SSHHostKey:    hostKey,
 	}
 	nonce, ciphertext, err := seal(session.keys.hostToClient, session.keys.transcript, result)
 	if err != nil {

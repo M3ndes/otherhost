@@ -1,4 +1,4 @@
-# Contributing to devbox-bridge
+# Contributing to otherhost
 
 Thank you for helping make remote development between Windows, WSL, and macOS
 simpler. Code, documentation, bug reports, compatibility results, and focused
@@ -45,8 +45,8 @@ The repository intentionally has a small toolchain:
 Clone the repository and run the portable test suite:
 
 ```bash
-git clone https://github.com/M3ndes/devbox-bridge.git
-cd devbox-bridge
+git clone https://github.com/M3ndes/otherhost.git
+cd otherhost
 make test
 ```
 
@@ -63,7 +63,7 @@ race detector, checks ShellCheck, and parses PowerShell on Windows.
 Run the project dashboard against safe demonstration data during UI work:
 
 ```bash
-go run ./cmd/devbox-ui --demo
+go run ./cmd/otherhost-ui --demo
 ```
 
 The dashboard must remain usable without external fonts, scripts, CDNs, or
@@ -74,16 +74,16 @@ loopback and preserve the per-session authorization check for local actions.
 
 | Path | Responsibility |
 | --- | --- |
-| `bin/devbox` | Mac user command and OpenSSH orchestration |
-| `cmd/devbox-pair/` | Go discovery and encrypted pairing helper |
-| `cmd/devbox-ui/`, `internal/dashboard/` | Local project dashboard and remote inventory |
+| `bin/otherhost` | Mac user command and OpenSSH orchestration |
+| `cmd/otherhost-pair/` | Go discovery and encrypted pairing helper |
+| `cmd/otherhost-ui/`, `internal/dashboard/` | Local project dashboard and remote inventory |
 | `lib/` | Shared Bash and PowerShell configuration parsing |
 | `scripts/bootstrap-mac.sh` | Mac client installation |
 | `setup.cmd`, `setup.ps1` | Windows preflight, UAC handoff, and orchestration |
 | `scripts/bootstrap-windows.ps1` | Windows and Hyper-V network policy |
 | `scripts/bootstrap-wsl*.sh` | System and user-scoped WSL host setup |
 | `scripts/pair-wsl.sh` | Direct WSL pairing host launcher |
-| `config/devbox.example.conf` | Documented configuration schema |
+| `config/otherhost.example.conf` | Documented configuration schema |
 | `tests/` | Portable policy, parsing, and syntax tests |
 | `docs/` | User, operator, security, and architecture explanations |
 
@@ -110,7 +110,7 @@ test(config): reject duplicate security fields
 
 Keep these project constraints intact:
 
-- `devbox.local.conf` is untrusted input. Parse it as data; never source,
+- `otherhost.local.conf` is untrusted input. Parse it as data; never source,
   evaluate, dot-source, or execute it.
 - Setup must be safe to rerun, preserve unrelated user configuration, and offer
   a read-only check before applying host changes.
@@ -142,10 +142,10 @@ Runtime scripts do not execute ignored local build artifacts automatically.
 Select the candidate explicitly:
 
 ```bash
-DEVBOX_PAIR_BIN="$PWD/build/devbox-pair" devbox pair
+OTHERHOST_PAIR_BIN="$PWD/build/otherhost-pair" otherhost pair
 ```
 
-Use the equivalent `DEVBOX_PAIR_BIN` environment override for a host-mode test.
+Use the equivalent `OTHERHOST_PAIR_BIN` environment override for a host-mode test.
 This opt-in prevents a stale local binary from silently replacing the
 checksum-verified released helper.
 

@@ -15,22 +15,22 @@ jobs:
         include:
           - goos: darwin
             goarch: amd64
-            asset: devbox-pair-darwin-amd64
+            asset: otherhost-pair-darwin-amd64
           - goos: darwin
             goarch: arm64
-            asset: devbox-pair-darwin-arm64
+            asset: otherhost-pair-darwin-arm64
           - goos: windows
             goarch: amd64
-            asset: devbox-pair-windows-amd64.exe
+            asset: otherhost-pair-windows-amd64.exe
           - goos: windows
             goarch: arm64
-            asset: devbox-pair-windows-arm64.exe
+            asset: otherhost-pair-windows-arm64.exe
           - goos: linux
             goarch: amd64
-            asset: devbox-pair-linux-amd64
+            asset: otherhost-pair-linux-amd64
           - goos: linux
             goarch: arm64
-            asset: devbox-pair-linux-arm64
+            asset: otherhost-pair-linux-arm64
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -43,7 +43,7 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: '0'
-        run: go build -trimpath -ldflags "-s -w -X main.version=${GITHUB_REF_NAME}" -o "dist/${{ matrix.asset }}" ./cmd/devbox-pair
+        run: go build -trimpath -ldflags "-s -w -X main.version=${GITHUB_REF_NAME}" -o "dist/${{ matrix.asset }}" ./cmd/otherhost-pair
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
@@ -60,7 +60,7 @@ jobs:
           merge-multiple: true
       - name: Create checksums
         working-directory: dist
-        run: sha256sum devbox-pair-* > checksums.txt
+        run: sha256sum otherhost-pair-* > checksums.txt
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

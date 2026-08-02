@@ -5,6 +5,7 @@ import (
 	"crypto/ecdh"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -16,6 +17,36 @@ import (
 )
 
 const testPublicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDSZaD3EhKIadfnHAoP5FI2lDwzjk6xZ4H8vS2gFVrKe test-key"
+
+func TestVersionOneWireIdentifiersRemainBackwardCompatible(t *testing.T) {
+	if DiscoveryMagic != "devbox-bridge-discovery" {
+		t.Fatalf("v1 discovery magic changed: %q", DiscoveryMagic)
+	}
+	labels := map[string]string{
+		"transcript": transcriptLabel, "client-to-host": clientToHostLabel,
+		"host-to-client": hostToClientLabel, "numeric-comparison": numericComparisonLabel,
+	}
+	expectedLabels := map[string]string{
+		"transcript": "devbox-bridge-pairing-v1", "client-to-host": "devbox-bridge/client-to-host/v1",
+		"host-to-client": "devbox-bridge/host-to-client/v1", "numeric-comparison": "devbox-bridge/numeric-comparison/v1",
+	}
+	for name, label := range labels {
+		if label != expectedLabels[name] {
+			t.Fatalf("v1 %s label changed: %q", name, label)
+		}
+	}
+	encoded, err := json.Marshal(PairResult{OtherhostName: "WINDOWS-PC"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(encoded), `"devbox_name":"WINDOWS-PC"`) || strings.Contains(string(encoded), "otherhost_name") {
+		t.Fatalf("v1 pairing result is incompatible: %s", encoded)
+	}
+	transcript := makeTranscript("instance", HelloRequest{}, HelloResponse{})
+	if !strings.Contains(string(transcript), "devbox-bridge-pairing-v1") {
+		t.Fatal("v1 transcript label changed")
+	}
+}
 
 func TestNumericComparisonMatchesAndBindsTranscript(t *testing.T) {
 	clientPrivate, err := ecdh.X25519().GenerateKey(rand.Reader)
@@ -85,7 +116,7 @@ func TestWSLKeyInstallScriptPreservesNormalizedPublicKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	if strings.Contains(script, `"$1"`) || strings.Contains(script, "IFS= read") ||
-		strings.Contains(script, "__DEVBOX_PUBLIC_KEY_BASE64__") {
+		strings.Contains(script, "__OTHERHOST_PUBLIC_KEY_BASE64__") {
 		t.Fatalf("WSL install script does not embed the encoded key safely: %s", script)
 	}
 	expected := strings.Join(strings.Fields(testPublicKey)[:2], " ")
@@ -141,7 +172,7 @@ func TestPairEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Host != "127.0.0.1" || result.DevboxName != "WINDOWS-PC" || result.SSHUser != "developer" {
+	if result.Host != "127.0.0.1" || result.OtherhostName != "WINDOWS-PC" || result.SSHUser != "developer" {
 		t.Fatalf("unexpected pairing result: %+v", result)
 	}
 	select {
@@ -197,7 +228,7 @@ func TestDirectDiscoveryFindsHostWithoutMulticast(t *testing.T) {
 		devices[0].Address != "127.0.0.1" || devices[0].Port != port {
 		t.Fatalf("unexpected directly discovered host: %+v", devices[0])
 	}
-	if output := strings.Join(diagnostics, "\n"); !strings.Contains(output, "1 endpoint(s) responded, 1 compatible devbox(es)") {
+	if output := strings.Join(diagnostics, "\n"); !strings.Contains(output, "1 endpoint(s) responded, 1 compatible host(s)") {
 		t.Fatalf("direct discovery diagnostics were not actionable: %s", output)
 	}
 	waitForDiagnostic(t, hostDiagnostics, "direct discovery request accepted from 127.0.0.1")
@@ -226,7 +257,7 @@ func TestDirectDiscoveryReportsUnreachableEndpoint(t *testing.T) {
 	}
 	output := strings.Join(diagnostics, "\n")
 	if !strings.Contains(output, "1/1 probe(s)") ||
-		!strings.Contains(output, "0 endpoint(s) responded, 0 compatible devbox(es)") {
+		!strings.Contains(output, "0 endpoint(s) responded, 0 compatible host(s)") {
 		t.Fatalf("unreachable endpoint diagnostics were not actionable: %s", output)
 	}
 }
@@ -286,14 +317,14 @@ func TestRejectedComparisonDoesNotInstallKey(t *testing.T) {
 
 func TestSaveClientConfigurationPinsHostIdentity(t *testing.T) {
 	directory := t.TempDir()
-	configPath := filepath.Join(directory, "devbox.local.conf")
+	configPath := filepath.Join(directory, "otherhost.local.conf")
 	knownHostsPath := filepath.Join(directory, "known_hosts")
-	if err := os.WriteFile(configPath, []byte("# keep this comment\nhost=CHANGE_ME\nports=3000,8080\n"), 0600); err != nil {
+	if err := os.WriteFile(configPath, []byte("# keep this comment\ndevbox_name=OLD-PC\nhost=CHANGE_ME\nports=3000,8080\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	result := ClientResult{
 		PairResult: PairResult{
-			DevboxName: "WINDOWS-PC", Host: "192.168.1.10", SSHUser: "developer", SSHPort: 2222, SSHHostKey: testPublicKey,
+			OtherhostName: "WINDOWS-PC", Host: "192.168.1.10", SSHUser: "developer", SSHPort: 2222, SSHHostKey: testPublicKey,
 		},
 	}
 	if err := SaveClientConfiguration(configPath, knownHostsPath, result); err != nil {
@@ -305,12 +336,15 @@ func TestSaveClientConfigurationPinsHostIdentity(t *testing.T) {
 	}
 	for _, expected := range []string{
 		"# keep this comment", "host=192.168.1.10", "ports=3000,8080",
-		"devbox_name=WINDOWS-PC", "ssh_user=developer", "ssh_port=2222",
+		"otherhost_name=WINDOWS-PC", "ssh_user=developer", "ssh_port=2222",
 		"known_hosts_file=" + knownHostsPath,
 	} {
 		if !strings.Contains(string(config), expected) {
 			t.Fatalf("saved config is missing %q:\n%s", expected, config)
 		}
+	}
+	if strings.Contains(string(config), "devbox_name=") {
+		t.Fatalf("legacy machine-name key was not migrated:\n%s", config)
 	}
 	knownHosts, err := os.ReadFile(knownHostsPath)
 	if err != nil {

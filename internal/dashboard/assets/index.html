@@ -5,20 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="#f4f5f7">
-    <title>Devbox</title>
+    <title>Otherhost</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/app.css">
   </head>
   <body>
     <div class="app-shell">
       <aside class="sidebar" aria-label="Primary navigation">
-        <a class="brand" href="#overview" aria-label="Devbox overview">
+        <a class="brand" href="#overview" aria-label="Otherhost overview">
           <span class="brand-mark" aria-hidden="true">
             <svg viewBox="0 0 32 32" role="img">
-              <path d="M8.4 7.2 16 2.8l7.6 4.4v8.7L16 20.3l-7.6-4.4V7.2Z"/>
-              <path d="m8.4 16.1 7.6 4.4v8.7l-7.6-4.4v-8.7Zm15.2 0v8.7L16 29.2v-8.7l7.6-4.4Z" opacity=".7"/>
+              <path class="orbit-ring" d="M7.1 23.8A12 12 0 1 1 27.3 17.4"/>
+              <path class="orbit-link" d="m11.2 16 10.1 5.2"/>
+              <circle class="orbit-node" cx="10.8" cy="15.8" r="3.5"/>
+              <circle class="orbit-node orbit-node-remote" cx="21.8" cy="21.5" r="2.6"/>
+              <circle class="orbit-node orbit-node-small" cx="27.2" cy="17.4" r="1.7"/>
             </svg>
           </span>
-          <span>devbox</span>
+          <span>otherhost</span>
         </a>
 
         <nav class="nav-list">
@@ -50,14 +54,17 @@
 
       <main class="main-content">
         <header class="topbar">
-          <a class="mobile-brand brand" href="#overview" aria-label="Devbox overview">
+          <a class="mobile-brand brand" href="#overview" aria-label="Otherhost overview">
             <span class="brand-mark" aria-hidden="true">
               <svg viewBox="0 0 32 32" role="img">
-                <path d="M8.4 7.2 16 2.8l7.6 4.4v8.7L16 20.3l-7.6-4.4V7.2Z"/>
-                <path d="m8.4 16.1 7.6 4.4v8.7l-7.6-4.4v-8.7Zm15.2 0v8.7L16 29.2v-8.7l7.6-4.4Z" opacity=".7"/>
+                <path class="orbit-ring" d="M7.1 23.8A12 12 0 1 1 27.3 17.4"/>
+                <path class="orbit-link" d="m11.2 16 10.1 5.2"/>
+                <circle class="orbit-node" cx="10.8" cy="15.8" r="3.5"/>
+                <circle class="orbit-node orbit-node-remote" cx="21.8" cy="21.5" r="2.6"/>
+                <circle class="orbit-node orbit-node-small" cx="27.2" cy="17.4" r="1.7"/>
               </svg>
             </span>
-            <span>devbox</span>
+            <span>otherhost</span>
           </a>
           <div class="topbar-actions">
             <span class="connection-pill loading" data-connection-pill>
@@ -71,7 +78,7 @@
         <div class="content-wrap">
           <section class="hero" id="overview" aria-labelledby="overview-title">
             <div class="hero-copy">
-              <span class="eyebrow">Remote development workspace</span>
+              <span class="eyebrow">localhost → otherhost</span>
               <h1 id="overview-title">Build remotely.<br><span>Stay fast locally.</span></h1>
               <p>Your projects, toolchains, and heavy workloads run on your Windows desktop while your Mac stays focused on the experience.</p>
               <div class="hero-actions">
@@ -226,8 +233,8 @@
           </section>
 
           <footer class="footer">
-            <span>Devbox Bridge</span>
-            <span>All workloads remain on your private development host.</span>
+            <span>Otherhost</span>
+            <span>Make the other host feel local.</span>
           </footer>
         </div>
       </main>

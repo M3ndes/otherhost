@@ -1,3 +1,5 @@
+otherhost.local.conf
+# Legacy local configuration. Keep ignored so an upgrade can never expose it.
 devbox.local.conf
 build/
 dist/

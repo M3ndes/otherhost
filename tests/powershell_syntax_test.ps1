@@ -2,7 +2,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $scripts = @(
     (Join-Path $root 'setup.ps1'),
-    (Join-Path $root 'lib/devbox-windows.ps1'),
+    (Join-Path $root 'lib/otherhost-windows.ps1'),
     (Join-Path $root 'scripts/bootstrap-windows.ps1')
 )
 
@@ -22,7 +22,7 @@ if ($launcher -notmatch 'setup\.ps1') {
     exit 1
 }
 
-. (Join-Path $root 'lib/devbox-windows.ps1')
+. (Join-Path $root 'lib/otherhost-windows.ps1')
 $keyOne = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDSZaD3EhKIadfnHAoP5FI2lDwzjk6xZ4H8vS2gFVrKe test-one'
 $keyTwo = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAstAi+iQmttXXJI8elqpE0ansjPtXa3y07PoTm4hV9y test-two'
 $fingerprintOne = Get-SshPublicKeyFingerprint -PublicKey $keyOne
@@ -92,7 +92,7 @@ if ($setup.Contains("Read-Host 'GitHub username containing the Mac public key'")
     Write-Error 'normal setup still requires a GitHub username'
     exit 1
 }
-if ($setup.Contains('cd "$HOME/src/devbox-bridge" && ./scripts/bootstrap-wsl.sh --apply')) {
+if ($setup.Contains('cd "$HOME/src/otherhost" && ./scripts/bootstrap-wsl.sh --apply')) {
     Write-Error 'setup still executes the privileged bootstrap from the secondary WSL checkout'
     exit 1
 }

@@ -19,8 +19,14 @@ import (
 )
 
 const (
-	ProtocolVersion         = 1
+	ProtocolVersion = 1
+	// Wire identifiers intentionally keep the original v1 values so Otherhost
+	// remains compatible with already-installed pairing helpers.
 	DiscoveryMagic          = "devbox-bridge-discovery"
+	transcriptLabel         = "devbox-bridge-pairing-v1"
+	clientToHostLabel       = "devbox-bridge/client-to-host/v1"
+	hostToClientLabel       = "devbox-bridge/host-to-client/v1"
+	numericComparisonLabel  = "devbox-bridge/numeric-comparison/v1"
 	DefaultDiscoveryPort    = 25370
 	DefaultDiscoveryAddress = "239.255.67.89:25370"
 	DefaultPairPort         = 25371
@@ -80,11 +86,11 @@ type PairPayload struct {
 }
 
 type PairResult struct {
-	DevboxName string `json:"devbox_name"`
-	Host       string `json:"host"`
-	SSHUser    string `json:"ssh_user"`
-	SSHPort    int    `json:"ssh_port"`
-	SSHHostKey string `json:"ssh_host_key"`
+	OtherhostName string `json:"devbox_name"`
+	Host          string `json:"host"`
+	SSHUser       string `json:"ssh_user"`
+	SSHPort       int    `json:"ssh_port"`
+	SSHHostKey    string `json:"ssh_host_key"`
 }
 
 type sessionKeys struct {
@@ -132,7 +138,7 @@ func writeField(buffer *bytes.Buffer, value string) {
 
 func makeTranscript(instance string, request HelloRequest, response HelloResponse) []byte {
 	var buffer bytes.Buffer
-	writeField(&buffer, "devbox-bridge-pairing-v1")
+	writeField(&buffer, transcriptLabel)
 	writeField(&buffer, instance)
 	writeField(&buffer, request.ClientName)
 	writeField(&buffer, response.HostName)
@@ -174,9 +180,9 @@ func deriveSessionKeys(privateKey *ecdh.PrivateKey, peerPublicKey []byte, transc
 	}
 	transcriptHash := sha256.Sum256(transcript)
 	return sessionKeys{
-		clientToHost: hkdfExpand(shared, transcriptHash[:], "devbox-bridge/client-to-host/v1", 32),
-		hostToClient: hkdfExpand(shared, transcriptHash[:], "devbox-bridge/host-to-client/v1", 32),
-		sas:          hkdfExpand(shared, transcriptHash[:], "devbox-bridge/numeric-comparison/v1", 32),
+		clientToHost: hkdfExpand(shared, transcriptHash[:], clientToHostLabel, 32),
+		hostToClient: hkdfExpand(shared, transcriptHash[:], hostToClientLabel, 32),
+		sas:          hkdfExpand(shared, transcriptHash[:], numericComparisonLabel, 32),
 		transcript:   transcriptHash[:],
 	}, nil
 }

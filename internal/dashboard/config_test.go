@@ -10,15 +10,15 @@ import (
 func TestLoadConfigTreatsValuesAsData(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	configPath := filepath.Join(t.TempDir(), "devbox.conf")
+	configPath := filepath.Join(t.TempDir(), "otherhost.conf")
 	sideEffect := filepath.Join(t.TempDir(), "must-not-exist")
 	content := strings.Join([]string{
-		"devbox_name=test-box",
+		"otherhost_name=test-box",
 		"host=192.0.2.10",
 		"ssh_user=developer",
 		"ssh_port=2222",
-		"identity_file=.ssh/devbox key",
-		"known_hosts_file=.ssh/devbox known hosts",
+		"identity_file=.ssh/otherhost key",
+		"known_hosts_file=.ssh/otherhost known hosts",
 		"projects_root=~/src/$(touch " + sideEffect + ")",
 	}, "\n")
 	if err := os.WriteFile(configPath, []byte(content), 0600); err != nil {
@@ -32,7 +32,7 @@ func TestLoadConfigTreatsValuesAsData(t *testing.T) {
 	if config.Name != "test-box" || config.Host != "192.0.2.10" || config.SSHUser != "developer" {
 		t.Fatalf("unexpected config: %#v", config)
 	}
-	if config.IdentityFile != filepath.Join(home, ".ssh/devbox key") {
+	if config.IdentityFile != filepath.Join(home, ".ssh/otherhost key") {
 		t.Fatalf("identity path was not resolved: %q", config.IdentityFile)
 	}
 	if _, err := os.Stat(sideEffect); !os.IsNotExist(err) {
@@ -41,13 +41,28 @@ func TestLoadConfigTreatsValuesAsData(t *testing.T) {
 }
 
 func TestLoadConfigRejectsCommandLikeHost(t *testing.T) {
-	configPath := filepath.Join(t.TempDir(), "devbox.conf")
-	content := "devbox_name=test-box\nhost=host;reboot\nssh_user=developer\nssh_port=2222\nidentity_file=.ssh/key\n"
+	configPath := filepath.Join(t.TempDir(), "otherhost.conf")
+	content := "otherhost_name=test-box\nhost=host;reboot\nssh_user=developer\nssh_port=2222\nidentity_file=.ssh/key\n"
 	if err := os.WriteFile(configPath, []byte(content), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := LoadConfig(configPath); err == nil {
 		t.Fatal("unsafe host value was accepted")
+	}
+}
+
+func TestLoadConfigAcceptsLegacyMachineName(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "devbox.local.conf")
+	content := "devbox_name=legacy-box\nhost=192.0.2.10\nssh_user=developer\nssh_port=2222\nidentity_file=.ssh/key\n"
+	if err := os.WriteFile(configPath, []byte(content), 0600); err != nil {
+		t.Fatal(err)
+	}
+	config, err := LoadConfig(configPath)
+	if err != nil {
+		t.Fatalf("legacy config was not accepted: %v", err)
+	}
+	if config.Name != "legacy-box" {
+		t.Fatalf("unexpected legacy machine name: %q", config.Name)
 	}
 }
 

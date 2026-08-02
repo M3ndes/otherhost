@@ -13,19 +13,20 @@ Requirements are Git, OpenSSH, and a normal macOS terminal. Clone the repository
 and run the installer:
 
 ```bash
-git clone https://github.com/M3ndes/devbox-bridge.git
-cd devbox-bridge
+git clone https://github.com/M3ndes/otherhost.git
+cd otherhost
 ./scripts/bootstrap-mac.sh --apply
 ```
 
 The installer:
 
-1. links `bin/devbox` to `~/.local/bin/devbox`;
-2. creates an ignored `devbox.local.conf` when needed;
+1. links `bin/otherhost` to `~/.local/bin/otherhost`;
+2. creates an ignored `otherhost.local.conf` when needed;
 3. installs the checksum-verified pairing helper for Intel or Apple Silicon;
-4. leaves existing configuration, command files, and SSH keys untouched.
+4. leaves existing configuration and SSH keys untouched;
+5. installs `devbox` as a temporary compatibility alias.
 
-It fails instead of overwriting an unrelated `~/.local/bin/devbox` file.
+It fails instead of overwriting an unrelated `~/.local/bin/otherhost` file.
 
 If the script reports that `~/.local/bin` is not in `PATH`, add this line to
 `~/.zshrc`:
@@ -37,12 +38,12 @@ export PATH="$HOME/.local/bin:$PATH"
 Open a new terminal or load the change with `source ~/.zshrc`, then check:
 
 ```bash
-devbox help
+otherhost help
 ```
 
 Running `bootstrap-mac.sh` without `--apply` is a read-only check. The optional
 `--generate-key` flag creates the dedicated SSH identity during installation;
-otherwise `devbox pair` creates it when first needed.
+otherwise `otherhost pair` creates it when first needed.
 
 ## Pair with Windows
 
@@ -55,7 +56,7 @@ session; it does not copy the Mac private key.
 2. On the Mac, run:
 
    ```bash
-   devbox pair
+   otherhost pair
    ```
 
 3. Check the device names and the complete six-digit code on both screens.
@@ -73,19 +74,19 @@ Successful pairing writes these authenticated values to the local config:
 - SSH port;
 - dedicated known-hosts path.
 
-It also pins the WSL Ed25519 host key and immediately runs `devbox doctor`.
+It also pins the WSL Ed25519 host key and immediately runs `otherhost doctor`.
 Pairing is therefore complete only when the final SSH check succeeds.
 
 ## Files created on the Mac
 
 | File | Purpose | Safe to share? |
 | --- | --- | --- |
-| `~/.local/bin/devbox` | Link to this clone's CLI | The link itself contains no secret |
-| `~/.local/lib/devbox-bridge/devbox-pair` | Installed pairing helper | Yes, when obtained from a verified release |
-| `devbox.local.conf` | Machine-local connection settings | Treat as private diagnostic data |
-| `~/.ssh/devbox_bridge_ed25519` | Dedicated private SSH identity | **No** |
-| `~/.ssh/devbox_bridge_ed25519.pub` | Public half installed in WSL | Yes |
-| `~/.ssh/devbox_bridge_known_hosts` | Pinned WSL public host identity | Public key data, but identifies the host |
+| `~/.local/bin/otherhost` | Link to this clone's CLI | The link itself contains no secret |
+| `~/.local/lib/otherhost/otherhost-pair` | Installed pairing helper | Yes, when obtained from a verified release |
+| `otherhost.local.conf` | Machine-local connection settings | Treat as private diagnostic data |
+| `~/.ssh/otherhost_ed25519` | Dedicated private SSH identity for new installations | **No** |
+| `~/.ssh/otherhost_ed25519.pub` | Public half installed in WSL | Yes |
+| `~/.ssh/otherhost_known_hosts` | Pinned WSL public host identity | Public key data, but identifies the host |
 
 The default private key is permission-restricted and never leaves the Mac. All
 paired SSH commands use `IdentitiesOnly=yes` and `StrictHostKeyChecking=yes`, so
@@ -97,13 +98,13 @@ a replacement automatically.
 First verify the connection when the host or network has changed:
 
 ```bash
-devbox doctor
+otherhost doctor
 ```
 
 Open all configured tunnels:
 
 ```bash
-devbox connect
+otherhost connect
 ```
 
 Keep that process in a dedicated terminal. SSH keepalives detect a lost host,
@@ -111,15 +112,30 @@ and the command fails immediately when a requested local port cannot be opened.
 `Ctrl-C` closes only the SSH connection; it does not stop applications or
 containers on the Windows host.
 
+## Migrate an existing devbox-bridge client
+
+Pull the rebrand, update the clone's remote, and rerun the installer:
+
+```bash
+git remote set-url origin https://github.com/M3ndes/otherhost.git
+git pull
+./scripts/bootstrap-mac.sh --apply
+```
+
+The installer converts the legacy machine-name key and local config filename,
+then points both `otherhost` and the deprecated `devbox` alias at the current
+clone. It preserves any configured legacy SSH identity and pinned host-key file,
+so the existing Windows connection continues to work without pairing again.
+
 In another terminal, inspect the available URLs and remote machine:
 
 ```bash
-devbox urls
-devbox status
+otherhost urls
+otherhost status
 ```
 
 For example, a configured WSL application on port `3000` becomes
-`http://127.0.0.1:3000` on the Mac while `devbox connect` runs. The CLI opens the
+`http://127.0.0.1:3000` on the Mac while `otherhost connect` runs. The CLI opens the
 tunnel but does not start that application.
 
 ## Use an editor over Remote SSH
@@ -127,7 +143,7 @@ tunnel but does not start that application.
 Generate an OpenSSH host block:
 
 ```bash
-devbox ssh-config
+otherhost ssh-config
 ```
 
 Review the output, then add it to `~/.ssh/config` if appropriate. Editors with
@@ -141,10 +157,10 @@ Build the local dashboard once when working from a source checkout:
 
 ```bash
 make build-ui
-devbox ui
+otherhost ui
 ```
 
-Without a local build, `devbox ui` uses `go run` when Go 1.22 or newer is
+Without a local build, `otherhost ui` uses `go run` when Go 1.22 or newer is
 available. The dashboard opens at `http://127.0.0.1:7842`, collects its inventory
 through the same pinned SSH identity as the CLI, and stops when its terminal
 process receives `Ctrl-C`.
@@ -152,7 +168,7 @@ process receives `Ctrl-C`.
 Repositories are discovered one level below `projects_root`, which defaults to
 `~/src` in WSL. Only directories containing `.git` are shown. The dashboard is
 read-only except for launching a discovered path in VS Code. That action expects
-the reviewed `devbox ssh-config` block to already exist in `~/.ssh/config` and
+the reviewed `otherhost ssh-config` block to already exist in `~/.ssh/config` and
 the `code` command-line tool to be installed.
 
 The server binds only to Mac loopback, embeds all of its assets, and exposes no
@@ -161,14 +177,14 @@ messages are intentionally English-only.
 
 ## Change forwarded ports
 
-The `ports` field in `devbox.local.conf` is a comma-separated list. For example:
+The `ports` field in `otherhost.local.conf` is a comma-separated list. For example:
 
 ```ini
 ports=3000,5432,8000
 ```
 
 Each number maps the same Mac localhost port to the same port on WSL loopback.
-Stop any existing `devbox connect` process, edit the list, run `devbox doctor`,
+Stop any existing `otherhost connect` process, edit the list, run `otherhost doctor`,
 and reconnect. If a local port is already in use, choose another application
 port or stop the conflicting Mac process.
 
@@ -183,8 +199,8 @@ delete the known-hosts entry merely to silence an unexplained mismatch.
 
 1. Verify locally that you are connecting to the intended Windows and WSL host.
 2. Start a new pairing window on Windows.
-3. Run `devbox pair` and compare a new code.
-4. Let the final `devbox doctor` verify the replacement state.
+3. Run `otherhost pair` and compare a new code.
+4. Let the final `otherhost doctor` verify the replacement state.
 
 An existing Mac identity is preserved unless you intentionally remove it. If a
 Mac is lost or no longer trusted, remove its public key from WSL
@@ -199,7 +215,7 @@ identity must then be configured and verified manually.
 Print the dedicated public-key fingerprint:
 
 ```bash
-ssh-keygen -lf ~/.ssh/devbox_bridge_ed25519.pub -E sha256
+ssh-keygen -lf ~/.ssh/otherhost_ed25519.pub -E sha256
 ```
 
 On Windows, run setup with both the selected GitHub account and this exact

@@ -2,11 +2,14 @@
 set -eu
 
 ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
-# shellcheck source=../lib/devbox.sh
-. "$ROOT_DIR/lib/devbox.sh"
+# shellcheck source=../lib/otherhost.sh
+. "$ROOT_DIR/lib/otherhost.sh"
 
 MODE=check
-CONFIG_FILE=${DEVBOX_CONFIG:-"$ROOT_DIR/devbox.local.conf"}
+CONFIG_FILE=${OTHERHOST_CONFIG:-${DEVBOX_CONFIG:-"$ROOT_DIR/otherhost.local.conf"}}
+if [ -z "${OTHERHOST_CONFIG:-}${DEVBOX_CONFIG:-}" ] && [ ! -f "$CONFIG_FILE" ] && [ -f "$ROOT_DIR/devbox.local.conf" ]; then
+  CONFIG_FILE="$ROOT_DIR/devbox.local.conf"
+fi
 
 usage() {
   cat <<'EOF'
@@ -69,7 +72,7 @@ enable_systemd_config() {
     }
   ' "$source_file" > "$merged_file"
   if sudo test -f /etc/wsl.conf; then
-    backup_file="/etc/wsl.conf.$(date +%Y%m%d-%H%M%S).devbox-bridge.bak"
+    backup_file="/etc/wsl.conf.$(date +%Y%m%d-%H%M%S).otherhost.bak"
     sudo cp /etc/wsl.conf "$backup_file"
     ok "backed up existing WSL config: $backup_file"
   fi
@@ -78,14 +81,14 @@ enable_systemd_config() {
 }
 
 grep -qi microsoft /proc/version 2>/dev/null || fail 'this bootstrap must run inside WSL'
-devbox_require_config "$CONFIG_FILE" || exit 1
+otherhost_require_config "$CONFIG_FILE" || exit 1
 
-SSH_PORT=$(devbox_config_get ssh_port "$CONFIG_FILE")
-SSH_PUBLIC_KEY=$(devbox_config_get ssh_public_key "$CONFIG_FILE")
-PROJECT_REPOSITORY=$(devbox_config_get project_repository "$CONFIG_FILE")
-PROJECT_DIRECTORY=$(devbox_config_get project_directory "$CONFIG_FILE")
+SSH_PORT=$(otherhost_config_get ssh_port "$CONFIG_FILE")
+SSH_PUBLIC_KEY=$(otherhost_config_get ssh_public_key "$CONFIG_FILE")
+PROJECT_REPOSITORY=$(otherhost_config_get project_repository "$CONFIG_FILE")
+PROJECT_DIRECTORY=$(otherhost_config_get project_directory "$CONFIG_FILE")
 
-if ! devbox_is_positive_integer "$SSH_PORT" || [ "$SSH_PORT" -gt 65535 ]; then
+if ! otherhost_is_positive_integer "$SSH_PORT" || [ "$SSH_PORT" -gt 65535 ]; then
   fail 'invalid ssh_port'
 fi
 CURRENT_USER=$(id -un)
@@ -127,7 +130,7 @@ if [ "$MODE" = apply ]; then
   touch "$HOME/.ssh/authorized_keys"
   chmod 600 "$HOME/.ssh/authorized_keys"
   if [ -n "$SSH_PUBLIC_KEY" ]; then
-    devbox_authorize_public_key "$SSH_PUBLIC_KEY" "$HOME/.ssh/authorized_keys" || fail 'ssh_public_key is not a valid supported SSH public key'
+    otherhost_authorize_public_key "$SSH_PUBLIC_KEY" "$HOME/.ssh/authorized_keys" || fail 'ssh_public_key is not a valid supported SSH public key'
     ok 'installed the selected Mac public SSH key'
   else
     ok 'prepared authorized_keys; secure pairing will add the Mac public key'
@@ -142,13 +145,14 @@ KbdInteractiveAuthentication no
 PermitRootLogin no
 AllowUsers $CURRENT_USER
 EOF
-  sudo install -m 644 "$SSHD_DROP_IN" /etc/ssh/sshd_config.d/00-devbox-bridge.conf
-  sudo rm -f /etc/ssh/sshd_config.d/99-devbox-bridge.conf
+  sudo install -m 644 "$SSHD_DROP_IN" /etc/ssh/sshd_config.d/00-otherhost.conf
+  sudo rm -f /etc/ssh/sshd_config.d/99-otherhost.conf
+  sudo rm -f /etc/ssh/sshd_config.d/00-devbox-bridge.conf /etc/ssh/sshd_config.d/99-devbox-bridge.conf
   rm -f "$SSHD_DROP_IN"
   sudo install -d -m 755 /run/sshd
   sudo sshd -t
   SSHD_EFFECTIVE=$(sudo sshd -T -C "user=$CURRENT_USER,host=localhost,addr=127.0.0.1")
-  devbox_assert_sshd_policy "$SSHD_EFFECTIVE" "$SSH_PORT" "$CURRENT_USER" || fail 'effective sshd policy does not match the required hardened settings'
+  otherhost_assert_sshd_policy "$SSHD_EFFECTIVE" "$SSH_PORT" "$CURRENT_USER" || fail 'effective sshd policy does not match the required hardened settings'
   ok 'verified the effective SSH authentication policy'
 
   if [ "$(ps -p 1 -o comm= 2>/dev/null)" = systemd ]; then

@@ -23,14 +23,14 @@ func SaveClientConfiguration(configPath, knownHostsPath string, result ClientRes
 		return fmt.Errorf("could not save the pinned SSH host key: %w", err)
 	}
 	values := map[string]string{
-		"devbox_name":      result.DevboxName,
+		"otherhost_name":   result.OtherhostName,
 		"host":             result.Host,
 		"ssh_user":         result.SSHUser,
 		"ssh_port":         fmt.Sprintf("%d", result.SSHPort),
 		"known_hosts_file": knownHostsPath,
 	}
 	if err := updateKeyValueFile(configPath, values); err != nil {
-		return fmt.Errorf("could not save the devbox configuration: %w", err)
+		return fmt.Errorf("could not save the otherhost configuration: %w", err)
 	}
 	return nil
 }
@@ -61,6 +61,13 @@ func updateKeyValueFile(path string, values map[string]string) error {
 			continue
 		}
 		key := strings.TrimSpace(trimmed[:separator])
+		if key == "devbox_name" {
+			if value, ok := values["otherhost_name"]; ok {
+				lines[index] = "otherhost_name=" + value
+				seen["otherhost_name"] = true
+			}
+			continue
+		}
 		if value, ok := values[key]; ok {
 			lines[index] = key + "=" + value
 			seen[key] = true
@@ -69,7 +76,7 @@ func updateKeyValueFile(path string, values map[string]string) error {
 	if len(lines) == 1 && lines[0] == "" {
 		lines = nil
 	}
-	for _, key := range []string{"devbox_name", "host", "ssh_user", "ssh_port", "known_hosts_file"} {
+	for _, key := range []string{"otherhost_name", "host", "ssh_user", "ssh_port", "known_hosts_file"} {
 		if !seen[key] {
 			lines = append(lines, key+"="+values[key])
 		}
@@ -86,7 +93,7 @@ func writeAtomic(path string, content []byte, mode os.FileMode) error {
 	if err := os.MkdirAll(directory, 0700); err != nil {
 		return err
 	}
-	temporary, err := os.CreateTemp(directory, ".devbox-pair-*")
+	temporary, err := os.CreateTemp(directory, ".otherhost-pair-*")
 	if err != nil {
 		return err
 	}

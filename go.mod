@@ -1,3 +1,3 @@
-module github.com/M3ndes/devbox-bridge
+module github.com/M3ndes/otherhost
 
 go 1.22

@@ -2,8 +2,15 @@
 param(
     [ValidateSet('Check', 'Apply')]
     [string]$Mode = 'Check',
-    [string]$ConfigPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'devbox.local.conf')
+    [string]$ConfigPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'otherhost.local.conf')
 )
+
+if (-not $PSBoundParameters.ContainsKey('ConfigPath')) {
+    $legacyConfigPath = Join-Path (Split-Path -Parent $PSScriptRoot) 'devbox.local.conf'
+    if (-not (Test-Path -LiteralPath $ConfigPath -PathType Leaf) -and (Test-Path -LiteralPath $legacyConfigPath -PathType Leaf)) {
+        $ConfigPath = $legacyConfigPath
+    }
+}
 
 $ErrorActionPreference = 'Stop'
 
@@ -11,7 +18,7 @@ function Write-Ok([string]$Message) { Write-Host "[ok] $Message" -ForegroundColo
 function Write-Warn([string]$Message) { Write-Host "[warn] $Message" -ForegroundColor Yellow }
 function Fail([string]$Message) { throw $Message }
 
-function Read-DevboxConfig([string]$Path) {
+function Read-OtherhostConfig([string]$Path) {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
         Fail "Configuration not found: $Path"
     }
@@ -72,7 +79,7 @@ function Set-IniValue([System.Collections.ArrayList]$Lines, [string]$Section, [s
     $Lines.Insert($sectionStart + 1, "$Key=$Value")
 }
 
-$config = Read-DevboxConfig $ConfigPath
+$config = Read-OtherhostConfig $ConfigPath
 $required = @('ssh_port', 'wsl_distribution', 'wsl_memory', 'wsl_processors', 'wsl_swap', 'wsl_networking_mode')
 foreach ($key in $required) {
     if (-not $config.ContainsKey($key) -or -not $config[$key]) { Fail "Missing configuration: $key" }
@@ -161,7 +168,7 @@ Write-Ok "updated $wslConfigPath"
 
 if ($config.wsl_networking_mode -eq 'mirrored') {
     $vmCreatorId = '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}'
-    $ruleName = 'devbox-bridge-ssh'
+    $ruleName = 'otherhost-ssh'
     $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
     if (Get-Command Get-NetFirewallHyperVRule -ErrorAction SilentlyContinue) {
         $existingRule = Get-NetFirewallHyperVRule -Name $ruleName -ErrorAction SilentlyContinue
@@ -176,13 +183,21 @@ if ($config.wsl_networking_mode -eq 'mirrored') {
                 Write-Warn "Hyper-V firewall rule uses ports $currentPorts; rerun as Administrator to update it"
             }
         } elseif ($isAdmin) {
-            New-NetFirewallHyperVRule -Name $ruleName -DisplayName 'Devbox Bridge SSH' -Direction Inbound -VMCreatorId $vmCreatorId -Protocol TCP -LocalPorts ([int]$config.ssh_port) | Out-Null
+            New-NetFirewallHyperVRule -Name $ruleName -DisplayName 'Otherhost SSH' -Direction Inbound -VMCreatorId $vmCreatorId -Protocol TCP -LocalPorts ([int]$config.ssh_port) | Out-Null
             Write-Ok "opened Hyper-V firewall TCP port $($config.ssh_port) for WSL"
         } else {
             Write-Warn "rerun PowerShell as Administrator to open Hyper-V firewall TCP port $($config.ssh_port)"
         }
     } else {
         Write-Warn 'Hyper-V firewall cmdlets are unavailable; verify LAN access to the SSH port manually'
+    }
+    if ($isAdmin -and (Get-Command Get-NetFirewallHyperVRule -ErrorAction SilentlyContinue) -and
+        (Get-Command Remove-NetFirewallHyperVRule -ErrorAction SilentlyContinue)) {
+        $legacyRule = Get-NetFirewallHyperVRule -Name 'devbox-bridge-ssh' -ErrorAction SilentlyContinue
+        if ($legacyRule) {
+            Remove-NetFirewallHyperVRule -Name 'devbox-bridge-ssh'
+            Write-Ok 'removed superseded devbox-bridge Hyper-V SSH rule'
+        }
     }
 }
 

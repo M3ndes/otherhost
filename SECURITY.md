@@ -1,6 +1,6 @@
 # Security policy
 
-devbox-bridge configures an authenticated development path between computers
+otherhost configures an authenticated development path between computers
 you control. It reduces common setup risks, but it is not a general-purpose VPN,
 internet gateway, endpoint-security product, or substitute for operating-system
 hardening.
@@ -110,7 +110,7 @@ disabling strict host-key verification.
   patched.
 - Enable disk encryption, screen locking, and appropriate account protection on
   both computers.
-- Never commit `devbox.local.conf`, `.env` files, tokens, passwords, or private
+- Never commit `otherhost.local.conf`, `.env` files, tokens, passwords, or private
   SSH keys. Only `.pub` keys are shareable.
 - Review generated SSH, WSL, and firewall configuration before applying it in a
   sensitive environment.
@@ -128,6 +128,6 @@ keys, or application secrets. It can still contain device names, usernames,
 executable paths, local subnets, and addresses.
 
 The Windows pairing transcript under
-`%LOCALAPPDATA%\devbox-bridge\logs\pairing-latest.log` captures the complete
+`%LOCALAPPDATA%\otherhost\logs\pairing-latest.log` captures the complete
 console session and can also contain the temporary comparison code. Review and
 redact diagnostic output before sharing it publicly.

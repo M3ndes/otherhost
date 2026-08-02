@@ -225,7 +225,7 @@ async function openProject(project, button) {
   try {
     const response = await fetch('/api/projects/open', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Devbox-Token': state.actionToken },
+      headers: { 'Content-Type': 'application/json', 'X-Otherhost-Token': state.actionToken },
       body: JSON.stringify({ path: project.path })
     });
     if (!response.ok) throw new Error((await response.text()).trim() || 'Could not open the project.');
@@ -276,7 +276,7 @@ async function refresh() {
 }
 
 function configureTheme() {
-  const storedTheme = localStorage.getItem('devbox-theme');
+  const storedTheme = localStorage.getItem('otherhost-theme');
   const preferredTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   const theme = storedTheme || preferredTheme;
   document.documentElement.dataset.theme = theme;
@@ -290,7 +290,7 @@ function configureTheme() {
   button.addEventListener('click', () => {
     const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
     document.documentElement.dataset.theme = next;
-    localStorage.setItem('devbox-theme', next);
+    localStorage.setItem('otherhost-theme', next);
     updateButton();
   });
 }

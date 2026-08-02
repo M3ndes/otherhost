@@ -14,6 +14,9 @@ param(
 $ErrorActionPreference = 'Stop'
 $RepositoryUrl = 'https://github.com/M3ndes/devbox-bridge.git'
 $LinuxRepository = '~/src/devbox-bridge'
+$PairingDiscoveryPort = 25370
+$PairingSessionPort = 25371
+$PairingDiscoveryAddress = "239.255.67.89:$PairingDiscoveryPort"
 . (Join-Path $PSScriptRoot 'lib\devbox-windows.ps1')
 
 function Write-Ok([string]$Message) { Write-Host "[ok] $Message" -ForegroundColor Green }
@@ -302,6 +305,15 @@ function Get-ActivePairingNetworkPolicy {
     }
 }
 
+function Start-PairingTranscript {
+    $logDirectory = Join-Path $env:LOCALAPPDATA 'devbox-bridge\logs'
+    [void][System.IO.Directory]::CreateDirectory($logDirectory)
+    $logPath = Join-Path $logDirectory 'pairing-latest.log'
+    Start-Transcript -LiteralPath $logPath -Force | Out-Null
+    Write-Host "[diag] pairing log: $logPath"
+    return $logPath
+}
+
 function Ensure-HyperVSSHRule([int]$SSHPort, [string[]]$RemoteSubnets) {
     foreach ($commandName in @('Get-NetFirewallHyperVRule', 'New-NetFirewallHyperVRule', 'Set-NetFirewallHyperVRule')) {
         if (-not (Get-Command $commandName -ErrorAction SilentlyContinue)) {
@@ -378,14 +390,19 @@ function Start-PairingMode {
     $sessionRule = "devbox-bridge-pairing-tcp-$ruleSuffix"
     try {
         New-NetFirewallRule -Name $discoveryRule -DisplayName 'Devbox Bridge temporary discovery' `
-            -Direction Inbound -Action Allow -Program $helper -Protocol UDP -LocalPort 45870 `
+            -Direction Inbound -Action Allow -Program $helper -Protocol UDP -LocalPort $PairingDiscoveryPort `
             -RemoteAddress $networkPolicy.RemoteSubnets -Profile $networkPolicy.Profiles | Out-Null
         New-NetFirewallRule -Name $sessionRule -DisplayName 'Devbox Bridge temporary pairing' `
-            -Direction Inbound -Action Allow -Program $helper -Protocol TCP -LocalPort 45871 `
+            -Direction Inbound -Action Allow -Program $helper -Protocol TCP -LocalPort $PairingSessionPort `
             -RemoteAddress $networkPolicy.RemoteSubnets -Profile $networkPolicy.Profiles | Out-Null
-        Write-Diag 'temporary UDP 45870 and TCP 45871 firewall rules are active'
+        Write-Diag "temporary UDP $PairingDiscoveryPort and TCP $PairingSessionPort firewall rules are active"
 
-        $helperArguments = @('host', '--name', $env:COMPUTERNAME, '--distro', $Distro, '--ssh-user', $wslUser, '--ssh-port', $sshPort)
+        $helperArguments = @(
+            'host', '--name', $env:COMPUTERNAME, '--distro', $Distro,
+            '--ssh-user', $wslUser, '--ssh-port', $sshPort,
+            '--pair-port', $PairingSessionPort,
+            '--discovery-address', $PairingDiscoveryAddress
+        )
         if ($userScopedWSL) { $helperArguments += '--user-scoped-wsl' }
         Write-Diag 'starting the pairing helper; the TCP listener should remain active for two minutes'
         & $helper @helperArguments
@@ -403,9 +420,18 @@ if (-not (Get-Command wsl.exe -ErrorAction SilentlyContinue)) {
 }
 
 if ($Pair) {
-    $RepositoryRevision = Get-RepositoryRevision
-    Write-Ok "repository revision verified: $RepositoryRevision"
-    Start-PairingMode
+    $pairingLogPath = ''
+    if (Test-IsAdministrator) { $pairingLogPath = Start-PairingTranscript }
+    try {
+        $RepositoryRevision = Get-RepositoryRevision
+        Write-Ok "repository revision verified: $RepositoryRevision"
+        Start-PairingMode
+    } catch {
+        if ($pairingLogPath) { Write-Host "[diag] pairing failed; log saved to: $pairingLogPath" -ForegroundColor Yellow }
+        throw
+    } finally {
+        if ($pairingLogPath) { Stop-Transcript | Out-Null }
+    }
     exit 0
 }
 

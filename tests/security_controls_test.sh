@@ -109,8 +109,21 @@ grep -F "Remove-NetFirewallRule -Name \$sessionRule" "$SETUP_SCRIPT" >/dev/null
 grep -F -- "-RemoteAddress \$networkPolicy.RemoteSubnets -Profile \$networkPolicy.Profiles" "$SETUP_SCRIPT" >/dev/null
 grep -F -- "-RemoteAddresses \$RemoteSubnets" "$SETUP_SCRIPT" >/dev/null
 grep -F -- '--user-scoped-wsl' "$SETUP_SCRIPT" >/dev/null
+grep -F "'pairing-latest.log'" "$SETUP_SCRIPT" >/dev/null
+grep -F 'Start-Transcript -LiteralPath $logPath -Force' "$SETUP_SCRIPT" >/dev/null
 grep -F 'does not support user-scoped WSL' "$SETUP_SCRIPT" >/dev/null
-grep -F 'temporary UDP 45870 and TCP 45871 firewall rules are active' "$SETUP_SCRIPT" >/dev/null
+grep -F '$PairingDiscoveryPort = 25370' "$SETUP_SCRIPT" >/dev/null
+grep -F '$PairingSessionPort = 25371' "$SETUP_SCRIPT" >/dev/null
+grep -F -- '-LocalPort $PairingDiscoveryPort' "$SETUP_SCRIPT" >/dev/null
+grep -F -- '-LocalPort $PairingSessionPort' "$SETUP_SCRIPT" >/dev/null
+grep -F -- "'--pair-port', \$PairingSessionPort" "$SETUP_SCRIPT" >/dev/null
+grep -F -- "'--discovery-address', \$PairingDiscoveryAddress" "$SETUP_SCRIPT" >/dev/null
+grep -F 'PAIRING_DISCOVERY_ADDRESS=239.255.67.89:25370' "$MAC_COMMAND" >/dev/null
+grep -F 'PAIRING_PORT=25371' "$MAC_COMMAND" >/dev/null
+grep -F -- '--pair-port "$PAIRING_PORT"' "$MAC_COMMAND" >/dev/null
+grep -F -- '--discovery-address "$PAIRING_DISCOVERY_ADDRESS"' "$MAC_COMMAND" >/dev/null
+grep -F 'PAIRING_DISCOVERY_ADDRESS=239.255.67.89:25370' "$ROOTLESS_PAIR" >/dev/null
+grep -F 'PAIRING_PORT=25371' "$ROOTLESS_PAIR" >/dev/null
 grep -F 'Pairing is enabled' "$PAIRING_MAIN" >/dev/null
 
 PAIRING_VERSION=$(sed -n 's/^PAIRING_VERSION=//p' "$ROOT_DIR/scripts/install-pairing-helper.sh")

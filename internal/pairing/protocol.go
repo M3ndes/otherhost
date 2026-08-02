@@ -21,8 +21,9 @@ import (
 const (
 	ProtocolVersion         = 1
 	DiscoveryMagic          = "devbox-bridge-discovery"
-	DefaultDiscoveryAddress = "239.255.67.89:45870"
-	DefaultPairPort         = 45871
+	DefaultDiscoveryPort    = 25370
+	DefaultDiscoveryAddress = "239.255.67.89:25370"
+	DefaultPairPort         = 25371
 	MaxMessageSize          = 16 * 1024
 )
 

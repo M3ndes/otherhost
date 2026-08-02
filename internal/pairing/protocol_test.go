@@ -78,6 +78,22 @@ func TestEncryptedMessagesRejectWrongSessionKey(t *testing.T) {
 	}
 }
 
+func TestDefaultPairingPortsAvoidEphemeralRanges(t *testing.T) {
+	address, err := net.ResolveUDPAddr("udp4", DefaultDiscoveryAddress)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if address.Port != DefaultDiscoveryPort {
+		t.Fatalf("discovery address port %d does not match default %d", address.Port, DefaultDiscoveryPort)
+	}
+	if DefaultDiscoveryPort >= 32768 || DefaultPairPort >= 32768 {
+		t.Fatalf("default pairing ports must remain below common ephemeral ranges: UDP %d, TCP %d", DefaultDiscoveryPort, DefaultPairPort)
+	}
+	if DefaultDiscoveryPort == DefaultPairPort {
+		t.Fatal("discovery and pairing must not share a port")
+	}
+}
+
 func TestPairEndToEnd(t *testing.T) {
 	port := reserveTCPPort(t)
 	installed := make(chan string, 1)
@@ -198,7 +214,7 @@ func TestDirectDiscoveryReportsUnreachableEndpoint(t *testing.T) {
 func TestUserScopedWSLRequiresDistribution(t *testing.T) {
 	err := RunHost(context.Background(), HostOptions{
 		Name: "WINDOWS-PC", SSHUser: "developer", SSHPort: 2222,
-		PairPort: 45871, Duration: 20 * time.Second, UserScopedWSL: true,
+		PairPort: DefaultPairPort, Duration: 20 * time.Second, UserScopedWSL: true,
 		Confirm: func(string, string) bool { return true },
 	})
 	if err == nil || !strings.Contains(err.Error(), "requires a WSL distribution") {

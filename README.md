@@ -26,6 +26,12 @@ Otherhost is open source, CLI-first, and intentionally inspectable. There
 is no cloud relay or project account. Your source, builds, and containers stay
 on the Windows computer; the Mac is the keyboard, editor, and browser.
 
+<p align="center">
+  <img src="docs/assets/screenshots/dashboard-overview.png" width="1200" alt="Otherhost dashboard showing a connected Windows development host and remote projects">
+</p>
+
+<p align="center"><em>The local dashboard uses demonstration data in this screenshot.</em></p>
+
 > **Project status:** early stage. CI covers the portable scripts and pairing
 > protocol; full Windows + WSL + macOS behavior still requires real-machine
 > testing. Command details may evolve before a stable `1.0` release. Bug reports
@@ -241,6 +247,10 @@ does not expose its local HTTP server to the LAN. Docker remains available in
 CLI diagnostics but is not treated as a primary machine-health signal in the
 project dashboard.
 
+See the [dashboard guide](docs/dashboard.md) for the complete Overview,
+Projects, and Machine experience, including responsive screenshots and the
+local security boundaries.
+
 ## Commands
 
 | Command | Where | Purpose |
@@ -301,6 +311,7 @@ full [security policy and trust model](SECURITY.md).
 | [How it works](docs/how-it-works.md) | You want the network and security model in plain language |
 | [Windows and WSL host](docs/windows-wsl.md) | You are setting up or operating the Windows computer |
 | [macOS client](docs/macos.md) | You are installing, pairing, or using the Mac command |
+| [Project dashboard](docs/dashboard.md) | You want to browse projects and inspect remote machine capacity |
 | [Troubleshooting](docs/troubleshooting.md) | A setup, discovery, SSH, or Docker step failed |
 | [Architecture and decisions](docs/architecture.md) | You want protocol details or plan a code change |
 | [Brand and visual identity](docs/brand.md) | You need the name, voice, logo, or visual tokens |

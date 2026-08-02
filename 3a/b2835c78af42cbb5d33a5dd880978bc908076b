@@ -1,0 +1,50 @@
+tests/security_controls_test.sh
+  s_71755d8d0bab89::t_a5611d4c3b2c7d 112-113
+  s_71755d8d0bab89::t_4d350676d6a9dc 106
+internal/pairing/host.go
+  s_71755d8d0bab89::t_b1326c75129434 35,96,121,155,212
+README.md
+  s_71755d8d0bab89::t_f5a87a63359ed1 99-103
+internal/pairing/diagnostics.go
+  s_71755d8d0bab89::t_cd1f3dce1aa459 3-4,12-18,20
+  s_71755d8d0bab89::t_b1326c75129434 1-2,5-11,19,21
+cmd/devbox-pair/main.go
+  s_71755d8d0bab89::t_8b28aea64b7ae2 82,88,143,145,158,179-180
+  s_71755d8d0bab89::t_2f0036baa5a330 181-182
+docs/troubleshooting.md
+  s_71755d8d0bab89::t_f5a87a63359ed1 41,45,63-66,68-79
+  s_71755d8d0bab89::t_c3b14b92ed9cf3 42-44,67
+  s_71755d8d0bab89::t_cade79387b99d3 80
+tests/powershell_syntax_test.ps1
+  s_71755d8d0bab89::t_a5611d4c3b2c7d 74-75
+setup.ps1
+  s_71755d8d0bab89::t_3cc72ed2747c37 22,365-375,386,390,396
+docs/windows-wsl.md
+  s_71755d8d0bab89::t_f5a87a63359ed1 25-30
+internal/pairing/discovery.go
+  s_71755d8d0bab89::t_b1326c75129434 33,58,240,244,248-253,257,264-270,277-282,285,288,290,322-328,345,350,353-366,386,393,395,419-430,444-445,449,454,458,462,473,477,484
+  s_71755d8d0bab89::t_cd1f3dce1aa459 14
+internal/pairing/protocol_test.go
+  s_71755d8d0bab89::t_70c83caf781b84 132,144-146,150,167,195,312-324
+  s_71755d8d0bab89::t_1a356922899cd3 152-155,164-166,179-194
+  s_71755d8d0bab89::t_2ed5bfc314ad5e 196-197
+  s_71755d8d0bab89::t_6c580adb00e886 325-326
+bin/devbox
+  s_71755d8d0bab89::t_4d350676d6a9dc 110,113-116,121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "3ab2835c78af42cbb5d33a5dd880978bc908076b",
+  "prompts": {},
+  "sessions": {
+    "s_71755d8d0bab89": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fba65-d026-7702-9af9-5f7244398fd3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Thales Mendes <thalesmendes.dev@gmail.com>"
+    }
+  }
+}

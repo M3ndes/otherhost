@@ -125,6 +125,34 @@ func TestDashboardRefreshesInventoryWhenProjectsOpen(t *testing.T) {
 	}
 }
 
+func TestDashboardServesProjectDeletionConfirmation(t *testing.T) {
+	handler, err := NewHandler(fixedCollector{}, &recordingLauncher{}, "test-box")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, asset := range []struct {
+		path     string
+		expected []string
+	}{
+		{"/", []string{"Permanent deletion", "Delete permanently", "data-delete-confirmation"}},
+		{"/app.js", []string{"/api/projects/delete", "projectDeletionEnabled", "openDeleteProject"}},
+		{"/app.css", []string{".delete-dialog", ".danger-button", ".delete-project"}},
+	} {
+		request := httptest.NewRequest(http.MethodGet, asset.path, nil)
+		request.Host = "127.0.0.1:7842"
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, request)
+		if response.Code != http.StatusOK {
+			t.Fatalf("%s returned %d", asset.path, response.Code)
+		}
+		for _, expected := range asset.expected {
+			if !strings.Contains(response.Body.String(), expected) {
+				t.Fatalf("%s is missing %q", asset.path, expected)
+			}
+		}
+	}
+}
+
 func TestProjectActionsRequireInventoryTokenAndSameOrigin(t *testing.T) {
 	projectPath := "/home/developer/src/app"
 	collector := fixedCollector{snapshot: Snapshot{

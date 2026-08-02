@@ -105,10 +105,20 @@ The browser refreshes the full inventory every 30 seconds while visible, when
 its tab returns to the foreground, and when the user opens Projects.
 
 Local actions use a per-process random token and same-origin validation. A
-project can be opened only when its exact remote path appeared in the latest SSH
-inventory. This prevents another local website from turning the dashboard into
-an arbitrary command launcher. Requests with a non-loopback HTTP `Host` are
-rejected to prevent DNS rebinding from bypassing that local boundary.
+project can be opened or deleted only when its exact remote path appeared in the
+latest SSH inventory. This prevents another local website from turning the
+dashboard into an arbitrary command launcher. Requests with a non-loopback HTTP
+`Host` are rejected to prevent DNS rebinding from bypassing that local boundary.
+
+Deletion is intentionally permanent. The browser shows the complete path and
+requires the exact project name before sending the request. The server removes
+the path from its action allowlist while deletion is in progress and rejects a
+second request for the same project. The remote command receives the path as
+base64-encoded data, resolves both it and `$HOME` physically, requires the
+canonical project to be below that home, requires an owned `.git` directory,
+rejects mount points, changes back to `$HOME`, and only then executes
+`rm -rf -- "$resolved"`. A failed command restores server authorization for a
+retry; a successful command verifies that the directory no longer exists.
 
 The integrated terminal creates a local PTY whose child is the system OpenSSH
 client. OpenSSH reuses the configured identity, pinned `known_hosts` file,

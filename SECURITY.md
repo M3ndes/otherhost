@@ -77,6 +77,10 @@ The default design intends to preserve these properties:
 - **Local terminal authorization.** Browser terminals require the per-process
   dashboard token, exact same-origin checks, and a short-lived, one-use
   WebSocket authorization that is not placed in the URL.
+- **Explicit destructive actions.** Project deletion requires the dashboard
+  token, same-origin validation, an exact current inventory path, typed project
+  name confirmation, canonical containment below the WSL home, a primary Git
+  checkout, and a non-mounted target.
 
 See [Architecture and decisions](docs/architecture.md) for protocol and boundary
 details.
@@ -122,6 +126,8 @@ disabling strict host-key verification.
 - Treat the integrated terminal like any other shell logged into WSL. It is not
   sandboxed and can read, change, or delete anything available to the paired
   WSL account. Lock the Mac when unattended and close unused sessions.
+- Treat **Delete permanently** like running `rm -rf` in WSL. Otherhost does not
+  retain a trash copy; push or back up work before confirming the project name.
 
 The setup scripts preserve unrelated configuration and back up `.wslconfig`
 before changing it. Host owners remain responsible for backups, recovery,

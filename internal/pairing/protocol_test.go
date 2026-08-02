@@ -164,6 +164,17 @@ func TestDirectDiscoveryFindsHostWithoutMulticast(t *testing.T) {
 	}
 }
 
+func TestUserScopedWSLRequiresDistribution(t *testing.T) {
+	err := RunHost(context.Background(), HostOptions{
+		Name: "WINDOWS-PC", SSHUser: "developer", SSHPort: 2222,
+		PairPort: 45871, Duration: 20 * time.Second, UserScopedWSL: true,
+		Confirm: func(string, string) bool { return true },
+	})
+	if err == nil || !strings.Contains(err.Error(), "requires a WSL distribution") {
+		t.Fatalf("unexpected validation result: %v", err)
+	}
+}
+
 func TestRejectedComparisonDoesNotInstallKey(t *testing.T) {
 	port := reserveTCPPort(t)
 	installed := make(chan string, 1)

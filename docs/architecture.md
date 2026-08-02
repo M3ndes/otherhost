@@ -79,6 +79,25 @@ The project targets the system Bash available on supported macOS releases and
 Windows PowerShell 5.1. The Go pairing helper has no third-party Go module
 dependencies, reducing the release and audit surface.
 
+## Project dashboard
+
+`devbox ui` starts a small Go HTTP server bound exclusively to `127.0.0.1`; it
+does not replace the CLI or listen on a LAN address. The embedded frontend has
+no CDN dependencies or telemetry. It reads a bounded inventory over the
+existing pinned SSH connection and treats `devbox.local.conf` as data.
+
+The dashboard's primary model is a remote project, not an infrastructure
+service. Windows and WSL provide compute capacity; the Mac presents the editor,
+browser, and interaction layer. Host specifications support capacity decisions,
+while Docker details remain in explicit CLI diagnostics or future
+project-specific views.
+
+Local actions use a per-process random token and same-origin validation. A
+project can be opened only when its exact remote path appeared in the latest SSH
+inventory. This prevents another local website from turning the dashboard into
+an arbitrary command launcher. Requests with a non-loopback HTTP `Host` are
+rejected to prevent DNS rebinding from bypassing that local boundary.
+
 ## Pairing protocol
 
 Pairing uses numeric comparison rather than a shared password.
@@ -146,6 +165,7 @@ user mode creates no Windows Firewall rules.
 | Direct discovery and pairing | TCP `25371` | Active local IPv4 subnet | Pairing window only |
 | WSL SSH | TCP `2222` | Allowed local subnet through Hyper-V firewall | Persistent host service |
 | Forwarded applications | Configured ports such as `3000` | Mac `127.0.0.1` only | While `devbox connect` runs |
+| Project dashboard | TCP `7842` | Mac `127.0.0.1` only | While `devbox ui` runs |
 
 The fixed pairing ports remain below common ephemeral ranges so mirrored WSL
 networking cannot reserve them for outbound connections. Neither pairing nor SSH
@@ -164,9 +184,10 @@ forwarding destinations to WSL loopback addresses.
 
 ## Source and compute location
 
-Projects live inside the WSL Linux filesystem, normally under `~/src`. Builds,
-dependency installation, Git operations, databases, and containers run on the
-desktop. The Mac remains the interactive client.
+Projects live inside the WSL Linux filesystem, normally under `~/src`. The
+dashboard scans only direct Git repository children of the configured
+`projects_root`. Builds, dependency installation, Git operations, databases,
+and containers run on the desktop. The Mac remains the interactive client.
 
 This is important for Docker Compose bind mounts: a remote Docker engine alone
 is insufficient because source paths must exist beside the engine. Keeping

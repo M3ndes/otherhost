@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdh"
 	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net"
@@ -75,6 +76,32 @@ func TestEncryptedMessagesRejectWrongSessionKey(t *testing.T) {
 	wrongKey[0] = 2
 	if err := openSealed(wrongKey, aad, nonce, ciphertext, &payload); err == nil {
 		t.Fatal("encrypted payload was accepted with the wrong session key")
+	}
+}
+
+func TestWSLKeyInstallArgumentsPreserveNormalizedPublicKey(t *testing.T) {
+	arguments, err := wslKeyInstallArguments("Ubuntu", testPublicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(arguments) != 8 || arguments[0] != "-d" || arguments[1] != "Ubuntu" ||
+		arguments[2] != "--" || arguments[3] != "bash" || arguments[4] != "-c" ||
+		arguments[6] != "devbox-bridge" {
+		t.Fatalf("unexpected WSL command arguments: %#v", arguments)
+	}
+	if !strings.Contains(arguments[5], `"$1"`) || strings.Contains(arguments[5], "IFS= read") {
+		t.Fatalf("WSL install script does not read the encoded argument safely: %s", arguments[5])
+	}
+	decoded, err := base64.StdEncoding.DecodeString(arguments[7])
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := strings.Join(strings.Fields(testPublicKey)[:2], " ")
+	if string(decoded) != expected {
+		t.Fatalf("encoded WSL key changed after normalization: %q", decoded)
+	}
+	if strings.Contains(strings.Join(arguments, " "), testPublicKey) {
+		t.Fatal("raw public key was embedded directly in the WSL command")
 	}
 }
 

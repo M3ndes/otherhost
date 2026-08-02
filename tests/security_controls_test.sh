@@ -101,6 +101,12 @@ grep -F 'ecdh.X25519()' "$PAIRING_HOST" >/dev/null
 grep -F 'ecdh.X25519()' "$PAIRING_CLIENT" >/dev/null
 grep -F 'cipher.NewGCM' "$PAIRING_PROTOCOL" >/dev/null
 grep -F 'numeric-comparison/v1' "$PAIRING_PROTOCOL" >/dev/null
+grep -F 'wslKeyInstallArguments' "$ROOT_DIR/internal/pairing/ssh.go" >/dev/null
+grep -F 'base64.StdEncoding.EncodeToString([]byte(normalized))' "$ROOT_DIR/internal/pairing/ssh.go" >/dev/null
+if grep -F 'command.Stdin = strings.NewReader(normalized' "$ROOT_DIR/internal/pairing/ssh.go" >/dev/null; then
+  printf '%s\n' 'Windows helper still relies on lossy stdin handoff for WSL key installation' >&2
+  exit 1
+fi
 grep -F 'StrictHostKeyChecking=yes' "$MAC_COMMAND" >/dev/null
 grep -F 'UserKnownHostsFile' "$MAC_COMMAND" >/dev/null
 grep -F '[fail] pairing stopped before the local connection was updated' "$MAC_COMMAND" >/dev/null

@@ -92,6 +92,11 @@ The Windows launcher captures helper capability output outside PowerShell's
 error stream. This keeps expected `host -h` usage text from terminating pairing
 when the elevated transcript is active under Windows PowerShell 5.1.
 
+The Windows helper passes the normalized Mac public key to WSL as base64 command
+data instead of native-process stdin. This avoids an empty `authorized_keys`
+entry on Windows/WSL combinations that do not preserve piped stdin. The value is
+an SSH public key; private key material never leaves the Mac.
+
 If neither method finds the host, disconnect VPN software and verify that the
 access point does not isolate wireless clients. The explicit GitHub public-key
 recovery flow remains documented in [macOS client](macos.md).

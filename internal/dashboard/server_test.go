@@ -43,7 +43,7 @@ func TestDashboardServesEnglishEmbeddedUI(t *testing.T) {
 		t.Fatalf("unexpected status: %d", result.StatusCode)
 	}
 	page := string(body)
-	for _, expected := range []string{`<html lang="en">`, "Build remotely.", "Projects", "Machine"} {
+	for _, expected := range []string{`<html lang="en">`, "Build remotely.", "Projects", "Machine", `class="brand sidebar-brand"`, `<img src="/favicon.png" alt="">`} {
 		if !strings.Contains(page, expected) {
 			t.Fatalf("UI is missing %q", expected)
 		}
@@ -53,6 +53,26 @@ func TestDashboardServesEnglishEmbeddedUI(t *testing.T) {
 	}
 	if !strings.Contains(result.Header.Get("Content-Security-Policy"), "default-src 'self'") {
 		t.Fatal("content security policy is missing")
+	}
+}
+
+func TestDashboardServesOtterFavicon(t *testing.T) {
+	handler, err := NewHandler(fixedCollector{}, &recordingLauncher{}, "test-box")
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodGet, "/favicon.png", nil)
+	request.Host = "127.0.0.1:7842"
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d", response.Code)
+	}
+	if contentType := response.Header().Get("Content-Type"); !strings.HasPrefix(contentType, "image/png") {
+		t.Fatalf("unexpected favicon content type: %q", contentType)
+	}
+	if !bytes.HasPrefix(response.Body.Bytes(), []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}) {
+		t.Fatal("favicon is not a PNG image")
 	}
 }
 

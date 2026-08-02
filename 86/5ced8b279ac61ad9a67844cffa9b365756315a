@@ -1,0 +1,49 @@
+internal/dashboard/project_delete_test.go
+  s_71755d8d0bab89::t_ebc7c2b191fb29 4,6-9,17-22,34-39,110-130,138-192,235-248,250-255,269-278
+  s_71755d8d0bab89::t_f95d6b8ddb82ae 1-3,5,10-16,40-109,249,256-268,279
+  s_71755d8d0bab89::t_609f70dd05f897 23-33,193-213,225-234
+  s_71755d8d0bab89::t_1df470d7d55d4f 131-137
+  s_71755d8d0bab89::t_19896955aea58d 214-224
+internal/dashboard/assets/app.js
+  s_71755d8d0bab89::t_927e31ebbe1cd2 316
+  s_71755d8d0bab89::t_ed0913c1c575e2 17,32-36,120,234-243,250-315,317-319,410,438,650-661
+SECURITY.md
+  s_71755d8d0bab89::t_17eb34d23a5114 80-83,129-130
+internal/dashboard/assets/app.css
+  s_71755d8d0bab89::t_ed0913c1c575e2 63,187,190-192,199-215
+  s_71755d8d0bab89::t_a625e01921ac6f 216
+cmd/otherhost-ui/main.go
+  s_71755d8d0bab89::t_f95d6b8ddb82ae 38,52,58
+README.md
+  s_71755d8d0bab89::t_17eb34d23a5114 60-61
+docs/dashboard.md
+  s_71755d8d0bab89::t_17eb34d23a5114 62-65,70-73,135-137
+internal/dashboard/assets/index.html
+  s_71755d8d0bab89::t_ed0913c1c575e2 276-296
+docs/architecture.md
+  s_71755d8d0bab89::t_17eb34d23a5114 108-121
+internal/dashboard/server_test.go
+  s_71755d8d0bab89::t_609f70dd05f897 128-155
+internal/dashboard/project_delete.go
+  s_71755d8d0bab89::t_f95d6b8ddb82ae 1-71
+internal/dashboard/server.go
+  s_71755d8d0bab89::t_93d789c0738226 63,95,155-156,158,204-208,220,226,232-234
+  s_71755d8d0bab89::t_f95d6b8ddb82ae 30-33,56,62,74-77,90,94,120-121,152,167-169,174-203,209-219,221-225,227-231,235-238,293,297
+  s_71755d8d0bab89::t_927e31ebbe1cd2 153,157,160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "865ced8b279ac61ad9a67844cffa9b365756315a",
+  "prompts": {},
+  "sessions": {
+    "s_71755d8d0bab89": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fba65-d026-7702-9af9-5f7244398fd3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Thales Mendes <thalesmendes.dev@gmail.com>"
+    }
+  }
+}

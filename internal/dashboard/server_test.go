@@ -28,6 +28,46 @@ func (launcher *recordingLauncher) OpenProject(alias, projectPath string) error 
 	return nil
 }
 
+func TestSSHAliasMatchesExpectedOtherhostConfig(t *testing.T) {
+	config := Config{
+		Host:           "192.0.2.10",
+		SSHUser:        "developer",
+		SSHPort:        2222,
+		IdentityFile:   "/Users/example/.ssh/otherhost key",
+		KnownHostsFile: "/Users/example/.ssh/otherhost known hosts",
+	}
+	resolved := `host test-box
+user developer
+hostname 192.0.2.10
+port 2222
+identityfile /Users/example/.ssh/otherhost key
+userknownhostsfile /Users/example/.ssh/otherhost known hosts
+`
+	if !sshAliasMatchesConfig(resolved, config) {
+		t.Fatal("expected the managed SSH alias to match")
+	}
+}
+
+func TestSSHAliasRejectsUnconfiguredHostname(t *testing.T) {
+	config := Config{
+		Host:           "192.0.2.10",
+		SSHUser:        "developer",
+		SSHPort:        2222,
+		IdentityFile:   "/Users/example/.ssh/otherhost_ed25519",
+		KnownHostsFile: "/Users/example/.ssh/otherhost_known_hosts",
+	}
+	resolved := `host test-box
+user local-user
+hostname test-box
+port 22
+identityfile ~/.ssh/id_ed25519
+userknownhostsfile /Users/example/.ssh/known_hosts
+`
+	if sshAliasMatchesConfig(resolved, config) {
+		t.Fatal("an unresolved hostname must not be accepted as the managed SSH alias")
+	}
+}
+
 func TestDashboardServesEnglishEmbeddedUI(t *testing.T) {
 	handler, err := NewHandler(fixedCollector{}, &recordingLauncher{}, "test-box")
 	if err != nil {

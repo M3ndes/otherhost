@@ -31,12 +31,28 @@ type ProjectDeleter interface {
 	DeleteProject(projectPath string) error
 }
 
-type VSCodeLauncher struct{}
+type VSCodeLauncher struct {
+	config *Config
+}
 
-func (VSCodeLauncher) OpenProject(sshAlias, projectPath string) error {
+func NewVSCodeLauncher(config Config) VSCodeLauncher {
+	return VSCodeLauncher{config: &config}
+}
+
+func (launcher VSCodeLauncher) OpenProject(sshAlias, projectPath string) error {
 	codePath, err := exec.LookPath("code")
 	if err != nil {
 		return errors.New("VS Code command-line tools are not installed")
+	}
+	if launcher.config != nil {
+		sshPath, err := exec.LookPath("ssh")
+		if err != nil {
+			return errors.New("OpenSSH command-line tools are not installed")
+		}
+		resolvedConfig, err := exec.Command(sshPath, "-G", "--", sshAlias).Output()
+		if err != nil || !sshAliasMatchesConfig(string(resolvedConfig), *launcher.config) {
+			return fmt.Errorf("VS Code SSH alias %q is not configured; run otherhost ssh-config --apply and try again", sshAlias)
+		}
 	}
 	remoteURI := url.URL{
 		Scheme: "vscode-remote",
@@ -47,6 +63,31 @@ func (VSCodeLauncher) OpenProject(sshAlias, projectPath string) error {
 		return fmt.Errorf("could not open VS Code: %w", err)
 	}
 	return nil
+}
+
+func sshAliasMatchesConfig(resolved string, config Config) bool {
+	values := make(map[string][]string)
+	for _, line := range strings.Split(resolved, "\n") {
+		fields := strings.SplitN(strings.TrimSpace(line), " ", 2)
+		if len(fields) != 2 {
+			continue
+		}
+		key := strings.ToLower(fields[0])
+		values[key] = append(values[key], strings.Trim(strings.TrimSpace(fields[1]), `"`))
+	}
+	matches := func(key, expected string, foldCase bool) bool {
+		for _, actual := range values[key] {
+			if actual == expected || (foldCase && strings.EqualFold(actual, expected)) {
+				return true
+			}
+		}
+		return false
+	}
+	return matches("hostname", config.Host, true) &&
+		matches("user", config.SSHUser, false) &&
+		matches("port", strconv.Itoa(config.SSHPort), false) &&
+		matches("identityfile", config.IdentityFile, false) &&
+		(config.KnownHostsFile == "" || matches("userknownhostsfile", config.KnownHostsFile, false))
 }
 
 type Handler struct {

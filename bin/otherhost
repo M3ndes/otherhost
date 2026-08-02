@@ -26,6 +26,8 @@ else
   CONFIG_FILE="$ROOT_DIR/otherhost.local.conf"
 fi
 COMMAND=doctor
+SSH_CONFIG_APPLY=0
+PAIR_COMPLETED=0
 PAIRING_VERSION=v0.1.1
 PAIRING_DISCOVERY_ADDRESS=239.255.67.89:25370
 PAIRING_PORT=25371
@@ -41,7 +43,7 @@ Commands:
   pair        Discover and securely pair with a Windows otherhost.
   doctor      Validate local dependencies, configuration, and connectivity.
   connect     Open SSH port forwards and keep the session in the foreground.
-  ssh-config  Print an OpenSSH config block for this otherhost.
+  ssh-config  Print an OpenSSH host block, or install it with --apply.
   status      Show remote host, memory, disk, and Docker status over SSH.
   urls        Print the forwarded localhost URLs.
   ui          Open the project dashboard in the local browser.
@@ -68,6 +70,10 @@ while [ "$#" -gt 0 ]; do
       COMMAND=$1
       shift
       ;;
+    --apply)
+      SSH_CONFIG_APPLY=1
+      shift
+      ;;
     *)
       printf 'Unknown argument: %s\n' "$1" >&2
       usage >&2
@@ -75,6 +81,11 @@ while [ "$#" -gt 0 ]; do
       ;;
   esac
 done
+
+if [ "$SSH_CONFIG_APPLY" -eq 1 ] && [ "$COMMAND" != ssh-config ]; then
+  printf '%s\n' '--apply is supported only with ssh-config' >&2
+  exit 2
+fi
 
 [ "$COMMAND" = help ] && { usage; exit 0; }
 
@@ -147,6 +158,7 @@ run_pair() {
 
 if [ "$COMMAND" = pair ]; then
   run_pair || exit $?
+  PAIR_COMPLETED=1
   COMMAND=doctor
 fi
 
@@ -296,10 +308,7 @@ run_connect() {
   exec ssh "${SSH_ARGS[@]}" -o ExitOnForwardFailure=yes -N "$SSH_USER@$HOST"
 }
 
-run_ssh_config() {
-  validate_config
-  [ "$FAILURES" -eq 0 ] || exit 1
-
+write_ssh_config_block() {
   printf 'Host %s\n' "$NAME"
   printf '    HostName %s\n' "$HOST"
   printf '    User %s\n' "$SSH_USER"
@@ -320,6 +329,92 @@ run_ssh_config() {
     printf '    LocalForward 127.0.0.1:%s 127.0.0.1:%s\n' "$port" "$port"
   done
   IFS=$old_ifs
+}
+
+install_ssh_config() {
+  validate_config
+  [ "$FAILURES" -eq 0 ] || return 1
+
+  ssh_directory=$HOME/.ssh
+  ssh_config_path=$ssh_directory/config
+  start_marker="# BEGIN otherhost: $NAME"
+  end_marker="# END otherhost: $NAME"
+
+  mkdir -p "$ssh_directory"
+  chmod 700 "$ssh_directory"
+
+  if [ -f "$ssh_config_path" ]; then
+    start_count=$(grep -Fxc "$start_marker" "$ssh_config_path" || true)
+    end_count=$(grep -Fxc "$end_marker" "$ssh_config_path" || true)
+    if [ "$start_count" -gt 1 ] || [ "$start_count" -ne "$end_count" ]; then
+      printf '[fail] managed SSH block markers are inconsistent in %s\n' "$ssh_config_path" >&2
+      return 1
+    fi
+  fi
+
+  temporary_config=$(mktemp "$ssh_config_path.tmp.XXXXXX") || return 1
+  if ! {
+    printf '%s\n' "$start_marker"
+    write_ssh_config_block
+    printf '%s\n' "$end_marker"
+    if [ -s "$ssh_config_path" ]; then
+      printf '\n'
+      awk -v start="$start_marker" -v end="$end_marker" '
+        $0 == start { skipping = 1; next }
+        skipping && $0 == end { skipping = 0; drop_blank = 1; next }
+        drop_blank && $0 == "" { drop_blank = 0; next }
+        { drop_blank = 0 }
+        !skipping { print }
+      ' "$ssh_config_path"
+    fi
+  } > "$temporary_config"; then
+    rm -f "$temporary_config"
+    return 1
+  fi
+  chmod 600 "$temporary_config"
+  mv "$temporary_config" "$ssh_config_path"
+  printf '[ok] installed managed SSH host %s in %s\n' "$NAME" "$ssh_config_path"
+}
+
+ssh_alias_matches_config() {
+  command -v ssh >/dev/null 2>&1 || return 1
+  resolved_config=$(ssh -G -- "$NAME" 2>/dev/null) || return 1
+  resolved_host=$(printf '%s\n' "$resolved_config" | awk '$1 == "hostname" { print $2; exit }')
+  resolved_user=$(printf '%s\n' "$resolved_config" | awk '$1 == "user" { print $2; exit }')
+  resolved_port=$(printf '%s\n' "$resolved_config" | awk '$1 == "port" { print $2; exit }')
+  resolved_identity=$(printf '%s\n' "$resolved_config" | awk '$1 == "identityfile" { $1 = ""; sub(/^ /, ""); print; exit }')
+  [ "$resolved_host" = "$HOST" ] &&
+    [ "$resolved_user" = "$SSH_USER" ] &&
+    [ "$resolved_port" = "$SSH_PORT" ] &&
+    [ "$resolved_identity" = "$IDENTITY_FILE" ]
+}
+
+offer_ssh_config_after_pairing() {
+  if ssh_alias_matches_config; then
+    ok "VS Code SSH alias is ready: $NAME"
+    return
+  fi
+  printf '\nVS Code Remote SSH needs a managed OpenSSH host entry.\n'
+  if [ -t 0 ]; then
+    printf 'Install it in ~/.ssh/config now? [Y/n] '
+    IFS= read -r answer || answer=''
+    case "$answer" in
+      n|N|no|NO) warn 'run otherhost ssh-config --apply before opening a project in VS Code' ;;
+      *) install_ssh_config ;;
+    esac
+  else
+    warn 'run otherhost ssh-config --apply before opening a project in VS Code'
+  fi
+}
+
+run_ssh_config() {
+  if [ "$SSH_CONFIG_APPLY" -eq 1 ]; then
+    install_ssh_config
+  else
+    validate_config
+    [ "$FAILURES" -eq 0 ] || return 1
+    write_ssh_config_block
+  fi
 }
 
 run_status() {
@@ -370,7 +465,15 @@ run_ui() {
 }
 
 case "$COMMAND" in
-  doctor) run_doctor ;;
+  doctor)
+    if run_doctor; then
+      if [ "$PAIR_COMPLETED" -eq 1 ]; then
+        offer_ssh_config_after_pairing
+      fi
+    else
+      exit 1
+    fi
+    ;;
   connect) run_connect ;;
   ssh-config) run_ssh_config ;;
   status) run_status ;;

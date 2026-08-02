@@ -24,7 +24,8 @@ Pairing uses a numeric-comparison interaction:
 2. `devbox pair` sends a versioned IPv4 multicast request. If WSL does not
    receive multicast, the same command probes the fixed pairing port on a
    bounded set of addresses in the Mac's local IPv4 subnet and lists matching
-   Windows hosts.
+   Windows hosts. The fixed UDP and TCP ports remain below common ephemeral
+   ranges so mirrored WSL networking cannot reserve them from the Windows host.
 3. The devices exchange fresh X25519 public keys and 256-bit random nonces.
 4. Both derive separate AES-256-GCM direction keys and a six-digit comparison
    value from the complete transcript using HKDF-SHA-256.

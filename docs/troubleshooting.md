@@ -54,11 +54,15 @@ minutes. Confirm that both devices use the same trusted LAN and the Wi-Fi access
 point does not isolate wireless clients. The launcher detects the active Windows
 profile and subnet; it does not require changing a Public profile to Private.
 
-Pairing first uses IPv4 multicast UDP port `45870` for discovery. If multicast
-is suppressed, the Mac automatically probes TCP port `45871` on a bounded set of
+Pairing first uses IPv4 multicast UDP port `25370` for discovery. If multicast
+is suppressed, the Mac automatically probes TCP port `25371` on a bounded set of
 addresses in its local IPv4 subnet. The same TCP port carries the short-lived
 encrypted session. Windows creates local-subnet firewall rules only while the
 pairing command runs. Do not expose either port through a router.
+
+These ports stay below the common ephemeral ranges used by WSL, Windows, and
+macOS. This matters with mirrored WSL networking because ports reserved for WSL
+ephemeral connections can also be unavailable to Windows-native listeners.
 
 The Mac now reports each phase separately. A failure before any endpoint
 responds looks similar to:
@@ -66,7 +70,7 @@ responds looks similar to:
 ```text
 [diag] Pairing helper version: VERSION
 [diag] multicast discovery received no compatible response
-[diag] direct discovery probing 254 address(es) on TCP 45871 in 192.168.1.0/24
+[diag] direct discovery probing 254 address(es) on TCP 25371 in 192.168.1.0/24
 [diag] direct discovery completed 254/254 probe(s): 0 endpoint(s) responded, 0 compatible devbox(es)
 ```
 
@@ -77,6 +81,12 @@ output reports the helper version, temporary firewall rules, and active TCP
 listener before running `devbox pair` on the Mac. A capability error mentioning
 user-scoped WSL means the published helper is older than the checked-out setup
 script; update the release rather than bypassing that check.
+
+Windows pairing writes its latest elevated transcript to
+`%LOCALAPPDATA%\devbox-bridge\logs\pairing-latest.log`. The log records setup and
+listener diagnostics without private SSH keys. Review it locally before sharing
+because it may contain device names, usernames, LAN addresses, and the temporary
+comparison code.
 
 If neither method finds the host, disconnect VPN software and verify that the
 access point does not isolate wireless clients. The explicit GitHub public-key

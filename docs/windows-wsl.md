@@ -38,6 +38,8 @@ extracts OpenSSH from Ubuntu's signed packages into `~/.local`, runs it through
 the systemd user manager, permits public-key authentication only, and limits
 port forwarding to loopback services. It does not install WSL, change the
 Windows firewall, or persist when the WSL user manager is not running.
+The Mac automatically falls back to bounded local-subnet discovery if mirrored
+WSL networking does not receive multicast probes.
 
 Windows displays the requesting Mac name and a six-digit code. Confirm only if
 the Mac displays the same code. Temporary Windows Firewall rules are limited to

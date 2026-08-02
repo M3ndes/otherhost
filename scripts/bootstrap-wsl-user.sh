@@ -9,6 +9,7 @@ MODE=check
 CONFIG_FILE=${DEVBOX_CONFIG:-"$ROOT_DIR/devbox.local.conf"}
 INSTALL_ROOT=${DEVBOX_USER_INSTALL_ROOT:-"$HOME/.local/lib/devbox-bridge"}
 SERVICE_FILE="$HOME/.config/systemd/user/devbox-bridge-sshd.service"
+PAIRING_VERSION=v0.1.1
 
 usage() {
   cat <<'EOF'
@@ -168,10 +169,16 @@ EOF
     [ -x "$DEVBOX_PAIR_BIN" ] || fail 'DEVBOX_PAIR_BIN is not executable'
     install -m 700 "$DEVBOX_PAIR_BIN" "$PAIRING_HELPER"
     ok "installed the supplied pairing helper: $PAIRING_HELPER"
-  elif [ ! -x "$PAIRING_HELPER" ]; then
-    "$ROOT_DIR/scripts/install-pairing-helper-wsl.sh" "$PAIRING_HELPER"
   else
-    ok "preserved the installed pairing helper: $PAIRING_HELPER"
+    INSTALLED_PAIRING_VERSION=''
+    if [ -x "$PAIRING_HELPER" ]; then
+      INSTALLED_PAIRING_VERSION=$("$PAIRING_HELPER" version 2>/dev/null | awk 'NR == 1 { print $2 }')
+    fi
+    if [ "$INSTALLED_PAIRING_VERSION" = "$PAIRING_VERSION" ]; then
+      ok "pairing helper is installed: $PAIRING_HELPER"
+    else
+      "$ROOT_DIR/scripts/install-pairing-helper-wsl.sh" "$PAIRING_HELPER"
+    fi
   fi
 fi
 

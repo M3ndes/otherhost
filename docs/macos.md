@@ -25,9 +25,11 @@ First run `.\setup.cmd -Pair` in the Windows checkout. Then run:
 devbox pair
 ```
 
-The Mac searches the private local network for five seconds. One result is
-selected automatically; several results are shown as a numbered list. Confirm
-only when the same six-digit code appears on both devices.
+The Mac searches the private local network for five seconds. It uses multicast
+first and automatically scans a bounded local IPv4 subnet when multicast is
+unavailable. One result is selected automatically; several results are shown as
+a numbered list. Confirm only when the same six-digit code appears on both
+devices.
 
 Successful pairing writes the authenticated Windows address, WSL user, SSH port,
 and dedicated known-hosts path to `devbox.local.conf`. It then runs
@@ -45,8 +47,8 @@ The paired WSL host key is saved at
 
 ## Manual recovery
 
-If local multicast is unavailable, use the explicit GitHub public-key recovery
-flow. Print the dedicated key fingerprint:
+If both automatic discovery methods are blocked, use the explicit GitHub
+public-key recovery flow. Print the dedicated key fingerprint:
 
 ```bash
 ssh-keygen -lf ~/.ssh/devbox_bridge_ed25519.pub -E sha256

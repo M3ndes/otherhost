@@ -16,6 +16,7 @@ ROOT_DIR=$(CDPATH='' cd -P -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd)
 
 CONFIG_FILE=${DEVBOX_CONFIG:-"$ROOT_DIR/devbox.local.conf"}
 COMMAND=doctor
+PAIRING_VERSION=v0.1.1
 
 usage() {
   cat <<'EOF'
@@ -92,9 +93,18 @@ run_pair() {
   [ -n "$known_hosts_config" ] || known_hosts_config=.ssh/devbox_bridge_known_hosts
   known_hosts_file=$(devbox_resolve_identity_file "$known_hosts_config")
 
-  pairing_helper=${DEVBOX_PAIR_BIN:-"$HOME/.local/lib/devbox-bridge/devbox-pair"}
-  if [ ! -x "$pairing_helper" ]; then
-    "$ROOT_DIR/scripts/install-pairing-helper.sh" "$pairing_helper"
+  if [ -n "${DEVBOX_PAIR_BIN:-}" ]; then
+    pairing_helper=$DEVBOX_PAIR_BIN
+    [ -x "$pairing_helper" ] || { printf '[fail] DEVBOX_PAIR_BIN is not executable: %s\n' "$pairing_helper" >&2; exit 1; }
+  else
+    pairing_helper="$HOME/.local/lib/devbox-bridge/devbox-pair"
+    installed_pairing_version=''
+    if [ -x "$pairing_helper" ]; then
+      installed_pairing_version=$("$pairing_helper" version 2>/dev/null | awk 'NR == 1 { print $2 }')
+    fi
+    if [ "$installed_pairing_version" != "$PAIRING_VERSION" ]; then
+      "$ROOT_DIR/scripts/install-pairing-helper.sh" "$pairing_helper"
+    fi
   fi
 
   "$pairing_helper" pair \

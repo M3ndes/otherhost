@@ -31,6 +31,7 @@ type HostOptions struct {
 	InstallPublicKey     func(string) error
 	ReadSSHHostPublicKey func() (string, error)
 	DisableDiscovery     bool
+	UserScopedWSL        bool
 }
 
 type hostSession struct {
@@ -68,6 +69,9 @@ func RunHost(ctx context.Context, options HostOptions) error {
 	}
 	if options.Confirm == nil {
 		return errors.New("host confirmation callback is required")
+	}
+	if options.UserScopedWSL && options.Distro == "" {
+		return errors.New("user-scoped WSL pairing requires a WSL distribution")
 	}
 	if err := configureHostCallbacks(&options); err != nil {
 		return err
@@ -176,6 +180,8 @@ func configureHostCallbacks(options *HostOptions) error {
 				return fmt.Errorf("invalid SSH host key: %w", err)
 			}
 			options.ReadSSHHostPublicKey = func() (string, error) { return normalized, nil }
+		case options.Distro != "" && options.UserScopedWSL:
+			options.ReadSSHHostPublicKey = func() (string, error) { return readWSLUserHostKey(options.Distro) }
 		case options.Distro != "":
 			options.ReadSSHHostPublicKey = func() (string, error) { return readWSLHostKey(options.Distro) }
 		default:

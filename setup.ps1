@@ -269,6 +269,59 @@ function Get-PairingHelper {
     return $destination
 }
 
+function Get-ActivePairingNetworkPolicy {
+    $profiles = @(Get-NetConnectionProfile -ErrorAction Stop | Where-Object {
+        $_.IPv4Connectivity -ne 'Disconnected'
+    })
+    if ($profiles.Count -eq 0) {
+        Fail 'Pairing requires an active Windows IPv4 network'
+    }
+    $profileNames = @($profiles |
+        ForEach-Object {
+            if ($_.NetworkCategory -eq 'DomainAuthenticated') { 'Domain' } else { $_.NetworkCategory.ToString() }
+        } |
+        Where-Object { $_ -in @('Public', 'Private', 'Domain') } |
+        Sort-Object -Unique)
+    if ($profileNames.Count -eq 0) {
+        Fail 'Could not determine the active Windows firewall profile'
+    }
+    $remoteSubnets = @($profiles | ForEach-Object {
+        Get-NetIPAddress -InterfaceIndex $_.InterfaceIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue
+    } | Where-Object {
+        $_.IPAddress -notmatch '^169\.254\.' -and $_.PrefixLength -ge 1 -and $_.PrefixLength -le 30
+    } | ForEach-Object {
+        "$($_.IPAddress)/$($_.PrefixLength)"
+    } | Sort-Object -Unique)
+    if ($remoteSubnets.Count -eq 0) {
+        Fail 'Could not determine the active Windows IPv4 subnet'
+    }
+    return [pscustomobject]@{
+        Profiles = $profileNames
+        RemoteSubnets = $remoteSubnets
+    }
+}
+
+function Ensure-HyperVSSHRule([int]$SSHPort, [string[]]$RemoteSubnets) {
+    foreach ($commandName in @('Get-NetFirewallHyperVRule', 'New-NetFirewallHyperVRule', 'Set-NetFirewallHyperVRule')) {
+        if (-not (Get-Command $commandName -ErrorAction SilentlyContinue)) {
+            Fail "Windows does not provide the required Hyper-V firewall command: $commandName"
+        }
+    }
+    $vmCreatorId = '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}'
+    $ruleName = 'devbox-bridge-ssh'
+    $existingRule = Get-NetFirewallHyperVRule -Name $ruleName -ErrorAction SilentlyContinue
+    if ($existingRule) {
+        Set-NetFirewallHyperVRule -Name $ruleName -VMCreatorId $vmCreatorId -Protocol TCP `
+            -LocalPorts ([string]$SSHPort) -RemoteAddresses $RemoteSubnets | Out-Null
+        Write-Ok "updated Hyper-V SSH rule for TCP $SSHPort and the active local subnet"
+    } else {
+        New-NetFirewallHyperVRule -Name $ruleName -DisplayName 'Devbox Bridge SSH' `
+            -Direction Inbound -Action Allow -VMCreatorId $vmCreatorId -Protocol TCP `
+            -LocalPorts $SSHPort -RemoteAddresses $RemoteSubnets | Out-Null
+        Write-Ok "opened Hyper-V SSH port $SSHPort for the active local subnet"
+    }
+}
+
 function Start-PairingMode {
     if (-not (Test-IsAdministrator)) {
         Write-Step 'Requesting Administrator permission for temporary private-network discovery'
@@ -292,15 +345,20 @@ function Start-PairingMode {
     if ($sshPort -notmatch '^[1-9][0-9]*$' -or [int]$sshPort -gt 65535) {
         Fail "Invalid ssh_port in $configPath"
     }
-    $null = & wsl.exe -d $Distro -- sh -c 'test -r /etc/ssh/ssh_host_ed25519_key.pub'
-    if ($LASTEXITCODE -ne 0) { Fail 'SSH must be configured in WSL before pairing' }
-
-    $privateProfiles = @(Get-NetConnectionProfile -ErrorAction Stop | Where-Object {
-        $_.NetworkCategory -eq 'Private' -and $_.IPv4Connectivity -ne 'Disconnected'
-    })
-    if ($privateProfiles.Count -eq 0) {
-        Fail 'Pairing requires the active Windows network profile to be Private'
+    $null = & wsl.exe -d $Distro -- sh -lc 'test -r "$HOME/.local/lib/devbox-bridge/ssh_host_ed25519_key.pub" && systemctl --user is-active --quiet devbox-bridge-sshd.service'
+    $userScopedWSL = $LASTEXITCODE -eq 0
+    if ($userScopedWSL) {
+        Write-Ok 'user-scoped WSL SSH host is active'
+    } else {
+        $null = & wsl.exe -d $Distro -- sh -c 'test -r /etc/ssh/ssh_host_ed25519_key.pub'
+        if ($LASTEXITCODE -ne 0) { Fail 'SSH must be configured in WSL before pairing' }
+        Write-Ok 'system WSL SSH host is available'
     }
+
+    $networkPolicy = Get-ActivePairingNetworkPolicy
+    Write-Ok "temporary pairing access uses profile(s): $($networkPolicy.Profiles -join ', ')"
+    Write-Ok "temporary pairing access is limited to: $($networkPolicy.RemoteSubnets -join ', ')"
+    Ensure-HyperVSSHRule -SSHPort ([int]$sshPort) -RemoteSubnets $networkPolicy.RemoteSubnets
 
     $helper = Get-PairingHelper
     $ruleSuffix = "$PID-$([guid]::NewGuid().ToString('N'))"
@@ -309,12 +367,14 @@ function Start-PairingMode {
     try {
         New-NetFirewallRule -Name $discoveryRule -DisplayName 'Devbox Bridge temporary discovery' `
             -Direction Inbound -Action Allow -Program $helper -Protocol UDP -LocalPort 45870 `
-            -RemoteAddress LocalSubnet -Profile Private | Out-Null
+            -RemoteAddress $networkPolicy.RemoteSubnets -Profile $networkPolicy.Profiles | Out-Null
         New-NetFirewallRule -Name $sessionRule -DisplayName 'Devbox Bridge temporary pairing' `
             -Direction Inbound -Action Allow -Program $helper -Protocol TCP -LocalPort 45871 `
-            -RemoteAddress LocalSubnet -Profile Private | Out-Null
+            -RemoteAddress $networkPolicy.RemoteSubnets -Profile $networkPolicy.Profiles | Out-Null
 
-        & $helper host --name $env:COMPUTERNAME --distro $Distro --ssh-user $wslUser --ssh-port $sshPort
+        $helperArguments = @('host', '--name', $env:COMPUTERNAME, '--distro', $Distro, '--ssh-user', $wslUser, '--ssh-port', $sshPort)
+        if ($userScopedWSL) { $helperArguments += '--user-scoped-wsl' }
+        & $helper @helperArguments
         if ($LASTEXITCODE -ne 0) { Fail "Pairing helper failed with exit code $LASTEXITCODE" }
     } finally {
         Remove-NetFirewallRule -Name $discoveryRule -ErrorAction SilentlyContinue

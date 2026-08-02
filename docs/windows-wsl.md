@@ -43,8 +43,14 @@ WSL networking does not receive multicast probes.
 
 Windows displays the requesting Mac name and a six-digit code. Confirm only if
 the Mac displays the same code. Temporary Windows Firewall rules are limited to
-the pairing helper, private profiles, and the local subnet. They are removed on
-success, rejection, error, or timeout.
+the pairing helper, the active profile, and the active IPv4 subnet. The launcher
+does not change Public or Private network categories. The temporary rules are
+removed on success, rejection, error, or timeout.
+
+If direct WSL discovery is blocked by Windows, run `setup.cmd -Pair`. The same
+command recognizes the user-scoped SSH host, opens its persistent SSH port only
+for the active subnet through the Hyper-V firewall, and hosts the two-minute
+pairing listener on Windows.
 
 The GitHub key path remains available for manual recovery. It requires an
 explicit account and exact fingerprint and never infers identity from the

@@ -2,11 +2,11 @@
 
 This document describes the system boundaries and design constraints for
 contributors. For a less technical introduction, start with
-[How devbox-bridge works](how-it-works.md).
+[How otherhost works](how-it-works.md).
 
 ## Design goals
 
-devbox-bridge aims to make a Windows + WSL development host feel simple from a
+otherhost aims to make a Windows + WSL development host feel simple from a
 Mac without hiding important security or system changes.
 
 The implementation favors:
@@ -24,8 +24,8 @@ The implementation favors:
 ```mermaid
 flowchart TB
     subgraph Mac["Mac client"]
-        CLI["bin/devbox<br/>Bash orchestration"]
-        MacPair["devbox-pair<br/>Go client"]
+        CLI["bin/otherhost<br/>Bash orchestration"]
+        MacPair["otherhost-pair<br/>Go client"]
         OpenSSH["system OpenSSH client"]
         MacState["local config, private key,<br/>and pinned known_hosts"]
     end
@@ -33,7 +33,7 @@ flowchart TB
     subgraph Windows["Windows host"]
         Setup["setup.cmd + setup.ps1<br/>preflight and orchestration"]
         WinPolicy["bootstrap-windows.ps1<br/>WSL resources and firewall"]
-        WinPair["devbox-pair.exe<br/>temporary pairing host"]
+        WinPair["otherhost-pair.exe<br/>temporary pairing host"]
 
         subgraph WSL["WSL 2 / Ubuntu"]
             WSLSetup["bootstrap-wsl.sh or<br/>bootstrap-wsl-user.sh"]
@@ -63,7 +63,7 @@ flowchart TB
 revision verification, UAC handoff, and orchestration. Lower-level Windows and
 WSL bootstraps remain callable for diagnostics and manual recovery.
 
-`bin/devbox` is the Mac-facing control plane. It parses configuration, invokes
+`bin/otherhost` is the Mac-facing control plane. It parses configuration, invokes
 the pairing helper, validates local state, and constructs explicit OpenSSH
 commands. The Go helper owns only discovery and the short-lived cryptographic
 pairing protocol; it is not part of daily SSH connections.
@@ -81,10 +81,10 @@ dependencies, reducing the release and audit surface.
 
 ## Project dashboard
 
-`devbox ui` starts a small Go HTTP server bound exclusively to `127.0.0.1`; it
+`otherhost ui` starts a small Go HTTP server bound exclusively to `127.0.0.1`; it
 does not replace the CLI or listen on a LAN address. The embedded frontend has
 no CDN dependencies or telemetry. It reads a bounded inventory over the
-existing pinned SSH connection and treats `devbox.local.conf` as data.
+existing pinned SSH connection and treats `otherhost.local.conf` as data.
 
 The dashboard's primary model is a remote project, not an infrastructure
 service. Windows and WSL provide compute capacity; the Mac presents the editor,
@@ -129,7 +129,7 @@ The flow is:
    active private local subnet, or `scripts/pair-wsl.sh` listens directly in an
    existing mirrored-network WSL user session. Either mode is discoverable for
    two minutes.
-2. `devbox pair` sends a versioned IPv4 multicast request. If no compatible
+2. `otherhost pair` sends a versioned IPv4 multicast request. If no compatible
    reply arrives, it probes the fixed pairing TCP port on a bounded set of
    addresses in the Mac's local IPv4 subnet and accepts only protocol-valid
    responses.
@@ -150,6 +150,12 @@ man-in-the-middle has approximately a one-in-one-million chance per
 user-approved attempt of presenting a matching value. This property depends on
 the user rejecting a mismatched code or unexpected device.
 
+The public product identifiers changed to Otherhost after protocol v1 shipped.
+The v1 discovery magic, transcript label, HKDF labels, and encrypted JSON field
+names intentionally retain their original values. They are wire identifiers,
+not user-facing branding, and keeping them stable lets upgraded clients pair
+with already-installed v0.1.1 Windows and WSL helpers.
+
 Pairing permits one active session and closes after success, rejection, error,
 or timeout. A discovered endpoint reveals only the temporary instance, device
 name, and pairing port. Windows mode limits temporary firewall rules to the
@@ -164,8 +170,8 @@ user mode creates no Windows Firewall rules.
 | Multicast discovery | UDP `239.255.67.89:25370` | Local multicast scope | Pairing window only |
 | Direct discovery and pairing | TCP `25371` | Active local IPv4 subnet | Pairing window only |
 | WSL SSH | TCP `2222` | Allowed local subnet through Hyper-V firewall | Persistent host service |
-| Forwarded applications | Configured ports such as `3000` | Mac `127.0.0.1` only | While `devbox connect` runs |
-| Project dashboard | TCP `7842` | Mac `127.0.0.1` only | While `devbox ui` runs |
+| Forwarded applications | Configured ports such as `3000` | Mac `127.0.0.1` only | While `otherhost connect` runs |
+| Project dashboard | TCP `7842` | Mac `127.0.0.1` only | While `otherhost ui` runs |
 
 The fixed pairing ports remain below common ephemeral ranges so mirrored WSL
 networking cannot reserve them for outbound connections. Neither pairing nor SSH
@@ -196,16 +202,16 @@ penalties.
 
 ## Configuration and persistent state
 
-`devbox.local.conf` is a portable `key=value` file. Bash and PowerShell parse it
+`otherhost.local.conf` is a portable `key=value` file. Bash and PowerShell parse it
 as inert text. Values are deliberately limited to plain strings; quoting,
 variable expansion, and command substitution are unsupported.
 
 Each clone owns an ignored local config. The repository contains only
-`config/devbox.example.conf` as a documented template.
+`config/otherhost.example.conf` as a documented template.
 
 | State | Owner | Security property |
 | --- | --- | --- |
-| `devbox.local.conf` | Each machine | Ignored by Git; treated as untrusted input |
+| `otherhost.local.conf` | Each machine | Ignored by Git; treated as untrusted input |
 | Mac private SSH key | Mac | Mode-restricted and never transmitted |
 | Mac public SSH key | Mac, then WSL | Explicitly safe to share; installed only after confirmation |
 | WSL SSH host private key | WSL | Never returned to the Mac |
@@ -228,7 +234,7 @@ boundary.
 
 This constraint means contributors testing host changes should commit them on a
 branch before exercising the full Windows launcher. Local helper binaries are
-used only through the explicit `DEVBOX_PAIR_BIN` development override.
+used only through the explicit `OTHERHOST_PAIR_BIN` development override.
 
 ## Failure model
 

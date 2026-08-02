@@ -114,7 +114,7 @@ func Pair(ctx context.Context, options ClientOptions) (ClientResult, error) {
 	if err := openSealed(keys.hostToClient, keys.transcript, confirmation.Nonce, confirmation.Ciphertext, &result); err != nil {
 		return ClientResult{}, err
 	}
-	if _, err := cleanDeviceName(result.DevboxName); err != nil || result.DevboxName != response.HostName {
+	if _, err := cleanDeviceName(result.OtherhostName); err != nil || result.OtherhostName != response.HostName {
 		return ClientResult{}, errors.New("paired host returned an invalid name")
 	}
 	if net.ParseIP(result.Host) == nil || !isLocalNetworkIP(net.ParseIP(result.Host)) {

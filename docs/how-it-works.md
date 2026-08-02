@@ -1,8 +1,8 @@
-# How devbox-bridge works
+# How otherhost works
 
 This guide explains the system for developers who use Git and a terminal but do
 not work with networks every day. You do not need to understand the protocol to
-use devbox-bridge; this page makes failures and security decisions less
+use otherhost; this page makes failures and security decisions less
 mysterious.
 
 ## The two computers have different jobs
@@ -12,7 +12,7 @@ The Mac is the **client** because it asks to use those resources.
 
 | Windows host | Mac client |
 | --- | --- |
-| Runs WSL 2 and Ubuntu | Runs the `devbox` command |
+| Runs WSL 2 and Ubuntu | Runs the `otherhost` command |
 | Stores the source under the WSL Linux filesystem | Stores its own private SSH key |
 | Runs compilers, databases, and Docker containers | Runs the editor, terminal, and browser |
 | Accepts an SSH connection from the Mac | Opens secure tunnels to WSL services |
@@ -36,11 +36,11 @@ your editor is operating on files that remain inside WSL.
 | **Multicast** | A local-network announcement used to find a host without knowing its IP |
 
 An IP address identifies the computer; a port identifies the service on that
-computer. devbox-bridge normally uses these ports:
+computer. otherhost normally uses these ports:
 
 | Port | Protocol | Lifetime | Purpose |
 | --- | --- | --- | --- |
-| `25370` | UDP multicast | Pairing only | Ask nearby devbox hosts to identify themselves |
+| `25370` | UDP multicast | Pairing only | Ask nearby otherhost hosts to identify themselves |
 | `25371` | TCP | Pairing only | Direct discovery and the encrypted pairing session |
 | `2222` | TCP | Daily use | Public-key-only SSH into WSL |
 | Configured app ports | Inside SSH | While connected | Reach apps such as ports `3000` or `8080` from Mac localhost |
@@ -54,7 +54,7 @@ only during the short pairing window.
 
 Pairing answers three questions:
 
-1. Which Windows devbox does the Mac want to use?
+1. Which Windows otherhost does the Mac want to use?
 2. Does the person at each computer see the same connection?
 3. Which cryptographic identities should both computers remember?
 
@@ -91,11 +91,11 @@ After confirmation, each side stores only what it needs:
 
 | Location | Persistent state |
 | --- | --- |
-| Mac `~/.ssh/devbox_bridge_ed25519` | Dedicated private SSH key; never copied elsewhere |
-| Mac `~/.ssh/devbox_bridge_known_hosts` | The trusted WSL SSH host identity |
-| Mac checkout `devbox.local.conf` | Host address, WSL user, SSH port, and forwarded ports |
+| Mac `~/.ssh/otherhost_ed25519` | Dedicated private SSH key for new installations; never copied elsewhere |
+| Mac `~/.ssh/otherhost_known_hosts` | The trusted WSL SSH host identity for new installations |
+| Mac checkout `otherhost.local.conf` | Host address, WSL user, SSH port, and forwarded ports |
 | WSL `~/.ssh/authorized_keys` | The Mac's public SSH key |
-| Windows/WSL checkout `devbox.local.conf` | Machine-specific host policy, ignored by Git |
+| Windows/WSL checkout `otherhost.local.conf` | Machine-specific host policy, ignored by Git |
 
 ### Phase 2: connect every day
 
@@ -104,7 +104,7 @@ standard OpenSSH directly:
 
 ```mermaid
 flowchart LR
-    Terminal["Mac terminal<br/>devbox connect"]
+    Terminal["Mac terminal<br/>otherhost connect"]
     Local3000["Mac<br/>127.0.0.1:3000"]
     SSH["Encrypted SSH connection<br/>Windows address:2222"]
     WSL["WSL SSH server"]
@@ -120,12 +120,12 @@ If a web application listens on WSL port `3000`, the tunnel makes it appear at
 device on the local network; only processes on the Mac can use that localhost
 endpoint.
 
-`devbox connect` does not start the application. It keeps the secure path open.
+`otherhost connect` does not start the application. It keeps the secure path open.
 The application or Docker Compose stack must already be running on the host.
 
 ## How discovery finds Windows
 
-The Mac does not initially know the host's IP address. `devbox pair` therefore
+The Mac does not initially know the host's IP address. `otherhost pair` therefore
 uses two local methods:
 
 1. **Multicast discovery:** the Mac sends one request to a special local group
@@ -133,7 +133,7 @@ uses two local methods:
    temporary session identifier.
 2. **Bounded direct discovery:** if multicast receives no response, the Mac
    probes pairing port `25371` only on addresses in its local IPv4 subnet. It
-   accepts only replies that speak the expected devbox protocol.
+   accepts only replies that speak the expected otherhost protocol.
 
 The second method exists because some routers, VPNs, and WSL configurations do
 not pass multicast reliably. It is a fallback, not an internet-wide scan.
@@ -184,7 +184,7 @@ private key, expose SSH publicly, or start your project.
 
 ## Trust boundaries and limitations
 
-devbox-bridge assumes that both computers and their operating-system accounts
+otherhost assumes that both computers and their operating-system accounts
 are controlled by you. Pairing protects the initial key exchange against a
 local active attacker only when you compare the device name and all six digits
 on both screens.
@@ -206,9 +206,9 @@ Most failures belong to one boundary:
 | --- | --- | --- |
 | Mac finds no host | Local network or temporary firewall | Windows pairing output and Mac `[diag]` lines |
 | Codes differ | Pairing transcript or wrong device | Reject both prompts and restart |
-| Pairing completes but SSH times out | WSL listener, address, or Hyper-V firewall | `devbox doctor` and WSL port `2222` |
+| Pairing completes but SSH times out | WSL listener, address, or Hyper-V firewall | `otherhost doctor` and WSL port `2222` |
 | SSH reports `Permission denied` | Mac key or WSL `authorized_keys` | Compare public-key fingerprints |
-| Browser URL does not load | Tunnel or application | Keep `devbox connect` open and check the app in WSL |
+| Browser URL does not load | Tunnel or application | Keep `otherhost connect` open and check the app in WSL |
 | Docker commands fail | Docker Desktop WSL integration | Run `docker info` inside Ubuntu |
 
 Continue with the step-by-step [Troubleshooting guide](troubleshooting.md).

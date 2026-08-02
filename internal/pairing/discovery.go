@@ -246,7 +246,7 @@ func DiscoverDevices(ctx context.Context, multicastAddress string, pairPort int,
 	devices, multicastErr := Discover(multicastContext, multicastAddress)
 	cancel()
 	if len(devices) > 0 {
-		logDiagnostic(logger, "multicast discovery found %d compatible devbox(es)", len(devices))
+		logDiagnostic(logger, "multicast discovery found %d compatible host(s)", len(devices))
 		return devices, multicastErr
 	}
 	logDiagnostic(logger, "multicast discovery received no compatible response")
@@ -441,7 +441,7 @@ func discoverAtAddresses(ctx context.Context, addresses []string, pairPort int, 
 		}
 		return devices[left].Name < devices[right].Name
 	})
-	logDiagnostic(logger, "direct discovery completed %d/%d probe(s): %d endpoint(s) responded, %d compatible devbox(es)",
+	logDiagnostic(logger, "direct discovery completed %d/%d probe(s): %d endpoint(s) responded, %d compatible host(s)",
 		attempted, len(addresses), responded, len(devices))
 	return devices
 }

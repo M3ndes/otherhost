@@ -17,6 +17,23 @@ Most users should follow the one-command setup. The user-scoped WSL path is an
 advanced alternative for machines whose mirrored network and firewall policy
 already work.
 
+## Migrate an existing devbox-bridge host
+
+The repository rename does not invalidate an existing SSH connection or require
+pairing again. Update the Windows checkout's remote and pull the rebrand:
+
+```powershell
+git remote set-url origin https://github.com/M3ndes/otherhost.git
+git pull
+```
+
+Then rerun `\.\setup.cmd`. The setup accepts the former canonical remote during
+the transition, detects the legacy WSL clone and user-scoped service when
+pairing, and keeps the version 1 pairing protocol compatible. A full setup moves
+new operational files to Otherhost paths and removes only superseded SSH
+drop-ins after the replacement policy has been written. It does not delete the
+legacy clone or SSH keys.
+
 | Host path | Use it when | Required privilege |
 | --- | --- | --- |
 | `setup.cmd` | First setup or Windows policy needs configuration | One Windows UAC approval; WSL may use `sudo` |
@@ -56,7 +73,7 @@ enable two-minute private-network discovery:
 
 The command prints `[diag]` lines with the installed helper version, the
 temporary firewall rules, and confirmation that the TCP pairing listener is
-active. Keep the command open while `devbox pair` runs on the Mac. If the helper
+active. Keep the command open while `otherhost pair` runs on the Mac. If the helper
 lacks a capability required by the checked-out setup script, pairing stops with
 an explicit version/capability error before changing firewall state.
 
@@ -70,7 +87,7 @@ If Ubuntu is already installed, PID 1 is systemd, and mirrored networking is
 already active, use the WSL user-scoped host instead of Windows setup:
 
 ```bash
-cd ~/src/devbox-bridge
+cd ~/src/otherhost
 ./scripts/bootstrap-wsl-user.sh --apply
 ./scripts/pair-wsl.sh
 ```
@@ -159,9 +176,9 @@ sudo apt-get install -y git
 whoami
 mkdir -p ~/src
 cd ~/src
-git clone https://github.com/M3ndes/devbox-bridge.git
-cd devbox-bridge
-cp config/devbox.example.conf devbox.local.conf
+git clone https://github.com/M3ndes/otherhost.git
+cd otherhost
+cp config/otherhost.example.conf otherhost.local.conf
 ```
 
 Use the `whoami` result as `ssh_user`. Leave `github_user` and `ssh_public_key`
@@ -175,7 +192,7 @@ Review these configuration values before continuing:
 | `ssh_user` | Ubuntu user returned by `whoami` | `developer` |
 | `ssh_port` | SSH port allowed through the Hyper-V firewall | `2222` |
 | `github_user` | Optional recovery profile used to discover candidate keys | `M3ndes` |
-| `ssh_public_key` | Optional exact recovery public key line | `ssh-ed25519 AAAA... devbox-bridge client` |
+| `ssh_public_key` | Optional exact recovery public key line | `ssh-ed25519 AAAA... otherhost client` |
 | `wsl_distribution` | Exact name shown by `wsl --list --quiet` | `Ubuntu` |
 | `wsl_memory` | Maximum RAM assigned to WSL | `20GB` |
 | `wsl_processors` | Logical processors assigned to WSL | `8` |
@@ -191,11 +208,11 @@ username placeholder:
 Set-ExecutionPolicy -Scope Process Bypass
 $Distro = "Ubuntu"
 $WslUser = (& wsl.exe -d $Distro -- whoami).Trim()
-$RepoPath = "\\wsl.localhost\$Distro\home\$WslUser\src\devbox-bridge"
+$RepoPath = "\\wsl.localhost\$Distro\home\$WslUser\src\otherhost"
 
 & "$RepoPath\scripts\bootstrap-windows.ps1" `
   -Mode Check `
-  -ConfigPath "$RepoPath\devbox.local.conf"
+  -ConfigPath "$RepoPath\otherhost.local.conf"
 ```
 
 The check is read-only. Confirm the reported Windows build, RAM, logical
@@ -204,7 +221,7 @@ processors, WSL distribution, and Docker state. Then apply:
 ```powershell
 & "$RepoPath\scripts\bootstrap-windows.ps1" `
   -Mode Apply `
-  -ConfigPath "$RepoPath\devbox.local.conf"
+  -ConfigPath "$RepoPath\otherhost.local.conf"
 ```
 
 This creates a timestamped `.wslconfig` backup when necessary and ends with
@@ -215,7 +232,7 @@ This creates a timestamped `.wslconfig` backup when necessary and ends with
 Start Docker Desktop and Ubuntu again, then run inside Ubuntu:
 
 ```bash
-cd ~/src/devbox-bridge
+cd ~/src/otherhost
 ./scripts/bootstrap-wsl.sh
 ./scripts/bootstrap-wsl.sh --apply
 ```
@@ -236,7 +253,7 @@ free -h
 ```
 
 Expected result: Docker returns server information, SSH is `active`, and TCP port
-2222 is listening. Run `.\setup.cmd -Pair` on Windows and `devbox pair` on the
+2222 is listening. Run `.\setup.cmd -Pair` on Windows and `otherhost pair` on the
 Mac. Discovery supplies the correct active Windows address automatically.
 
 ## Resource policy

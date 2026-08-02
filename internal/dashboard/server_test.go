@@ -94,7 +94,7 @@ func TestProjectActionsRequireInventoryTokenAndSameOrigin(t *testing.T) {
 	crossOrigin := httptest.NewRequest(http.MethodPost, "/api/projects/open", bytes.NewReader(requestBody))
 	crossOrigin.Host = "127.0.0.1:7842"
 	crossOrigin.Header.Set("Origin", "https://example.com")
-	crossOrigin.Header.Set("X-Devbox-Token", payload.ActionToken)
+	crossOrigin.Header.Set("X-Otherhost-Token", payload.ActionToken)
 	crossOriginResponse := httptest.NewRecorder()
 	handler.ServeHTTP(crossOriginResponse, crossOrigin)
 	if crossOriginResponse.Code != http.StatusForbidden {
@@ -104,7 +104,7 @@ func TestProjectActionsRequireInventoryTokenAndSameOrigin(t *testing.T) {
 	authorized := httptest.NewRequest(http.MethodPost, "/api/projects/open", bytes.NewReader(requestBody))
 	authorized.Host = "127.0.0.1:7842"
 	authorized.Header.Set("Origin", "http://127.0.0.1:7842")
-	authorized.Header.Set("X-Devbox-Token", payload.ActionToken)
+	authorized.Header.Set("X-Otherhost-Token", payload.ActionToken)
 	authorizedResponse := httptest.NewRecorder()
 	handler.ServeHTTP(authorizedResponse, authorized)
 	if authorizedResponse.Code != http.StatusAccepted {
@@ -132,7 +132,7 @@ func TestProjectActionRejectsPathOutsideLatestInventory(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPost, "/api/projects/open", strings.NewReader(`{"path":"/etc"}`))
 	request.Host = "127.0.0.1:7842"
 	request.Header.Set("Origin", "http://127.0.0.1:7842")
-	request.Header.Set("X-Devbox-Token", payload.ActionToken)
+	request.Header.Set("X-Otherhost-Token", payload.ActionToken)
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
 	if response.Code != http.StatusNotFound {

@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/M3ndes/devbox-bridge/internal/pairing"
+	"github.com/M3ndes/otherhost/internal/pairing"
 )
 
 var version = "development"
@@ -38,7 +38,7 @@ func run() error {
 	case "pair":
 		return runPair(contextWithSignals, os.Args[2:])
 	case "version", "--version", "-version":
-		fmt.Printf("devbox-pair %s\n", version)
+		fmt.Printf("otherhost-pair %s\n", version)
 		return nil
 	case "help", "--help", "-h":
 		usage()
@@ -50,11 +50,11 @@ func run() error {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, `Usage: devbox-pair COMMAND [OPTIONS]
+	fmt.Fprintln(os.Stderr, `Usage: otherhost-pair COMMAND [OPTIONS]
 
 Commands:
-  host     Make a Windows devbox discoverable for two minutes.
-  pair     Discover and pair with a Windows devbox from macOS.
+  host     Make a Windows machine discoverable for two minutes.
+  pair     Discover and pair with an Otherhost machine from macOS.
   version  Print the helper version.`)
 }
 
@@ -78,7 +78,7 @@ func runHost(ctx context.Context, arguments []string) error {
 		return errors.New("host does not accept positional arguments")
 	}
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Printf("Devbox Bridge\n\nPairing is enabled for %s.\n", duration.Round(time.Second))
+	fmt.Printf("Otherhost\n\nPairing is enabled for %s.\n", duration.Round(time.Second))
 	fmt.Printf("[diag] Pairing helper version: %s\n", version)
 	fmt.Println("Waiting for a Mac on this private network...")
 	err := pairing.RunHost(ctx, pairing.HostOptions{
@@ -114,7 +114,7 @@ func runHost(ctx context.Context, arguments []string) error {
 func runPair(ctx context.Context, arguments []string) error {
 	flags := flag.NewFlagSet("pair", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
-	configPath := flags.String("config", "", "devbox configuration path")
+	configPath := flags.String("config", "", "otherhost configuration path")
 	publicKeyPath := flags.String("public-key", "", "Mac SSH public-key path")
 	knownHostsPath := flags.String("known-hosts", "", "dedicated known-hosts path")
 	pairPort := flags.Int("pair-port", pairing.DefaultPairPort, "temporary pairing TCP port")
@@ -139,7 +139,7 @@ func runPair(ctx context.Context, arguments []string) error {
 	}
 	clientName = portableDeviceName(clientName)
 
-	fmt.Println("Searching for Windows devboxes...")
+	fmt.Println("Searching for Otherhost machines...")
 	fmt.Printf("[diag] Pairing helper version: %s\n", version)
 	discoveryContext, cancel := context.WithTimeout(ctx, *discoveryTimeout)
 	devices, err := pairing.DiscoverDevices(discoveryContext, *discoveryAddress, *pairPort, printDiagnostic)
@@ -148,7 +148,7 @@ func runPair(ctx context.Context, arguments []string) error {
 		return fmt.Errorf("local discovery failed: %w", err)
 	}
 	if len(devices) == 0 {
-		return errors.New("no Windows devbox was found; enable pairing on Windows and keep both devices on the same private network")
+		return errors.New("no Otherhost machine was found; enable pairing on Windows and keep both devices on the same private network")
 	}
 	reader := bufio.NewReader(os.Stdin)
 	device, err := selectDevice(reader, devices)
@@ -184,11 +184,11 @@ func selectDevice(reader *bufio.Reader, devices []pairing.Device) (pairing.Devic
 	if len(devices) == 1 {
 		return devices[0], nil
 	}
-	fmt.Println("\nWindows devboxes found:")
+	fmt.Println("\nOtherhost machines found:")
 	for index, device := range devices {
 		fmt.Printf("  [%d] %s\n", index+1, device.Name)
 	}
-	fmt.Print("Select a devbox: ")
+	fmt.Print("Select a host: ")
 	answer, err := reader.ReadString('\n')
 	if err != nil {
 		return pairing.Device{}, errors.New("could not read the device selection")

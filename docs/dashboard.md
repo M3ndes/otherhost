@@ -73,7 +73,9 @@ variables so prompt themes render like a local WSL terminal instead of adding a
 redundant `user@host` segment. For Zsh themes such as Powerlevel10k, the session
 also clears the right prompt so timestamps do not compete with the command text.
 These overrides are session-only; the user's Zsh and Powerlevel10k files remain
-unchanged, and the transport itself remains SSH.
+unchanged, and the transport itself remains SSH. The browser buffers the
+bootstrap output until the session emits its ready marker, so internal setup
+commands never appear in the terminal viewport.
 
 The screenshot shows the disconnected empty state because demonstration mode
 intentionally never starts a local or remote shell.

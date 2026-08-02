@@ -31,6 +31,32 @@ const state = {
   initialNavigationDone: false
 };
 
+const terminalStartupMarker = new Uint8Array([27, 91, 50, 74, 27, 91, 72]);
+const terminalStartupLimit = 64 * 1024;
+const terminalStartupTimeout = 10_000;
+
+function findByteSequence(buffer, sequence) {
+  if (sequence.length === 0 || sequence.length > buffer.length) return -1;
+  for (let offset = 0; offset <= buffer.length - sequence.length; offset += 1) {
+    let matches = true;
+    for (let index = 0; index < sequence.length; index += 1) {
+      if (buffer[offset + index] !== sequence[index]) {
+        matches = false;
+        break;
+      }
+    }
+    if (matches) return offset;
+  }
+  return -1;
+}
+
+function appendBytes(left, right) {
+  const combined = new Uint8Array(left.length + right.length);
+  combined.set(left);
+  combined.set(right, left.length);
+  return combined;
+}
+
 function installIcons() {
   document.querySelectorAll('[data-icon]').forEach((element) => {
     element.innerHTML = icons[element.dataset.icon] || '';
@@ -347,9 +373,12 @@ async function startTerminal(project = null) {
   state.terminalResizeObserver = resizeObserver;
 
   let socket;
+  let terminalReady = false;
+  let startupOutput = new Uint8Array();
+  let startupTimer;
   const encoder = new TextEncoder();
   state.terminalDisposables.push(terminal.onData((data) => {
-    if (socket?.readyState === WebSocket.OPEN) socket.send(encoder.encode(data));
+    if (terminalReady && socket?.readyState === WebSocket.OPEN) socket.send(encoder.encode(data));
   }));
   state.terminalDisposables.push(terminal.onResize(({ cols, rows }) => {
     if (socket?.readyState === WebSocket.OPEN) {
@@ -374,20 +403,50 @@ async function startTerminal(project = null) {
 
     socket.onopen = () => {
       if (state.terminalGeneration !== generation) return;
-      setTerminalState('connected', 'Connected');
+      setTerminalState('connecting', 'Preparing terminal');
       socket.send(JSON.stringify({ type: 'resize', columns: terminal.cols, rows: terminal.rows }));
-      terminal.focus();
+      startupTimer = window.setTimeout(() => {
+        if (state.terminalGeneration !== generation || terminalReady) return;
+        terminal.write('\r\nOtherhost: terminal initialization timed out.\r\n');
+        setTerminalState('unavailable', 'Initialization failed');
+        socket.close(1011, 'Terminal initialization timed out');
+      }, terminalStartupTimeout);
     };
     socket.onmessage = (event) => {
       if (state.terminalGeneration !== generation) return;
-      terminal.write(new Uint8Array(event.data));
+      const output = new Uint8Array(event.data);
+      if (terminalReady) {
+        terminal.write(output);
+        return;
+      }
+      startupOutput = appendBytes(startupOutput, output);
+      if (startupOutput.length > terminalStartupLimit) {
+        window.clearTimeout(startupTimer);
+        terminal.write('\r\nOtherhost: terminal initialization produced too much output.\r\n');
+        setTerminalState('unavailable', 'Initialization failed');
+        socket.close(1011, 'Terminal initialization output limit exceeded');
+        return;
+      }
+      const markerIndex = findByteSequence(startupOutput, terminalStartupMarker);
+      if (markerIndex < 0) return;
+      const visibleOutput = startupOutput.subarray(markerIndex + terminalStartupMarker.length);
+      startupOutput = new Uint8Array();
+      terminalReady = true;
+      window.clearTimeout(startupTimer);
+      setTerminalState('connected', 'Connected');
+      if (visibleOutput.length > 0) terminal.write(visibleOutput);
+      terminal.focus();
     };
     socket.onerror = () => {
       if (state.terminalGeneration === generation) setTerminalState('unavailable', 'Connection error');
     };
     socket.onclose = (event) => {
       if (state.terminalGeneration !== generation) return;
+      window.clearTimeout(startupTimer);
       state.terminalSocket = null;
+      if (!terminalReady && startupOutput.length > 0) {
+        terminal.write('\r\nOtherhost: terminal initialization did not complete.\r\n');
+      }
       setTerminalState('idle', event.code === 1000 ? 'Session ended' : 'Disconnected');
     };
   } catch (error) {

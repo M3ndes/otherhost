@@ -123,6 +123,15 @@ the initial setup line from the display. It does not write to `.zshrc`,
 `.p10k.zsh`, or any other remote file, and non-Zsh shells retain their configured
 prompt.
 
+The browser does not stream bootstrap bytes into Xterm.js immediately. It
+buffers them until the initialization command emits its final clear-screen
+sequence, treats that sequence as the ready marker, discards everything before
+it, and renders only the actual interactive prompt and later output. Keyboard
+input remains disabled during this short preparation window, preventing user
+commands from interleaving with session setup. A bounded buffer and timeout turn
+a missing marker into a visible initialization error instead of leaving the
+browser waiting indefinitely.
+
 Creating a terminal requires the dashboard action token and a same-origin POST.
 The response contains a random authorization valid for 30 seconds and one
 WebSocket attachment. Its secret is sent as a WebSocket subprotocol rather than

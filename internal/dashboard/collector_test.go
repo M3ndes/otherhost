@@ -83,9 +83,22 @@ func TestRemoteInventoryScriptDiscoversRepositoriesWithinHome(t *testing.T) {
 		"platform/linked-submodule",
 		"work/linked-worktree",
 	}
+	operationalCheckouts := map[string]string{
+		"otherhost":     "https://github.com/M3ndes/otherhost.git",
+		"devbox-bridge": "git@github.com:M3ndes/devbox-bridge.git",
+	}
 	for _, repository := range append(repositories, ignored...) {
 		if err := os.MkdirAll(filepath.Join(home, repository, ".git"), 0o755); err != nil {
 			t.Fatal(err)
+		}
+	}
+	for repository, origin := range operationalCheckouts {
+		repositoryPath := filepath.Join(home, repository)
+		if output, err := exec.Command("git", "init", "--quiet", repositoryPath).CombinedOutput(); err != nil {
+			t.Fatalf("could not initialize operational checkout: %v\n%s", err, output)
+		}
+		if output, err := exec.Command("git", "-C", repositoryPath, "remote", "add", "origin", origin).CombinedOutput(); err != nil {
+			t.Fatalf("could not configure operational checkout: %v\n%s", err, output)
 		}
 	}
 	for _, repository := range linkedCheckouts {
@@ -124,6 +137,12 @@ func TestRemoteInventoryScriptDiscoversRepositoriesWithinHome(t *testing.T) {
 		path := filepath.Join(home, repository)
 		if found[path] {
 			t.Errorf("ignored repository was discovered: %s", path)
+		}
+	}
+	for repository := range operationalCheckouts {
+		path := filepath.Join(home, repository)
+		if found[path] {
+			t.Errorf("operational Otherhost checkout was discovered: %s", path)
 		}
 	}
 }

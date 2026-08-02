@@ -111,13 +111,21 @@ grep -Fqx -- "$public_key" "$HOME/.ssh/authorized_keys" || printf '%s\n' "$publi
 }
 
 func readWSLHostKey(distro string) (string, error) {
+	return readWSLHostKeyCommand(distro, "cat /etc/ssh/ssh_host_ed25519_key.pub")
+}
+
+func readWSLUserHostKey(distro string) (string, error) {
+	return readWSLHostKeyCommand(distro, `cat "$HOME/.local/lib/devbox-bridge/ssh_host_ed25519_key.pub"`)
+}
+
+func readWSLHostKeyCommand(distro, script string) (string, error) {
 	if runtime.GOOS != "windows" {
 		return "", errors.New("WSL host-key discovery is available only on Windows")
 	}
 	if !validDistroName(distro) {
 		return "", errors.New("invalid WSL distribution name")
 	}
-	command := exec.Command("wsl.exe", "-d", distro, "--", "sh", "-c", "cat /etc/ssh/ssh_host_ed25519_key.pub")
+	command := exec.Command("wsl.exe", "-d", distro, "--", "sh", "-c", script)
 	output, err := command.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("could not read the WSL SSH host key: %s", strings.TrimSpace(string(output)))

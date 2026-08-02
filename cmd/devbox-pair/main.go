@@ -70,6 +70,7 @@ func runHost(ctx context.Context, arguments []string) error {
 	duration := flags.Duration("duration", 2*time.Minute, "discoverable duration")
 	authorizedKeys := flags.String("authorized-keys", "", "authorized_keys path for development")
 	hostKey := flags.String("ssh-host-key", "", "SSH host public key for development")
+	userScopedWSL := flags.Bool("user-scoped-wsl", false, "use the user-scoped WSL SSH host")
 	if err := flags.Parse(arguments); err != nil {
 		return err
 	}
@@ -83,6 +84,7 @@ func runHost(ctx context.Context, arguments []string) error {
 		Name: *name, Distro: *distro, SSHUser: *sshUser, SSHPort: *sshPort,
 		PairPort: *pairPort, DiscoveryAddress: *discoveryAddress, Duration: *duration,
 		AuthorizedKeysFile: *authorizedKeys, SSHHostPublicKey: *hostKey,
+		UserScopedWSL: *userScopedWSL,
 		Confirm: func(clientName, code string) bool {
 			fmt.Printf("\n%s wants to connect.\n\n", clientName)
 			fmt.Printf("Pairing code: %s\n\n", formatCode(code))

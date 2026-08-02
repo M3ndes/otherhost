@@ -69,7 +69,11 @@ foreach ($requiredControl in @(
     'Invoke-WslCommand -Arguments $bootstrapArguments',
     '[switch]$Pair',
     'Start-PairingMode',
-    '-RemoteAddress LocalSubnet -Profile Private',
+    'Get-ActivePairingNetworkPolicy',
+    'Ensure-HyperVSSHRule',
+    '-RemoteAddress $networkPolicy.RemoteSubnets -Profile $networkPolicy.Profiles',
+    '-RemoteAddresses $RemoteSubnets',
+    '--user-scoped-wsl',
     'Remove-NetFirewallRule -Name $discoveryRule',
     'Remove-NetFirewallRule -Name $sessionRule',
     'Get-FileHash -Algorithm SHA256'

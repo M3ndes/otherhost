@@ -45,9 +45,9 @@ logs containing credentials.
 ## `devbox pair` finds no Windows devbox
 
 Start `.\setup.cmd -Pair` on Windows first. Discovery remains active for two
-minutes. Confirm that both devices use the same private LAN, the active Windows
-network profile is **Private**, and the Wi-Fi access point does not isolate
-wireless clients.
+minutes. Confirm that both devices use the same trusted LAN and the Wi-Fi access
+point does not isolate wireless clients. The launcher detects the active Windows
+profile and subnet; it does not require changing a Public profile to Private.
 
 Pairing first uses IPv4 multicast UDP port `45870` for discovery. If multicast
 is suppressed, the Mac automatically probes TCP port `45871` on a bounded set of

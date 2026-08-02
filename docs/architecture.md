@@ -43,9 +43,10 @@ session and closes after success, rejection, or timeout.
 The direct discovery endpoint reveals only the same temporary instance, device
 name, and port as multicast discovery. It accepts local-network requests only
 and closes with pairing mode. The helper listens only while pairing is enabled.
-Windows mode limits temporary firewall rules to the executable, private network
-profiles, and `LocalSubnet`, then removes them in a `finally` block. WSL user
-mode creates no Windows rules.
+Windows mode limits temporary firewall rules to the helper executable, the
+active network profile, and the active IPv4 subnet, then removes them in a
+`finally` block. It does not change the network category. WSL user mode creates
+no Windows rules.
 
 ## Source and compute location
 

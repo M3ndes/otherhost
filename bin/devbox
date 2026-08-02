@@ -107,15 +107,18 @@ run_pair() {
     fi
   fi
 
-  "$pairing_helper" pair \
+  if ! "$pairing_helper" pair \
     --config "$CONFIG_FILE" \
     --public-key "$identity_file.pub" \
-    --known-hosts "$known_hosts_file"
+    --known-hosts "$known_hosts_file"; then
+    printf '%s\n' '[fail] pairing stopped before the local connection was updated' >&2
+    return 1
+  fi
   printf '\nVerifying the new connection...\n'
 }
 
 if [ "$COMMAND" = pair ]; then
-  run_pair
+  run_pair || exit $?
   COMMAND=doctor
 fi
 

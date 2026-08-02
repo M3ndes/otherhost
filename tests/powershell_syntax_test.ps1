@@ -71,6 +71,8 @@ foreach ($requiredControl in @(
     'Start-PairingMode',
     'Get-ActivePairingNetworkPolicy',
     'Ensure-HyperVSSHRule',
+    'pairing helper:',
+    'does not support user-scoped WSL',
     '-RemoteAddress $networkPolicy.RemoteSubnets -Profile $networkPolicy.Profiles',
     '-RemoteAddresses $RemoteSubnets',
     '--user-scoped-wsl',

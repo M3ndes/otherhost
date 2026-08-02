@@ -96,6 +96,11 @@ Then, on the Mac:
 devbox pair
 ```
 
+Both commands print `[diag]` lines for the helper version, temporary listeners,
+multicast attempt, local IPv4 subnets, and direct TCP probe summary. These lines
+contain no keys or pairing secrets and can be used to identify the network layer
+that stopped the connection.
+
 The Mac finds Windows devboxes automatically. It tries multicast first and then
 falls back to a bounded scan of its local IPv4 subnet when WSL does not receive
 multicast traffic. Both devices display the same six-digit code:

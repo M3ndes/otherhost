@@ -129,6 +129,7 @@ func TestPairEndToEnd(t *testing.T) {
 func TestDirectDiscoveryFindsHostWithoutMulticast(t *testing.T) {
 	port := reserveTCPPort(t)
 	hostResult := make(chan error, 1)
+	hostDiagnostics := make(chan string, 8)
 	hostContext, cancelHost := context.WithCancel(context.Background())
 	go func() {
 		hostResult <- RunHost(hostContext, HostOptions{
@@ -140,11 +141,18 @@ func TestDirectDiscoveryFindsHostWithoutMulticast(t *testing.T) {
 			ReadSSHHostPublicKey: func() (string, error) {
 				return testPublicKey, nil
 			},
+			Log: func(format string, arguments ...any) {
+				hostDiagnostics <- fmt.Sprintf(format, arguments...)
+			},
 		})
 	}()
 	waitForTCP(t, port)
+	waitForDiagnostic(t, hostDiagnostics, "TCP pairing listener active")
 	discoveryContext, cancelDiscovery := context.WithTimeout(context.Background(), 2*time.Second)
-	devices := discoverAtAddresses(discoveryContext, []string{"127.0.0.1"}, port)
+	diagnostics := make([]string, 0, 1)
+	devices := discoverAtAddresses(discoveryContext, []string{"127.0.0.1"}, port, func(format string, arguments ...any) {
+		diagnostics = append(diagnostics, fmt.Sprintf(format, arguments...))
+	})
 	cancelDiscovery()
 	if len(devices) != 1 {
 		t.Fatalf("expected one directly discovered host, got %+v", devices)
@@ -153,6 +161,10 @@ func TestDirectDiscoveryFindsHostWithoutMulticast(t *testing.T) {
 		devices[0].Address != "127.0.0.1" || devices[0].Port != port {
 		t.Fatalf("unexpected directly discovered host: %+v", devices[0])
 	}
+	if output := strings.Join(diagnostics, "\n"); !strings.Contains(output, "1 endpoint(s) responded, 1 compatible devbox(es)") {
+		t.Fatalf("direct discovery diagnostics were not actionable: %s", output)
+	}
+	waitForDiagnostic(t, hostDiagnostics, "direct discovery request accepted from 127.0.0.1")
 	cancelHost()
 	select {
 	case err := <-hostResult:
@@ -161,6 +173,25 @@ func TestDirectDiscoveryFindsHostWithoutMulticast(t *testing.T) {
 		}
 	case <-time.After(3 * time.Second):
 		t.Fatal("host did not stop after direct discovery test")
+	}
+}
+
+func TestDirectDiscoveryReportsUnreachableEndpoint(t *testing.T) {
+	port := reserveTCPPort(t)
+	diagnostics := make([]string, 0, 1)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	devices := discoverAtAddresses(ctx, []string{"127.0.0.1"}, port, func(format string, arguments ...any) {
+		diagnostics = append(diagnostics, fmt.Sprintf(format, arguments...))
+	})
+	if len(devices) != 0 {
+		t.Fatalf("unexpected device on a closed port: %+v", devices)
+	}
+	output := strings.Join(diagnostics, "\n")
+	if !strings.Contains(output, "1/1 probe(s)") ||
+		!strings.Contains(output, "0 endpoint(s) responded, 0 compatible devbox(es)") {
+		t.Fatalf("unreachable endpoint diagnostics were not actionable: %s", output)
 	}
 }
 
@@ -276,6 +307,21 @@ func waitForTCP(t *testing.T, port int) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	t.Fatal("pairing host did not start")
+}
+
+func waitForDiagnostic(t *testing.T, diagnostics <-chan string, expected string) {
+	t.Helper()
+	deadline := time.After(3 * time.Second)
+	for {
+		select {
+		case message := <-diagnostics:
+			if strings.Contains(message, expected) {
+				return
+			}
+		case <-deadline:
+			t.Fatalf("pairing host did not log %q", expected)
+		}
+	}
 }
 
 func stringPort(port int) string {

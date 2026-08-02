@@ -38,6 +38,11 @@ devbox doctor
 nc -vz YOUR_WINDOWS_IP 2222
 ```
 
+Pairing diagnostics use the `[diag]` prefix. They include local IP ranges,
+device names, and executable paths but never private keys, ephemeral pairing
+keys, or the six-digit comparison code. Redact identifying values before sharing
+logs.
+
 Before posting output publicly, remove LAN addresses, usernames, hostnames, and
 project paths. Never include private keys, tokens, `.env` files, or application
 logs containing credentials.
@@ -54,6 +59,24 @@ is suppressed, the Mac automatically probes TCP port `45871` on a bounded set of
 addresses in its local IPv4 subnet. The same TCP port carries the short-lived
 encrypted session. Windows creates local-subnet firewall rules only while the
 pairing command runs. Do not expose either port through a router.
+
+The Mac now reports each phase separately. A failure before any endpoint
+responds looks similar to:
+
+```text
+[diag] Pairing helper version: VERSION
+[diag] multicast discovery received no compatible response
+[diag] direct discovery probing 254 address(es) on TCP 45871 in 192.168.1.0/24
+[diag] direct discovery completed 254/254 probe(s): 0 endpoint(s) responded, 0 compatible devbox(es)
+```
+
+Zero responding endpoints means the Windows listener is absent or blocked.
+Responding endpoints with zero compatible devboxes means something answered on
+the port but did not return the expected protocol. On Windows, verify that the
+output reports the helper version, temporary firewall rules, and active TCP
+listener before running `devbox pair` on the Mac. A capability error mentioning
+user-scoped WSL means the published helper is older than the checked-out setup
+script; update the release rather than bypassing that check.
 
 If neither method finds the host, disconnect VPN software and verify that the
 access point does not isolate wireless clients. The explicit GitHub public-key

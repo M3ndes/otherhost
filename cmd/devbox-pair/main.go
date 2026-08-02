@@ -79,12 +79,13 @@ func runHost(ctx context.Context, arguments []string) error {
 	}
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Printf("Devbox Bridge\n\nPairing is enabled for %s.\n", duration.Round(time.Second))
+	fmt.Printf("[diag] Pairing helper version: %s\n", version)
 	fmt.Println("Waiting for a Mac on this private network...")
 	err := pairing.RunHost(ctx, pairing.HostOptions{
 		Name: *name, Distro: *distro, SSHUser: *sshUser, SSHPort: *sshPort,
 		PairPort: *pairPort, DiscoveryAddress: *discoveryAddress, Duration: *duration,
 		AuthorizedKeysFile: *authorizedKeys, SSHHostPublicKey: *hostKey,
-		UserScopedWSL: *userScopedWSL,
+		UserScopedWSL: *userScopedWSL, Log: printDiagnostic,
 		Confirm: func(clientName, code string) bool {
 			fmt.Printf("\n%s wants to connect.\n\n", clientName)
 			fmt.Printf("Pairing code: %s\n\n", formatCode(code))
@@ -139,8 +140,9 @@ func runPair(ctx context.Context, arguments []string) error {
 	clientName = portableDeviceName(clientName)
 
 	fmt.Println("Searching for Windows devboxes...")
+	fmt.Printf("[diag] Pairing helper version: %s\n", version)
 	discoveryContext, cancel := context.WithTimeout(ctx, *discoveryTimeout)
-	devices, err := pairing.DiscoverDevices(discoveryContext, *discoveryAddress, *pairPort)
+	devices, err := pairing.DiscoverDevices(discoveryContext, *discoveryAddress, *pairPort, printDiagnostic)
 	cancel()
 	if err != nil {
 		return fmt.Errorf("local discovery failed: %w", err)
@@ -153,7 +155,7 @@ func runPair(ctx context.Context, arguments []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("[ok] Found %s\n", device.Name)
+	fmt.Printf("[ok] Found %s at %s:%d\n", device.Name, device.Address, device.Port)
 	result, err := pairing.Pair(ctx, pairing.ClientOptions{
 		Device: device, ClientName: clientName, SSHPublicKey: string(publicKey),
 		Confirm: func(hostName, code string) bool {
@@ -172,6 +174,10 @@ func runPair(ctx context.Context, arguments []string) error {
 	fmt.Println("[ok] SSH host identity pinned")
 	fmt.Println("[ok] Connection saved")
 	return nil
+}
+
+func printDiagnostic(format string, arguments ...any) {
+	fmt.Printf("[diag] "+format+"\n", arguments...)
 }
 
 func selectDevice(reader *bufio.Reader, devices []pairing.Device) (pairing.Device, error) {

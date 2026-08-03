@@ -1,0 +1,19 @@
+scripts/update.sh
+  s_71755d8d0bab89::t_afd36b89047a5a 128-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "1c02dd625ab0c3241edf59e764e4b242551723b1",
+  "prompts": {},
+  "sessions": {
+    "s_71755d8d0bab89": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fba65-d026-7702-9af9-5f7244398fd3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Thales Mendes <thalesmendes.dev@gmail.com>"
+    }
+  }
+}

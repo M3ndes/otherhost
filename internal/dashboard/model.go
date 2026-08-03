@@ -3,6 +3,7 @@ package dashboard
 import "time"
 
 type Snapshot struct {
+	Mode          string      `json:"mode"`
 	Status        string      `json:"status"`
 	Message       string      `json:"message,omitempty"`
 	Host          Host        `json:"host"`
@@ -10,6 +11,47 @@ type Snapshot struct {
 	Projects      []Project   `json:"projects"`
 	SSHResponseMS int64       `json:"sshResponseMs,omitempty"`
 	UpdatedAt     time.Time   `json:"updatedAt"`
+	Connection    Connection  `json:"connection"`
+	Setup         HostSetup   `json:"setup"`
+	Clients       []Client    `json:"clients"`
+	Sessions      []Session   `json:"sessions"`
+}
+
+type Connection struct {
+	State          string `json:"state"`
+	Paired         bool   `json:"paired"`
+	HostName       string `json:"hostName,omitempty"`
+	HostAddress    string `json:"hostAddress,omitempty"`
+	SSHUser        string `json:"sshUser,omitempty"`
+	SSHPort        int    `json:"sshPort,omitempty"`
+	IdentityPinned bool   `json:"identityPinned"`
+	Message        string `json:"message,omitempty"`
+}
+
+type HostSetup struct {
+	State   string      `json:"state"`
+	Message string      `json:"message,omitempty"`
+	Steps   []SetupStep `json:"steps"`
+	Busy    bool        `json:"busy"`
+}
+
+type SetupStep struct {
+	ID      string `json:"id"`
+	Label   string `json:"label"`
+	Status  string `json:"status"`
+	Message string `json:"message,omitempty"`
+}
+
+type Client struct {
+	Fingerprint string    `json:"fingerprint"`
+	Name        string    `json:"name,omitempty"`
+	Authorized  bool      `json:"authorized"`
+	AddedAt     time.Time `json:"addedAt,omitempty"`
+}
+
+type Session struct {
+	Address string `json:"address"`
+	State   string `json:"state"`
 }
 
 type Host struct {

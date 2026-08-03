@@ -60,9 +60,29 @@ It does not install Docker Desktop, change router settings, or start an
 application project. Read the displayed plan before approving the UAC prompt.
 
 Successful setup ends with WSL configured, a public-key-only SSH listener ready
-on the configured port, and instructions to start pairing. You can rerun the
+on the configured port, a Windows host-dashboard binary under `build`, and
+instructions to start pairing. You can rerun the
 same command safely: existing keys and unrelated user configuration are
 preserved.
+
+Open the host console from the Windows checkout:
+
+```powershell
+.\host-ui.cmd
+```
+
+The console runs only on Windows loopback. Its **Host setup** page shows the
+same checked Windows, WSL, SSH, revision, and Docker layers as the CLI. Actions
+launch the reviewed PowerShell entry point, so setup still asks for normal UAC
+approval when required. Its **Connections** page derives fingerprints from WSL
+`authorized_keys`, shows established SSH peers, and can revoke one exact public
+key after typed fingerprint confirmation.
+
+The launcher prefers `build\otherhost-ui.exe`, then a local Windows Go toolchain.
+On a fresh clone without either, it downloads the matching dashboard binary and
+`checksums.txt` from the latest official GitHub release, verifies SHA-256, and
+installs it under `%LOCALAPPDATA%\otherhost\bin`. No administrator privilege is
+required to install or serve the loopback dashboard.
 
 Normal host setup does not require a GitHub account or Mac key. After setup,
 enable two-minute private-network discovery:
@@ -70,6 +90,10 @@ enable two-minute private-network discovery:
 ```powershell
 .\setup.cmd -Pair
 ```
+
+The equivalent **Enable pairing for 2 minutes** action is available in the host
+console. Keep the PowerShell pairing window open while `otherhost pair` runs on
+the Mac.
 
 The command prints `[diag]` lines with the installed helper version, the
 temporary firewall rules, and confirmation that the TCP pairing listener is

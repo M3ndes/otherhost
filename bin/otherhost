@@ -46,6 +46,8 @@ Commands:
   pair        Discover and securely pair with a Windows otherhost.
   doctor      Validate local dependencies, configuration, and connectivity.
   connect     Open SSH port forwards and keep the session in the foreground.
+  disconnect  Pause managed SSH tunnels while preserving the saved pairing.
+  reconnect   Verify the saved host and resume managed SSH tunnels.
   service     Check or manage the persistent macOS connection service.
   ssh-config  Print an OpenSSH host block, or install it with --apply.
   status      Show remote host, memory, disk, and Docker status over SSH.
@@ -72,7 +74,7 @@ while [ "$#" -gt 0 ]; do
       COMMAND=help
       shift
       ;;
-    pair|doctor|connect|ssh-config|urls|ui|update|version)
+    pair|doctor|connect|disconnect|reconnect|service-run|ssh-config|urls|ui|update|version)
       COMMAND=$1
       shift
       ;;
@@ -366,6 +368,61 @@ run_connect() {
   exec ssh "${SSH_ARGS[@]}" -o ExitOnForwardFailure=yes -N "$SSH_USER@$HOST"
 }
 
+run_disconnect() {
+  connection_state_file=$(otherhost_connection_state_path)
+  otherhost_write_connection_state disconnected "$connection_state_file" || {
+    printf '[fail] could not pause the connection in %s\n' "$connection_state_file" >&2
+    return 1
+  }
+  printf '[ok] connection paused; pairing and host identity were preserved\n'
+}
+
+run_reconnect() {
+  run_doctor || return 1
+  connection_state_file=$(otherhost_connection_state_path)
+  otherhost_write_connection_state connected "$connection_state_file" || {
+    printf '[fail] could not resume the connection in %s\n' "$connection_state_file" >&2
+    return 1
+  }
+  printf '[ok] connection resumed; the service will restore SSH tunnels automatically\n'
+}
+
+run_service_loop() {
+  validate_config
+  [ "$FAILURES" -eq 0 ] || return 1
+  build_ssh_args
+  connection_state_file=$(otherhost_connection_state_path)
+  old_ifs=$IFS
+  IFS=,
+  for port in $PORTS; do
+    port=$(otherhost_trim "$port")
+    SSH_ARGS+=( -L "127.0.0.1:$port:127.0.0.1:$port" )
+  done
+  IFS=$old_ifs
+
+  service_child=''
+  trap 'if [ -n "$service_child" ]; then kill "$service_child" >/dev/null 2>&1 || true; fi; exit 0' INT TERM HUP
+  while :; do
+    if [ "$(otherhost_connection_state "$connection_state_file")" = disconnected ]; then
+      sleep 2
+      continue
+    fi
+    printf 'Opening managed forwards for ports %s.\n' "$PORTS"
+    ssh "${SSH_ARGS[@]}" -o ExitOnForwardFailure=yes -N "$SSH_USER@$HOST" &
+    service_child=$!
+    while kill -0 "$service_child" >/dev/null 2>&1; do
+      if [ "$(otherhost_connection_state "$connection_state_file")" = disconnected ]; then
+        kill "$service_child" >/dev/null 2>&1 || true
+        break
+      fi
+      sleep 2
+    done
+    wait "$service_child" >/dev/null 2>&1 || true
+    service_child=''
+    sleep 2
+  done
+}
+
 write_ssh_config_block() {
   printf 'Host %s\n' "$NAME"
   printf '    HostName %s\n' "$HOST"
@@ -533,6 +590,9 @@ case "$COMMAND" in
     fi
     ;;
   connect) run_connect ;;
+  disconnect) run_disconnect ;;
+  reconnect) run_reconnect ;;
+  service-run) run_service_loop ;;
   ssh-config) run_ssh_config ;;
   status) run_status ;;
   urls) run_urls ;;

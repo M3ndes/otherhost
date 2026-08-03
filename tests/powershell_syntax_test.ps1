@@ -2,6 +2,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $scripts = @(
     (Join-Path $root 'setup.ps1'),
+    (Join-Path $root 'host-ui.ps1'),
     (Join-Path $root 'lib/otherhost-windows.ps1'),
     (Join-Path $root 'scripts/bootstrap-windows.ps1')
 )
@@ -20,6 +21,21 @@ $launcher = [System.IO.File]::ReadAllText((Join-Path $root 'setup.cmd'))
 if ($launcher -notmatch 'setup\.ps1') {
     Write-Error 'setup.cmd does not invoke setup.ps1'
     exit 1
+}
+
+$hostLauncher = [System.IO.File]::ReadAllText((Join-Path $root 'host-ui.cmd'))
+foreach ($requiredHostLauncher in @('host-ui.ps1', 'ExecutionPolicy Bypass')) {
+    if (-not $hostLauncher.Contains($requiredHostLauncher)) {
+        Write-Error "host-ui.cmd is missing: $requiredHostLauncher"
+        exit 1
+    }
+}
+$hostDashboard = [System.IO.File]::ReadAllText((Join-Path $root 'host-ui.ps1'))
+foreach ($requiredHostDashboardControl in @('--mode', 'host', '--repository', 'Get-FileHash', 'checksums.txt')) {
+    if (-not $hostDashboard.Contains($requiredHostDashboardControl)) {
+        Write-Error "host-ui.ps1 is missing: $requiredHostDashboardControl"
+        exit 1
+    }
 }
 
 . (Join-Path $root 'lib/otherhost-windows.ps1')
@@ -81,7 +97,9 @@ foreach ($requiredControl in @(
     '--user-scoped-wsl',
     'Remove-NetFirewallRule -Name $discoveryRule',
     'Remove-NetFirewallRule -Name $sessionRule',
-    'Get-FileHash -Algorithm SHA256'
+    'Get-FileHash -Algorithm SHA256',
+    'Building the Windows host dashboard',
+    'OTHERHOST_REPOSITORY=$trustedRepositoryPath'
 )) {
     if (-not $setup.Contains($requiredControl)) {
         Write-Error "setup is missing required security control: $requiredControl"

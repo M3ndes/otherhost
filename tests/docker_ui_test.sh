@@ -68,6 +68,8 @@ OTHERHOST_DOCKER_BIN="$FAKE_DOCKER" OTHERHOST_CONFIG="$CONFIG_FILE" "$ROOT_DIR/s
 CONFIG_FILE=$(canonical_file "$CONFIG_FILE")
 IDENTITY_FILE=$(canonical_file "$IDENTITY_FILE")
 KNOWN_HOSTS_FILE=$(canonical_file "$KNOWN_HOSTS_FILE")
+CONNECTION_STATE_DIRECTORY="$HOME/Library/Application Support/otherhost"
+CONNECTION_STATE_FILE="$CONNECTION_STATE_DIRECTORY/connection-state"
 
 assert_log_contains 'build'
 assert_log_contains '--restart'
@@ -80,6 +82,10 @@ assert_log_contains '127.0.0.1:7842:7842'
 assert_log_contains "type=bind,src=$CONFIG_FILE,dst=$CONFIG_FILE,readonly"
 assert_log_contains "type=bind,src=$IDENTITY_FILE,dst=$IDENTITY_FILE,readonly"
 assert_log_contains "type=bind,src=$KNOWN_HOSTS_FILE,dst=$KNOWN_HOSTS_FILE,readonly"
+assert_log_contains "type=bind,src=$CONNECTION_STATE_DIRECTORY,dst=$CONNECTION_STATE_DIRECTORY"
+assert_log_contains '--connection-state'
+assert_log_contains "$CONNECTION_STATE_FILE"
+grep -Fx connected "$CONNECTION_STATE_FILE" >/dev/null || fail 'Docker apply did not initialize the shared connection state'
 assert_log_contains '--no-open'
 assert_log_contains '--listen-address'
 assert_log_contains '0.0.0.0'

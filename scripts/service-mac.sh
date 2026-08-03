@@ -24,7 +24,7 @@ usage() {
 Usage: scripts/service-mac.sh [--check|--apply|status|logs|remove] [--config PATH]
 
 The check action is read-only. Apply installs or refreshes a macOS LaunchAgent
-that keeps `otherhost connect` running and lets launchd restart lost tunnels.
+that keeps the Otherhost tunnel supervisor running and lets launchd restart it.
 EOF
 }
 
@@ -103,7 +103,7 @@ render_plist() {
     <string>$escaped_command</string>
     <string>--config</string>
     <string>$escaped_config</string>
-    <string>connect</string>
+    <string>service-run</string>
   </array>
   <key>RunAtLoad</key>
   <true/>

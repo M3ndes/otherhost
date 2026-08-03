@@ -91,13 +91,15 @@ func sshAliasMatchesConfig(resolved string, config Config) bool {
 }
 
 type Handler struct {
-	collector Collector
-	launcher  ProjectLauncher
-	terminal  TerminalLauncher
-	deleter   ProjectDeleter
-	sshAlias  string
-	token     string
-	assets    http.Handler
+	collector  Collector
+	launcher   ProjectLauncher
+	terminal   TerminalLauncher
+	deleter    ProjectDeleter
+	connection ConnectionManager
+	host       HostController
+	sshAlias   string
+	token      string
+	assets     http.Handler
 
 	mutex            sync.RWMutex
 	projects         map[string]Project
@@ -116,6 +118,10 @@ func NewHandlerWithTerminal(collector Collector, launcher ProjectLauncher, termi
 }
 
 func NewHandlerWithServices(collector Collector, launcher ProjectLauncher, terminal TerminalLauncher, deleter ProjectDeleter, sshAlias string) (*Handler, error) {
+	return NewHandlerWithManagement(collector, launcher, terminal, deleter, nil, nil, sshAlias)
+}
+
+func NewHandlerWithManagement(collector Collector, launcher ProjectLauncher, terminal TerminalLauncher, deleter ProjectDeleter, connection ConnectionManager, host HostController, sshAlias string) (*Handler, error) {
 	assetRoot, err := fs.Sub(embeddedAssets, "assets")
 	if err != nil {
 		return nil, err
@@ -129,6 +135,8 @@ func NewHandlerWithServices(collector Collector, launcher ProjectLauncher, termi
 		launcher:         launcher,
 		terminal:         terminal,
 		deleter:          deleter,
+		connection:       connection,
+		host:             host,
 		sshAlias:         sshAlias,
 		token:            token,
 		assets:           http.FileServer(http.FS(assetRoot)),
@@ -162,6 +170,16 @@ func (handler *Handler) ServeHTTP(response http.ResponseWriter, request *http.Re
 		handler.deleteProject(response, request)
 	case "/api/terminals":
 		handler.createTerminal(response, request)
+	case "/api/connection/disconnect":
+		handler.disconnect(response, request)
+	case "/api/connection/reconnect":
+		handler.reconnect(response, request)
+	case "/api/host/configure":
+		handler.configureHost(response, request)
+	case "/api/host/pair":
+		handler.enableHostPairing(response, request)
+	case "/api/host/clients/revoke":
+		handler.revokeHostClient(response, request)
 	default:
 		if strings.HasPrefix(request.URL.Path, "/api/terminals/") {
 			handler.serveTerminalSocket(response, request)
@@ -189,6 +207,21 @@ func (handler *Handler) serveSnapshot(response http.ResponseWriter, request *htt
 		return
 	}
 	snapshot := handler.collector.Collect()
+	if handler.host != nil {
+		snapshot.Setup.Busy, snapshot.Setup.Message = handler.host.ActionState()
+		if snapshot.Setup.Message == "" {
+			snapshot.Setup.Message = defaultHostSetupMessage(snapshot.Setup.State)
+		}
+	}
+	if snapshot.Projects == nil {
+		snapshot.Projects = []Project{}
+	}
+	if snapshot.Clients == nil {
+		snapshot.Clients = []Client{}
+	}
+	if snapshot.Sessions == nil {
+		snapshot.Sessions = []Session{}
+	}
 	handler.mutex.Lock()
 	handler.projects = make(map[string]Project, len(snapshot.Projects))
 	visibleProjects := make([]Project, 0, len(snapshot.Projects))
@@ -213,6 +246,139 @@ func (handler *Handler) serveSnapshot(response http.ResponseWriter, request *htt
 	}
 }
 
+func defaultHostSetupMessage(state string) string {
+	if state == "ready" {
+		return "This machine is ready to accept a paired Mac."
+	}
+	return "Complete the setup wizard before enabling pairing."
+}
+
+func (handler *Handler) authorizeAction(response http.ResponseWriter, request *http.Request) bool {
+	if request.Method != http.MethodPost {
+		http.Error(response, "Method not allowed", http.StatusMethodNotAllowed)
+		return false
+	}
+	if request.Header.Get("X-Otherhost-Token") != handler.token || !sameOrigin(request) {
+		http.Error(response, "Action not authorized", http.StatusForbidden)
+		return false
+	}
+	return true
+}
+
+func decodeActionPayload(response http.ResponseWriter, request *http.Request, payload any) bool {
+	request.Body = http.MaxBytesReader(response, request.Body, 4096)
+	decoder := json.NewDecoder(request.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(payload); err != nil {
+		http.Error(response, "Invalid action request", http.StatusBadRequest)
+		return false
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		http.Error(response, "Invalid action request", http.StatusBadRequest)
+		return false
+	}
+	return true
+}
+
+func writeActionStatus(response http.ResponseWriter, status string) {
+	response.Header().Set("Content-Type", "application/json; charset=utf-8")
+	response.Header().Set("Cache-Control", "no-store")
+	_ = json.NewEncoder(response).Encode(map[string]string{"status": status})
+}
+
+func (handler *Handler) disconnect(response http.ResponseWriter, request *http.Request) {
+	if !handler.authorizeAction(response, request) {
+		return
+	}
+	if handler.connection == nil {
+		http.Error(response, "Client connection management is unavailable", http.StatusNotImplemented)
+		return
+	}
+	if !decodeActionPayload(response, request, &struct{}{}) {
+		return
+	}
+	if err := handler.connection.Disconnect(); err != nil {
+		http.Error(response, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	handler.CloseActiveTerminals()
+	writeActionStatus(response, "disconnected")
+}
+
+func (handler *Handler) reconnect(response http.ResponseWriter, request *http.Request) {
+	if !handler.authorizeAction(response, request) {
+		return
+	}
+	if handler.connection == nil {
+		http.Error(response, "Client connection management is unavailable", http.StatusNotImplemented)
+		return
+	}
+	if !decodeActionPayload(response, request, &struct{}{}) {
+		return
+	}
+	ctx, cancel := context.WithTimeout(request.Context(), 15*time.Second)
+	defer cancel()
+	if err := handler.connection.Reconnect(ctx); err != nil {
+		http.Error(response, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	writeActionStatus(response, "connected")
+}
+
+func (handler *Handler) configureHost(response http.ResponseWriter, request *http.Request) {
+	handler.runHostAction(response, request, "configuration started", func() error { return handler.host.Configure() })
+}
+
+func (handler *Handler) enableHostPairing(response http.ResponseWriter, request *http.Request) {
+	handler.runHostAction(response, request, "pairing started", func() error { return handler.host.EnablePairing() })
+}
+
+func (handler *Handler) runHostAction(response http.ResponseWriter, request *http.Request, status string, action func() error) {
+	if !handler.authorizeAction(response, request) {
+		return
+	}
+	if handler.host == nil {
+		http.Error(response, "Host management is unavailable", http.StatusNotImplemented)
+		return
+	}
+	if !decodeActionPayload(response, request, &struct{}{}) {
+		return
+	}
+	if err := action(); err != nil {
+		http.Error(response, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	writeActionStatus(response, status)
+}
+
+func (handler *Handler) revokeHostClient(response http.ResponseWriter, request *http.Request) {
+	if !handler.authorizeAction(response, request) {
+		return
+	}
+	if handler.host == nil {
+		http.Error(response, "Host management is unavailable", http.StatusNotImplemented)
+		return
+	}
+	payload := struct {
+		Fingerprint  string `json:"fingerprint"`
+		Confirmation string `json:"confirmation"`
+	}{}
+	if !decodeActionPayload(response, request, &payload) {
+		return
+	}
+	if payload.Fingerprint == "" || payload.Confirmation != payload.Fingerprint {
+		http.Error(response, "Client fingerprint confirmation does not match", http.StatusBadRequest)
+		return
+	}
+	ctx, cancel := context.WithTimeout(request.Context(), 15*time.Second)
+	defer cancel()
+	if err := handler.host.Revoke(ctx, payload.Fingerprint); err != nil {
+		http.Error(response, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	writeActionStatus(response, "revoked")
+}
+
 func (handler *Handler) deleteProject(response http.ResponseWriter, request *http.Request) {
 	if request.Method != http.MethodPost {
 		http.Error(response, "Method not allowed", http.StatusMethodNotAllowed)
@@ -224,6 +390,10 @@ func (handler *Handler) deleteProject(response http.ResponseWriter, request *htt
 	}
 	if handler.deleter == nil {
 		http.Error(response, "Project deletion is unavailable", http.StatusNotImplemented)
+		return
+	}
+	if !handler.clientConnected() {
+		http.Error(response, "Reconnect to the remote host before deleting a project", http.StatusConflict)
 		return
 	}
 	request.Body = http.MaxBytesReader(response, request.Body, 4096)
@@ -287,6 +457,10 @@ func (handler *Handler) openProject(response http.ResponseWriter, request *http.
 		http.Error(response, "Action not authorized", http.StatusForbidden)
 		return
 	}
+	if !handler.clientConnected() {
+		http.Error(response, "Reconnect to the remote host before opening a project", http.StatusConflict)
+		return
+	}
 	request.Body = http.MaxBytesReader(response, request.Body, 4096)
 	decoder := json.NewDecoder(request.Body)
 	decoder.DisallowUnknownFields()
@@ -317,6 +491,10 @@ func (handler *Handler) openProject(response http.ResponseWriter, request *http.
 	_, _ = response.Write([]byte(`{"status":"opening"}`))
 }
 
+func (handler *Handler) clientConnected() bool {
+	return handler.connection == nil || handler.connection.Status().State != connectionStateDisconnected
+}
+
 func sameOrigin(request *http.Request) bool {
 	origin := request.Header.Get("Origin")
 	if origin == "" {
@@ -337,13 +515,17 @@ func RunServer(ctx context.Context, collector Collector, launcher ProjectLaunche
 }
 
 func RunServerOnAddress(ctx context.Context, collector Collector, launcher ProjectLauncher, terminal TerminalLauncher, deleter ProjectDeleter, sshAlias, listenAddress string, port int, openBrowser bool) error {
+	return RunManagedServerOnAddress(ctx, collector, launcher, terminal, deleter, nil, nil, sshAlias, listenAddress, port, openBrowser)
+}
+
+func RunManagedServerOnAddress(ctx context.Context, collector Collector, launcher ProjectLauncher, terminal TerminalLauncher, deleter ProjectDeleter, connection ConnectionManager, host HostController, sshAlias, listenAddress string, port int, openBrowser bool) error {
 	if listenAddress != "127.0.0.1" && listenAddress != "0.0.0.0" {
 		return errors.New("dashboard listen address must be 127.0.0.1 or 0.0.0.0")
 	}
 	if port < 0 || port > 65535 {
 		return errors.New("dashboard port must be between 0 and 65535")
 	}
-	handler, err := NewHandlerWithServices(collector, launcher, terminal, deleter, sshAlias)
+	handler, err := NewHandlerWithManagement(collector, launcher, terminal, deleter, connection, host, sshAlias)
 	if err != nil {
 		return err
 	}

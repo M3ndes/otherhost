@@ -40,6 +40,10 @@ func (handler *Handler) createTerminal(response http.ResponseWriter, request *ht
 		http.Error(response, "Terminal access is unavailable in demo mode", http.StatusUnprocessableEntity)
 		return
 	}
+	if !handler.clientConnected() {
+		http.Error(response, "Reconnect to the remote host before opening a terminal", http.StatusConflict)
+		return
+	}
 
 	request.Body = http.MaxBytesReader(response, request.Body, 4096)
 	decoder := json.NewDecoder(request.Body)
@@ -295,6 +299,19 @@ func resizeTerminal(terminal Terminal, message []byte) error {
 func (handler *Handler) CloseTerminals() {
 	handler.mutex.Lock()
 	handler.closing = true
+	terminals := handler.closeActiveTerminalsLocked()
+	handler.mutex.Unlock()
+	closeTerminals(terminals)
+}
+
+func (handler *Handler) CloseActiveTerminals() {
+	handler.mutex.Lock()
+	terminals := handler.closeActiveTerminalsLocked()
+	handler.mutex.Unlock()
+	closeTerminals(terminals)
+}
+
+func (handler *Handler) closeActiveTerminalsLocked() []Terminal {
 	terminals := make([]Terminal, 0, len(handler.activeTerminals))
 	for id, terminal := range handler.activeTerminals {
 		if terminal != nil {
@@ -303,7 +320,10 @@ func (handler *Handler) CloseTerminals() {
 		delete(handler.activeTerminals, id)
 	}
 	handler.terminalSessions = make(map[string]pendingTerminalSession)
-	handler.mutex.Unlock()
+	return terminals
+}
+
+func closeTerminals(terminals []Terminal) {
 	for _, terminal := range terminals {
 		_ = terminal.Close()
 	}

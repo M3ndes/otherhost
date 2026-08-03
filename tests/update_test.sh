@@ -49,9 +49,9 @@ chmod +x "$FAKE_GIT"
 REMOTE_STATE_FILE="$TEST_DIR/remote-state"
 cat > "$REMOTE_STATE_FILE" <<EOF
 wsl.revision=$LOCAL_REVISION
-wsl.compatibility=1
+wsl.compatibility=2
 windows.revision=$LOCAL_REVISION
-windows.compatibility=1
+windows.compatibility=2
 EOF
 export REMOTE_STATE_FILE
 SSH_LOG="$TEST_DIR/ssh.log"
@@ -91,9 +91,9 @@ update_command() {
 }
 
 CHECK_OUTPUT=$(update_command --check)
-printf '%s\n' "$CHECK_OUTPUT" | grep -F 'Mac client     111111111111  update available  compatibility 1' >/dev/null
-printf '%s\n' "$CHECK_OUTPUT" | grep -F 'WSL host       111111111111  update available  compatibility 1' >/dev/null
-printf '%s\n' "$CHECK_OUTPUT" | grep -F 'Windows setup  111111111111  update available  compatibility 1' >/dev/null
+printf '%s\n' "$CHECK_OUTPUT" | grep -F 'Mac client     111111111111  update available  compatibility 2' >/dev/null
+printf '%s\n' "$CHECK_OUTPUT" | grep -F 'WSL host       111111111111  update available  compatibility 2' >/dev/null
+printf '%s\n' "$CHECK_OUTPUT" | grep -F 'Windows setup  111111111111  update available  compatibility 2' >/dev/null
 printf '%s\n' "$CHECK_OUTPUT" | grep -F 'setup.cmd -Update' >/dev/null
 [ ! -e "$SIDE_EFFECT" ] || fail 'update check executed the configuration'
 if grep -F 'fetch --no-tags' "$GIT_LOG" >/dev/null || grep -F 'merge --ff-only' "$GIT_LOG" >/dev/null; then
@@ -112,18 +112,18 @@ printf '%s\n' "$OFFLINE_OUTPUT" | grep -F 'remote versions are unknown' >/dev/nu
 printf '%s\n' "$OFFLINE_OUTPUT" | grep -F 'WSL host       unknown' >/dev/null
 printf '%s\n' "$OFFLINE_OUTPUT" | grep -F 'Windows setup  unknown' >/dev/null
 
-sed 's/windows.compatibility=1/windows.compatibility=2/' "$REMOTE_STATE_FILE" > "$TEST_DIR/incompatible-state"
+sed 's/windows.compatibility=2/windows.compatibility=3/' "$REMOTE_STATE_FILE" > "$TEST_DIR/incompatible-state"
 mv "$TEST_DIR/incompatible-state" "$REMOTE_STATE_FILE"
 if update_command --check >"$TEST_DIR/incompatible.out" 2>"$TEST_DIR/incompatible.err"; then
   fail 'compatibility mismatch returned success'
 fi
-grep -F 'Windows compatibility 2 does not match' "$TEST_DIR/incompatible.out" >/dev/null
+grep -F 'Windows compatibility 3 does not match' "$TEST_DIR/incompatible.out" >/dev/null
 
 # shellcheck source=../lib/otherhost.sh
 . "$ROOT_DIR/lib/otherhost.sh"
 STATE_DIRECTORY="$TEST_DIR/state"
 OTHERHOST_GIT_BIN="$FAKE_GIT" otherhost_write_installation_state "$ROOT_DIR" "$STATE_DIRECTORY"
-grep -F 'compatibility=1' "$STATE_DIRECTORY/install-state" >/dev/null
+grep -F 'compatibility=2' "$STATE_DIRECTORY/install-state" >/dev/null
 grep -F "revision=$LOCAL_REVISION" "$STATE_DIRECTORY/install-state" >/dev/null
 
 printf '%s\n' 'update tests passed'

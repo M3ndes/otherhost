@@ -71,6 +71,10 @@ The default design intends to preserve these properties:
 - **Supervised tunnels preserve SSH policy.** The macOS LaunchAgent invokes the
   same pinned, strict, localhost-only connection command and only adds lifecycle
   supervision and throttled retries.
+- **Pausing is not revocation.** Client disconnect stores only a local state
+  value and preserves the dedicated identity and pinned host key; reconnect
+  verifies the saved host before tunnels resume. Host revocation separately
+  requires an exact displayed fingerprint and removes only that public key.
 - **Explicit privilege.** Read-only checks precede changes; Windows
   administrator access is requested through UAC only for system policy.
 - **Reviewed bootstrap revision.** The WSL operational clone is pinned to the
@@ -110,6 +114,10 @@ Numeric comparison does not protect against:
 Remove a lost or untrusted Mac's public key from WSL `authorized_keys` and pair a
 replacement identity. Investigate an unexpected WSL host-key change instead of
 disabling strict host-key verification.
+
+The Windows host dashboard can perform the same removal with typed fingerprint
+confirmation. Disconnecting from the Mac is not sufficient for a lost or
+untrusted device because its public key remains authorized until revoked.
 
 ## Safe deployment boundaries
 

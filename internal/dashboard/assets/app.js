@@ -2,6 +2,9 @@ const icons = {
   overview: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>',
   projects: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h3l2 2h6A2.5 2.5 0 0 1 20 9.5v7a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-9Z"/></svg>',
   machine: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>',
+  connections: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 15 15 9M7 9H5a4 4 0 0 0 0 8h4m6-10h4a4 4 0 0 1 0 8h-4"/></svg>',
+  setup: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1m0-12.8-2.1 2.1m-8.6 8.6-2.1 2.1"/><circle cx="12" cy="12" r="4"/></svg>',
+  disconnect: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h5m4-4 4-3-4-3m4 3H8"/></svg>',
   arrow: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg>',
   refresh: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 8a7 7 0 0 1 11.5-1L20 12M4 12l2.4 5a7 7 0 0 0 11.5-1"/></svg>',
   search: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>',
@@ -36,6 +39,9 @@ const state = {
   pendingDeletion: null,
   deleteTrigger: null,
   deletingProject: false,
+  connectionAction: false,
+  hostAction: false,
+  pendingRevoke: null,
   initialNavigationDone: false
 };
 
@@ -103,8 +109,9 @@ function shortGPU(model) {
   return model.replace(/^NVIDIA\s+(GeForce\s+)?/i, '').trim();
 }
 
-function setConnection(status) {
-  const unavailable = status !== 'connected';
+function setConnection(status, mode = 'client') {
+  const available = status === 'connected' || status === 'ready';
+  const unavailable = !available;
   document.querySelectorAll('[data-status-dot]').forEach((dot) => {
     dot.classList.remove('loading', 'unavailable');
     if (unavailable) dot.classList.add('unavailable');
@@ -113,21 +120,139 @@ function setConnection(status) {
     pill.classList.remove('loading', 'unavailable');
     if (unavailable) pill.classList.add('unavailable');
   });
-  setText('[data-connection-label]', unavailable ? 'Unavailable' : 'Connected');
-  setText('[data-connection-mini]', unavailable ? 'Remote host unavailable' : 'Private SSH connection');
+  const label = mode === 'host' ? (available ? 'Host ready' : 'Setup required') : (status === 'disconnected' ? 'Disconnected' : (unavailable ? 'Unavailable' : 'Connected'));
+  setText('[data-connection-label]', label);
+  setText('[data-connection-mini]', mode === 'host' ? (available ? 'Accepting secure clients' : 'Host setup required') : (status === 'disconnected' ? 'Connection paused' : (unavailable ? 'Remote host unavailable' : 'Private SSH connection')));
+}
+
+function renderMode(snapshot) {
+  const mode = snapshot.mode === 'host' ? 'host' : 'client';
+  document.body.dataset.mode = mode;
+  setText('[data-mode-badge]', mode === 'host' ? 'Host mode' : 'Client mode');
+  setText('[data-host-role]', mode === 'host' ? 'This Windows host' : 'Development host');
+  setText('[data-privacy-note]', mode === 'host' ? 'Local host management console' : 'Private connection over SSH');
+  setText('[data-connections-description]', mode === 'host' ? 'Review authorized Macs, live SSH activity, and revoke access.' : 'Control the saved connection between this Mac and its development host.');
+  setText('[data-host-response-label]', mode === 'host' ? 'Active sessions' : 'SSH response');
+  if (mode === 'host') {
+    document.querySelector('[data-hero-eyebrow]').textContent = 'windows → otherhost';
+    document.querySelector('[data-hero-title]').innerHTML = 'Host the work.<br><span>See every connection.</span>';
+    setText('[data-hero-copy]', 'Prepare this Windows machine for remote development, enable secure pairing, and see which Macs can reach it.');
+  } else {
+    document.querySelector('[data-hero-eyebrow]').textContent = 'localhost → otherhost';
+    document.querySelector('[data-hero-title]').innerHTML = 'Build remotely.<br><span>Stay fast locally.</span>';
+    setText('[data-hero-copy]', 'Your projects, toolchains, and heavy workloads run on your Windows desktop while your Mac stays focused on the experience.');
+  }
+  window.dispatchEvent(new Event('scroll'));
+}
+
+function renderClientConnection(connection = {}) {
+  const disconnected = connection.state === 'disconnected';
+  setText('[data-connection-host]', connection.hostName || 'Saved development host');
+  const endpoint = connection.hostAddress ? `${connection.sshUser || 'user'}@${connection.hostAddress}:${connection.sshPort || 22}` : 'Saved SSH endpoint unavailable';
+  setText('[data-connection-address]', endpoint);
+  setText('[data-connection-identity]', connection.identityPinned ? 'Pinned' : 'Not pinned');
+  setText('[data-connection-pairing]', connection.paired ? 'Saved' : 'Not paired');
+  setText('[data-connection-tunnels]', disconnected ? 'Paused' : 'Managed by launchd');
+  const badge = document.querySelector('[data-client-state]');
+  badge.textContent = disconnected ? 'Disconnected' : 'Connected';
+  badge.className = `connection-state-badge ${disconnected ? 'disconnected' : 'connected'}`;
+  document.querySelector('[data-disconnect]').classList.toggle('hidden', disconnected);
+  document.querySelector('[data-reconnect]').classList.toggle('hidden', !disconnected);
+  document.querySelectorAll('[data-reconnect-step]').forEach((step) => step.classList.toggle('ready', !disconnected));
+}
+
+function renderHostSetup(setup = {}) {
+  const stateName = setup.state || 'needs_setup';
+  const badge = document.querySelector('[data-setup-state]');
+  badge.textContent = stateName === 'ready' ? 'Ready' : 'Action required';
+  badge.className = `connection-state-badge ${stateName === 'ready' ? 'ready' : 'action_required'}`;
+  setText('[data-setup-message]', setup.message || (stateName === 'ready' ? 'This host is ready for secure pairing.' : 'Complete the required host configuration.'));
+  const list = document.querySelector('[data-setup-steps]');
+  list.replaceChildren();
+  (setup.steps || []).forEach((step) => {
+    const row = document.createElement('li');
+    row.className = step.status || 'checking';
+    const indicator = document.createElement('i');
+    const detail = document.createElement('div');
+    const label = document.createElement('strong');
+    label.textContent = step.label;
+    const message = document.createElement('span');
+    message.textContent = step.message || (step.status === 'ready' ? 'Ready' : 'Checking…');
+    detail.append(label, message);
+    row.append(indicator, detail);
+    list.append(row);
+  });
+  document.querySelectorAll('[data-configure-host], [data-enable-pairing]').forEach((button) => { button.disabled = Boolean(setup.busy || state.hostAction); });
+}
+
+function renderHostConnections(clients = [], sessions = []) {
+  setText('[data-client-count]', String(clients.length));
+  const clientList = document.querySelector('[data-client-list]');
+  clientList.replaceChildren();
+  if (!clients.length) {
+    const empty = document.createElement('div');
+    empty.className = 'list-empty';
+    empty.textContent = 'No Macs are authorized yet. Enable pairing to add one.';
+    clientList.append(empty);
+  }
+  clients.forEach((client) => {
+    const row = document.createElement('div');
+    row.className = 'client-row';
+    const avatar = document.createElement('span');
+    avatar.className = 'client-avatar';
+    avatar.innerHTML = icons.machine;
+    const detail = document.createElement('div');
+    const name = document.createElement('strong');
+    name.textContent = client.name || 'Authorized Mac';
+    const fingerprint = document.createElement('span');
+    fingerprint.textContent = client.fingerprint;
+    fingerprint.title = client.fingerprint;
+    detail.append(name, fingerprint);
+    const revoke = document.createElement('button');
+    revoke.className = 'revoke-client';
+    revoke.type = 'button';
+    revoke.textContent = 'Revoke';
+    revoke.addEventListener('click', () => openRevokeClient(client));
+    row.append(avatar, detail, revoke);
+    clientList.append(row);
+  });
+  const sessionList = document.querySelector('[data-session-list]');
+  sessionList.replaceChildren();
+  if (!sessions.length) {
+    const empty = document.createElement('div');
+    empty.className = 'list-empty';
+    empty.textContent = 'No active SSH sessions.';
+    sessionList.append(empty);
+  }
+  sessions.forEach((session, index) => {
+    const row = document.createElement('div');
+    row.className = 'session-row';
+    const indicator = document.createElement('i');
+    indicator.className = 'session-state';
+    const detail = document.createElement('div');
+    const title = document.createElement('strong');
+    title.textContent = `SSH session ${index + 1}`;
+    const address = document.createElement('span');
+    address.textContent = session.address;
+    detail.append(title, address);
+    row.append(indicator, detail);
+    sessionList.append(row);
+  });
 }
 
 function renderSnapshot(snapshot) {
   state.snapshot = snapshot;
   state.projectDeletionEnabled = Boolean(snapshot.projectDeletionEnabled);
   state.loading = false;
-  const connected = snapshot.status === 'connected';
+  const mode = snapshot.mode === 'host' ? 'host' : 'client';
+  const connected = snapshot.status === 'connected' || snapshot.status === 'ready';
   const host = snapshot.host || {};
   const cpu = host.cpu || {};
   const gpu = host.gpu || {};
   const environment = snapshot.environment || {};
 
-  setConnection(snapshot.status);
+  renderMode(snapshot);
+  setConnection(snapshot.status, mode);
   setText('[data-host-name]', host.name || 'Remote host');
   setText('[data-host-mini]', host.name || 'Remote host');
   setText('[data-host-os]', host.os || (connected ? 'Windows development host' : 'Waiting for connection'));
@@ -139,7 +264,7 @@ function renderSnapshot(snapshot) {
   setText('[data-host-processor]', cpuName);
   setText('[data-host-memory]', formatBytes(host.memoryBytes));
   setText('[data-host-gpu]', gpuName);
-  setText('[data-host-latency]', connected ? formatDuration(snapshot.sshResponseMs) : '—');
+  setText('[data-host-latency]', mode === 'host' ? `${(snapshot.sessions || []).length} active` : (connected ? formatDuration(snapshot.sshResponseMs) : '—'));
 
   setText('[data-spec-cpu]', cpuName);
   setText('[data-spec-cpu-detail]', cpu.physicalCores && cpu.logicalProcessors ? `${cpu.physicalCores} cores · ${cpu.logicalProcessors} threads` : 'Processor details unavailable');
@@ -157,8 +282,15 @@ function renderSnapshot(snapshot) {
   setText('[data-last-updated]', connected ? `Updated ${updatedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Inventory unavailable');
 
   const notice = document.querySelector('[data-notice]');
-  notice.classList.toggle('hidden', connected);
-  if (!connected) setText('[data-notice-message]', snapshot.message || 'Check that the Windows desktop and WSL are running.');
+  notice.classList.toggle('hidden', connected || snapshot.status === 'disconnected');
+  if (!connected) setText('[data-notice-message]', snapshot.message || (mode === 'host' ? 'Complete host setup to accept connections.' : 'Check that the Windows desktop and WSL are running.'));
+
+  if (mode === 'host') {
+    renderHostSetup(snapshot.setup || {});
+    renderHostConnections(snapshot.clients || [], snapshot.sessions || []);
+  } else {
+    renderClientConnection(snapshot.connection || {});
+  }
 
   renderProjects();
   renderDisks(host.disks || []);
@@ -298,6 +430,132 @@ function closeDeleteProject(force = false) {
   state.deleteTrigger = null;
   state.deletingProject = false;
   if (trigger?.isConnected) trigger.focus();
+}
+
+function openDisconnect() {
+  setText('[data-disconnect-host]', state.snapshot?.connection?.hostName || 'this host');
+  const button = document.querySelector('[data-disconnect-confirm]');
+  button.disabled = false;
+  button.textContent = 'Disconnect';
+  document.querySelector('[data-disconnect-modal]').classList.remove('hidden');
+  document.body.classList.add('modal-open');
+  button.focus();
+}
+
+function closeDisconnect() {
+  if (state.connectionAction) return;
+  document.querySelector('[data-disconnect-modal]').classList.add('hidden');
+  document.body.classList.remove('modal-open');
+}
+
+async function postAction(path, payload = {}) {
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Otherhost-Token': state.actionToken },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) throw new Error((await response.text()).trim() || 'The action could not be completed.');
+  return response.json();
+}
+
+async function disconnectCurrentHost() {
+  if (state.connectionAction) return;
+  state.connectionAction = true;
+  const button = document.querySelector('[data-disconnect-confirm]');
+  button.disabled = true;
+  button.textContent = 'Disconnecting…';
+  try {
+    await postAction('/api/connection/disconnect');
+    stopTerminal(true);
+    state.connectionAction = false;
+    closeDisconnect();
+    showToast('Connection paused. Your pairing was preserved.');
+    await refresh();
+  } catch (error) {
+    state.connectionAction = false;
+    button.disabled = false;
+    button.textContent = 'Disconnect';
+    showToast(error.message, true);
+  }
+}
+
+async function reconnectCurrentHost() {
+  if (state.connectionAction) return;
+  state.connectionAction = true;
+  const button = document.querySelector('[data-reconnect]');
+  button.disabled = true;
+  button.textContent = 'Verifying host…';
+  try {
+    await postAction('/api/connection/reconnect');
+    showToast('Host verified. Managed tunnels are resuming.');
+    await refresh();
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    state.connectionAction = false;
+    button.disabled = false;
+    button.textContent = 'Reconnect';
+  }
+}
+
+async function runHostAction(path, pendingLabel) {
+  if (state.hostAction) return;
+  state.hostAction = true;
+  renderHostSetup(state.snapshot?.setup || {});
+  setText('[data-setup-message]', pendingLabel);
+  try {
+    await postAction(path);
+    showToast('PowerShell host action started.');
+    window.setTimeout(refresh, 1200);
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    state.hostAction = false;
+    renderHostSetup(state.snapshot?.setup || {});
+  }
+}
+
+function openRevokeClient(client) {
+  state.pendingRevoke = client;
+  setText('[data-revoke-name]', client.name || 'this Mac');
+  setText('[data-revoke-fingerprint]', client.fingerprint);
+  const input = document.querySelector('[data-revoke-confirmation]');
+  input.value = '';
+  document.querySelector('[data-revoke-submit]').disabled = true;
+  document.querySelector('[data-revoke-modal]').classList.remove('hidden');
+  document.body.classList.add('modal-open');
+  input.focus();
+}
+
+function closeRevokeClient() {
+  if (state.hostAction) return;
+  state.pendingRevoke = null;
+  document.querySelector('[data-revoke-modal]').classList.add('hidden');
+  document.body.classList.remove('modal-open');
+}
+
+function updateRevokeConfirmation() {
+  const value = document.querySelector('[data-revoke-confirmation]').value;
+  document.querySelector('[data-revoke-submit]').disabled = !state.pendingRevoke || value !== state.pendingRevoke.fingerprint || state.hostAction;
+}
+
+async function revokeClient() {
+  const client = state.pendingRevoke;
+  const confirmation = document.querySelector('[data-revoke-confirmation]').value;
+  if (!client || confirmation !== client.fingerprint || state.hostAction) return;
+  state.hostAction = true;
+  document.querySelector('[data-revoke-submit]').disabled = true;
+  try {
+    await postAction('/api/host/clients/revoke', { fingerprint: client.fingerprint, confirmation });
+    state.hostAction = false;
+    closeRevokeClient();
+    showToast(`${client.name || 'Client'} can no longer access this host.`);
+    await refresh();
+  } catch (error) {
+    state.hostAction = false;
+    updateRevokeConfirmation();
+    showToast(error.message, true);
+  }
 }
 
 function updateDeleteConfirmation() {
@@ -623,7 +881,7 @@ async function refresh() {
       if (target) window.requestAnimationFrame(() => target.scrollIntoView());
     }
   } catch (error) {
-    renderSnapshot({ status: 'unavailable', message: error.message, host: {}, environment: {}, projects: [], updatedAt: new Date().toISOString() });
+    renderSnapshot({ mode: state.snapshot?.mode || 'client', status: 'unavailable', message: error.message, host: {}, environment: {}, projects: [], setup: {}, clients: [], sessions: [], updatedAt: new Date().toISOString() });
   } finally {
     state.loading = false;
     document.querySelectorAll('[data-refresh]').forEach((button) => { button.disabled = false; });
@@ -653,16 +911,17 @@ function configureTheme() {
 
 function configureNavigation() {
   const links = Array.from(document.querySelectorAll('[data-section-link]'));
-  const sections = links.map((link) => document.getElementById(link.dataset.sectionLink));
   let updateScheduled = false;
   const update = () => {
     updateScheduled = false;
     const marker = window.scrollY + (window.innerHeight * .28);
-    let active = sections[0];
+    const visibleLinks = links.filter((link) => !link.matches('[data-host-only]') || document.body.dataset.mode === 'host');
+    const sections = visibleLinks.map((link) => document.getElementById(link.dataset.sectionLink)).filter((section) => section && section.offsetParent !== null);
+    let active = sections[0] || document.getElementById('overview');
     sections.forEach((section) => {
       if (section.offsetTop <= marker) active = section;
     });
-    links.forEach((link) => link.classList.toggle('active', link.dataset.sectionLink === active.id));
+    links.forEach((link) => link.classList.toggle('active', link.dataset.sectionLink === active?.id));
   };
   window.addEventListener('scroll', () => {
     if (updateScheduled) return;
@@ -692,8 +951,28 @@ document.querySelector('[data-delete-cancel]').addEventListener('click', () => c
 document.querySelector('[data-delete-modal]').addEventListener('click', (event) => {
   if (event.target === event.currentTarget) closeDeleteProject();
 });
+document.querySelector('[data-disconnect]').addEventListener('click', openDisconnect);
+document.querySelector('[data-reconnect]').addEventListener('click', reconnectCurrentHost);
+document.querySelector('[data-disconnect-cancel]').addEventListener('click', closeDisconnect);
+document.querySelector('[data-disconnect-confirm]').addEventListener('click', disconnectCurrentHost);
+document.querySelector('[data-disconnect-modal]').addEventListener('click', (event) => {
+  if (event.target === event.currentTarget) closeDisconnect();
+});
+document.querySelector('[data-configure-host]').addEventListener('click', () => runHostAction('/api/host/configure', 'Starting the host configuration wizard in PowerShell…'));
+document.querySelector('[data-enable-pairing]').addEventListener('click', () => runHostAction('/api/host/pair', 'Opening local pairing discovery for two minutes…'));
+document.querySelector('[data-revoke-confirmation]').addEventListener('input', updateRevokeConfirmation);
+document.querySelector('[data-revoke-form]').addEventListener('submit', (event) => {
+  event.preventDefault();
+  revokeClient();
+});
+document.querySelector('[data-revoke-cancel]').addEventListener('click', closeRevokeClient);
+document.querySelector('[data-revoke-modal]').addEventListener('click', (event) => {
+  if (event.target === event.currentTarget) closeRevokeClient();
+});
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && state.pendingDeletion) closeDeleteProject();
+  if (event.key === 'Escape' && !document.querySelector('[data-disconnect-modal]').classList.contains('hidden')) closeDisconnect();
+  if (event.key === 'Escape' && state.pendingRevoke) closeRevokeClient();
 });
 document.querySelector('[data-project-search]').addEventListener('input', (event) => {
   state.query = event.target.value.trim().toLowerCase();

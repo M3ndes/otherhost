@@ -733,6 +733,19 @@ $linuxConfigPath = "$WslHome/src/otherhost/otherhost.local.conf"
 $bootstrapArguments = @('bash', $trustedBootstrapPath, '--apply', '--config', $linuxConfigPath)
 Invoke-WslCommand -Arguments $bootstrapArguments
 
+Write-Step 'Building the Windows host dashboard'
+$dashboardPath = Join-Path $PSScriptRoot 'build\otherhost-ui.exe'
+$dashboardInUse = @(
+    Get-Process -Name 'otherhost-ui' -ErrorAction SilentlyContinue |
+        Where-Object { $_.Path -and ([System.IO.Path]::GetFullPath($_.Path) -eq [System.IO.Path]::GetFullPath($dashboardPath)) }
+).Count -gt 0
+if ($dashboardInUse) {
+    Write-Warn 'The host dashboard is running; its executable will be rebuilt on the next setup or update.'
+} else {
+    $dashboardBuildScript = 'set -eu; cd "$OTHERHOST_REPOSITORY"; mkdir -p build; CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -o build/otherhost-ui.exe ./cmd/otherhost-ui'
+    Invoke-WslCommand -Arguments @('env', "OTHERHOST_REPOSITORY=$trustedRepositoryPath", 'bash', '-c', $dashboardBuildScript)
+}
+
 $pidOne = (& wsl.exe -d $Distro -- sh -lc 'ps -p 1 -o comm=').Trim()
 if ($pidOne -ne 'systemd') {
     Write-Step 'Restarting WSL once to activate systemd'
@@ -756,6 +769,7 @@ if ($lanAddress) {
     Write-Warn 'The LAN address could not be detected; use ipconfig to find it'
 }
 Write-Host "`nNext:"
-Write-Host '  1. On Windows, run: .\setup.cmd -Pair'
-Write-Host '  2. On the Mac, run: otherhost pair'
+Write-Host '  1. On Windows, run: .\host-ui.cmd'
+Write-Host '  2. In Host setup, enable pairing for two minutes'
+Write-Host '  3. On the Mac, run: otherhost pair'
 Write-Host "`nDocker is optional for SSH connectivity. If needed, enable Docker Desktop > Resources > WSL Integration > $Distro."

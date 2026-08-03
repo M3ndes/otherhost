@@ -131,11 +131,27 @@ otherhost service status
 ```
 
 The service starts after Mac login, uses the absolute path to the selected
-configuration, and runs `otherhost connect` with launchd `KeepAlive` enabled.
+configuration, and runs the internal tunnel supervisor with launchd `KeepAlive`
+enabled. The supervisor still constructs the same OpenSSH command as
+`otherhost connect`, but also observes the user-scoped connection state.
 If the Windows host sleeps, changes networks, or temporarily disappears,
 launchd retries the failed connection with a ten-second throttle. The same
 dedicated identity, pinned host key, strict verification, and Mac loopback
 bindings used by the foreground command remain in effect.
+
+Pause or resume the supervised connection without removing the pairing:
+
+```bash
+otherhost disconnect
+otherhost reconnect
+```
+
+The dashboard exposes the same actions. Disconnecting writes only
+`disconnected` to
+`~/Library/Application Support/otherhost/connection-state`, closes active
+tunnels, and preserves the key, known-hosts pin, and configuration. Reconnecting
+verifies the saved host through strict SSH before writing `connected`; the
+supervisor then restores tunnels automatically.
 
 Use these lifecycle commands when diagnosing or removing it:
 
@@ -299,8 +315,11 @@ filesystem, no Linux capabilities, and a localhost-only published port. The Go
 server listens on the container's private interface so Docker can forward it,
 but Docker publishes that interface exclusively to Mac loopback. The
 machine-local configuration, dedicated private identity, and pinned known-hosts
-file are mounted individually as read-only files at their existing paths. They
-are excluded from the Docker build context and never copied into the image.
+file are mounted individually as read-only files at their existing paths. The
+single Otherhost application-state directory is mounted read-write so the UI
+can pause or resume the native tunnel supervisor without access to the rest of
+the home directory. These inputs are excluded from the Docker build context and
+never copied into the image.
 
 Useful lifecycle commands are:
 

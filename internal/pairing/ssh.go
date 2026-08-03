@@ -1,6 +1,7 @@
 package pairing
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
@@ -12,6 +13,32 @@ import (
 	"strconv"
 	"strings"
 )
+
+func SSHPublicKeyFingerprint(publicKey string) (string, error) {
+	publicKey = strings.TrimSuffix(strings.TrimSuffix(publicKey, "\n"), "\r")
+	if strings.ContainsAny(publicKey, "\r\n") {
+		return "", errors.New("SSH public key must contain exactly one line")
+	}
+	fields := strings.Fields(publicKey)
+	if len(fields) < 2 {
+		return "", errors.New("invalid SSH public key")
+	}
+	switch fields[0] {
+	case "ssh-ed25519", "ssh-rsa", "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384", "ecdsa-sha2-nistp521":
+	default:
+		return "", errors.New("unsupported SSH public key type")
+	}
+	blob, err := base64.StdEncoding.DecodeString(fields[1])
+	if err != nil {
+		return "", errors.New("SSH public key payload is not valid base64")
+	}
+	algorithm, _, ok := readSSHField(blob)
+	if !ok || string(algorithm) != fields[0] {
+		return "", errors.New("SSH public key algorithm does not match its payload")
+	}
+	digest := sha256.Sum256(blob)
+	return "SHA256:" + base64.RawStdEncoding.EncodeToString(digest[:]), nil
+}
 
 func normalizeEd25519PublicKey(publicKey string) (string, error) {
 	publicKey = strings.TrimSuffix(publicKey, "\n")

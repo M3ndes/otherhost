@@ -64,7 +64,7 @@ grep -F '<key>KeepAlive</key>' "$PLIST_FILE" >/dev/null
 grep -F '<integer>10</integer>' "$PLIST_FILE" >/dev/null
 grep -F 'home &amp; workspace' "$PLIST_FILE" >/dev/null
 grep -F 'config &amp; host.conf' "$PLIST_FILE" >/dev/null
-grep -F 'connect</string>' "$PLIST_FILE" >/dev/null
+grep -F 'service-run</string>' "$PLIST_FILE" >/dev/null
 grep -F 'bootstrap gui/' "$LAUNCHCTL_LOG" >/dev/null
 grep -F 'kickstart -k gui/' "$LAUNCHCTL_LOG" >/dev/null
 [ ! -e "$SIDE_EFFECT" ] || fail 'service apply executed the configuration'

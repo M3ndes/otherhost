@@ -107,6 +107,45 @@ otherhost_resolve_identity_file() {
   esac
 }
 
+otherhost_connection_state_path() {
+  if [ -n "${OTHERHOST_CONNECTION_STATE:-}" ]; then
+    printf '%s\n' "$OTHERHOST_CONNECTION_STATE"
+  else
+    printf '%s\n' "$HOME/Library/Application Support/otherhost/connection-state"
+  fi
+}
+
+otherhost_connection_state() {
+  local state_file=${1:-$(otherhost_connection_state_path)}
+  local state
+
+  [ -f "$state_file" ] || { printf '%s\n' connected; return; }
+  state=$(otherhost_trim "$(sed -n '1p' "$state_file")")
+  case "$state" in
+    connected|disconnected) printf '%s\n' "$state" ;;
+    *) printf '%s\n' connected ;;
+  esac
+}
+
+otherhost_write_connection_state() {
+  local state=$1
+  local state_file=${2:-$(otherhost_connection_state_path)}
+  local state_directory
+  local temporary_file
+
+  case "$state" in connected|disconnected) ;; *) return 1 ;; esac
+  state_directory=$(dirname -- "$state_file")
+  mkdir -p "$state_directory" || return 1
+  chmod 700 "$state_directory" || return 1
+  temporary_file=$(mktemp "$state_directory/.connection-state.XXXXXX") || return 1
+  if ! printf '%s\n' "$state" > "$temporary_file"; then
+    rm -f "$temporary_file"
+    return 1
+  fi
+  chmod 600 "$temporary_file" || { rm -f "$temporary_file"; return 1; }
+  mv "$temporary_file" "$state_file"
+}
+
 otherhost_repository_revision() {
   local repository=$1
   local git_bin=${OTHERHOST_GIT_BIN:-git}

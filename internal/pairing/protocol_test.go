@@ -18,6 +18,23 @@ import (
 
 const testPublicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDSZaD3EhKIadfnHAoP5FI2lDwzjk6xZ4H8vS2gFVrKe test-key"
 
+func TestSSHPublicKeyFingerprintMatchesOpenSSHSHA256Format(t *testing.T) {
+	fingerprint, err := SSHPublicKeyFingerprint(testPublicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fingerprint != "SHA256:Tv2nUYxqO8E39QmW267jemkqJq7sbpciWkRgxj9ttac" {
+		t.Fatalf("unexpected fingerprint: %s", fingerprint)
+	}
+}
+
+func TestSSHPublicKeyFingerprintRejectsMismatchedAlgorithm(t *testing.T) {
+	_, err := SSHPublicKeyFingerprint(strings.Replace(testPublicKey, "ssh-ed25519", "ssh-rsa", 1))
+	if err == nil || !strings.Contains(err.Error(), "does not match") {
+		t.Fatalf("mismatched public key algorithm returned %v", err)
+	}
+}
+
 func TestVersionOneWireIdentifiersRemainBackwardCompatible(t *testing.T) {
 	if DiscoveryMagic != "devbox-bridge-discovery" {
 		t.Fatalf("v1 discovery magic changed: %q", DiscoveryMagic)

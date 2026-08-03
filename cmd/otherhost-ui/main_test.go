@@ -9,7 +9,7 @@ import (
 )
 
 func TestDemoCollectorUsesFictitiousPresentationData(t *testing.T) {
-	snapshot := (demoCollector{}).Collect()
+	snapshot := newDemoState("client").Collect()
 	if snapshot.Host.Name != "NEBULA-FORGE" || snapshot.Host.Memory != 256*1024*1024*1024 {
 		t.Fatalf("unexpected demonstration host: %+v", snapshot.Host)
 	}

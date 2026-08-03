@@ -7,162 +7,80 @@
 <p align="center"><strong>Make the other host feel local.</strong></p>
 <p align="center"><code>localhost → otherhost</code></p>
 
-[![CI](https://github.com/M3ndes/otherhost/actions/workflows/ci.yml/badge.svg)](https://github.com/M3ndes/otherhost/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-
-Use a Windows desktop as a private WSL 2 and Docker development machine from
-your Mac. Pair the two computers with a Bluetooth-style six-digit check, then
-connect over SSH with one command.
-
-```text
-Windows:  .\setup.cmd -Pair       Mac:  otherhost pair
-          Code 482 731                  Code 482 731
-                         confirm both
-
-Mac:      otherhost connect
-```
-
-Otherhost is open source, CLI-first, and intentionally inspectable. There
-is no cloud relay or project account. Your source, builds, and containers stay
-on the Windows computer; the Mac is the keyboard, editor, and browser.
-
 <p align="center">
-  <img src="docs/assets/screenshots/dashboard-workspace.jpg" width="1200" alt="Otherhost projects, integrated terminal, and fictional remote machine capacity">
+  <a href="https://github.com/M3ndes/otherhost/actions/workflows/ci.yml"><img src="https://github.com/M3ndes/otherhost/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License"></a>
 </p>
 
-<p align="center"><em>The product view uses an intentionally fictional demonstration host, projects, terminal output, and hardware.</em></p>
+Otherhost turns a Windows desktop into a private WSL 2 development machine for
+your Mac. Source code, builds, containers, and databases stay on the more
+powerful host while the Mac remains the editor, terminal, and browser.
 
-> **Project status:** early stage. CI covers the portable scripts and pairing
-> protocol; full Windows + WSL + macOS behavior still requires real-machine
-> testing. Command details may evolve before a stable `1.0` release. Bug reports
-> and focused pull requests are welcome.
+Pair the computers on your local network, connect through pinned SSH, and work
+without a cloud relay, project account, or copied private key.
 
-## Why use it?
+<p align="center">
+  <img src="docs/assets/screenshots/dashboard-workspace.jpg" width="1200" alt="Otherhost projects, editor actions, integrated terminal, and fictional remote machine capacity">
+</p>
 
-A powerful desktop is often a better place to compile code, run containers, or
-host large development databases. A Mac laptop is often a better place to work
-interactively. otherhost joins them without copying a private SSH key,
-opening a public service, or requiring users to understand every networking
-detail first.
+<p align="center"><em>The product view uses an intentionally fictional host, projects, terminal output, and hardware.</em></p>
 
-- **Fast local pairing:** discover the Windows host and compare one six-digit
-  code on both screens.
-- **Secure by default:** public-key-only SSH, pinned host identity, encrypted
-  pairing, and localhost-only service tunnels.
-- **One Windows setup command:** checks the machine, asks once, elevates through
-  UAC, and configures Windows and WSL.
-- **Useful diagnostics:** each layer reports what it checked and where a failure
-  occurred.
-- **Project-first dashboard:** browse remote repositories and host capacity from
-  an English, localhost-only interface backed by the same pinned SSH connection.
-- **Integrated remote terminal:** start a WSL shell in your home directory or
-  directly inside an inventoried project without moving compute back to the Mac.
-- **Explicit project lifecycle:** permanently remove an inventoried checkout
-  from WSL only after reviewing its full path and typing its project name.
-- **Automation-friendly:** Bash, PowerShell, and a small dependency-free Go
-  pairing helper; no required GUI or hosted control plane.
+> **Project status:** Otherhost is under active development before `1.0`.
+> Portable scripts and the pairing protocol run in CI; complete Windows, WSL,
+> and macOS behavior still requires validation on real machines.
 
-## The simple mental model
+## Why Otherhost?
 
-The Windows computer is the **host**. It owns WSL, the source files, build tools,
-and Docker containers. The Mac is the **client**. It reaches WSL through
-OpenSSH and exposes local browser URLs for services running there.
+- **Keep the Mac responsive.** Run compilation, containers, databases, and
+  other heavy workloads on the Windows host.
+- **Work project-first.** Discover WSL repositories and open them with Codex,
+  Claude Code, VS Code, or the integrated terminal.
+- **See the remote environment.** Inspect CPU, memory, graphics, disks, WSL
+  allocation, and project state from a localhost-only dashboard.
+- **Stay private.** Use public-key SSH, pinned host identity, encrypted pairing,
+  and local-only service tunnels—without a hosted control plane.
+- **Keep control.** The CLI, configuration, setup scripts, and protocol are open
+  source and intentionally inspectable.
+
+## How it works
+
+The Windows computer is the **host**. It owns WSL, source files, development
+tools, and Docker containers. The Mac is the **client** and reaches those
+resources through a hardened SSH connection.
 
 ```mermaid
 flowchart LR
-    subgraph Client["Mac — client"]
-        Editor["Terminal and editor"]
-        Browser["Browser on localhost"]
-    end
+    Mac["Mac<br/>editor · browser · terminal"]
+    Pair["Local pairing<br/>compare six digits"]
+    WSL["Windows + WSL 2<br/>code · builds · containers"]
 
-    subgraph Host["Windows desktop — host"]
-        Pair["Temporary pairing helper"]
-        subgraph WSL["WSL 2 / Ubuntu"]
-            SSH["Hardened SSH server"]
-            Code["Source and build tools"]
-            Apps["Apps and Docker containers"]
-        end
-    end
-
-    Editor -.->|"discover and pair once"| Pair
-    Pair -->|"install Mac public key"| SSH
-    Editor -->|"SSH on TCP 2222"| SSH
-    Browser -->|"localhost port forwards"| SSH
-    SSH --> Code
-    SSH --> Apps
+    Mac -.-> Pair
+    Pair --> WSL
+    Mac -->|"pinned SSH + localhost tunnels"| WSL
 ```
 
-Pairing and daily use are separate:
-
-1. **Pairing** is a temporary, two-minute local-network exchange. It installs
-   the Mac's public key and teaches the Mac which SSH host identity to trust.
-2. **Daily connection** uses normal OpenSSH. `otherhost connect` keeps configured
-   port forwards open until you press `Ctrl-C`.
-
-New to SSH, ports, WSL, or tunneling? Read [How it works](docs/how-it-works.md)
-for a plain-language walkthrough.
-
-## Upgrading from devbox-bridge
-
-The project and repository are now named **Otherhost**. Existing installations
-remain connected during the transition:
-
-- `devbox` remains a deprecated command alias for `otherhost`;
-- `devbox.local.conf` is read as a fallback and `bootstrap-mac.sh --apply`
-  migrates it to `otherhost.local.conf` without evaluating its contents;
-- existing SSH identity and pinned `known_hosts` paths are reused;
-- already-installed v0.1.1 pairing helpers remain wire-compatible;
-- the former GitHub URL redirects, but existing clones should update their
-  remote with `git remote set-url origin https://github.com/M3ndes/otherhost.git`.
-
-No re-pair is required solely because of the rename. Rerun the platform
-bootstrap on each machine to install the new command and paths.
-
-## Requirements
-
-### Windows host
-
-- Windows 11 22H2 (build 22621) or newer;
-- current WSL 2 with an Ubuntu distribution;
-- Git in the Windows environment used to clone this repository;
-- Docker Desktop with its WSL 2 backend when you need containers.
-
-### Mac client
-
-- macOS with Git and OpenSSH;
-- a shell supported by the system-provided Bash and standard macOS tools.
-
-### Network
-
-Both computers should be on the same trusted home or office network for initial
-pairing. They do not need to use the same kind of connection: Windows may use
-Ethernet while the Mac uses Wi-Fi, provided the router allows the two devices to
-communicate. Guest Wi-Fi and client-isolation features commonly block this.
-
-For access away from that network, add a private overlay network such as
-Tailscale after local setup works. Never forward the SSH or pairing ports from a
-public router directly to the host.
+Pairing is temporary and installs only the Mac's public SSH key. Daily work uses
+the saved, pinned SSH connection. Read [How it works](docs/how-it-works.md) for
+the network and trust model in plain language.
 
 ## Quick start
 
+You need Windows 11 with WSL 2 and Ubuntu, a Mac with Git and OpenSSH, and both
+computers on the same trusted local network during pairing. See the complete
+[Windows](docs/windows-wsl.md) and [macOS](docs/macos.md) requirements when
+preparing a new machine.
+
 ### 1. Prepare Windows
 
-Clone this repository on Windows. Open PowerShell in the checkout and run:
+Clone the repository on Windows, open PowerShell in the checkout, and run:
 
 ```powershell
 .\setup.cmd
 ```
 
-The command performs a read-only preflight, shows the planned changes, asks for
-one confirmation, and requests Administrator permission through UAC. It then
-prepares WSL resources, mirrored networking, firewall policy, and a hardened
-SSH server. Normal setup does not require a GitHub account or a Mac SSH key.
-
-For a read-only check without applying changes:
-
-```powershell
-.\setup.cmd -Check
-```
+The command checks the host, shows the planned changes, asks for confirmation,
+and configures Windows, WSL, the firewall, and SSH. Use `.\setup.cmd -Check`
+for a read-only preflight.
 
 ### 2. Install the Mac client
 
@@ -172,200 +90,97 @@ cd otherhost
 ./scripts/bootstrap-mac.sh --apply
 ```
 
-The installer adds `otherhost` under `~/.local/bin` and installs a
-checksum-verified pairing helper for the Mac architecture. Existing
-configuration and keys are preserved. The dedicated SSH private key is created
-on first pairing and never leaves the Mac.
+### 3. Pair once
 
-### 3. Pair the computers
-
-On Windows, start a two-minute discovery window and leave it open:
-
-```powershell
-.\setup.cmd -Pair
-```
-
-On the Mac, run:
-
-```bash
-otherhost pair
-```
-
-The Mac tries multicast discovery first and then scans only its local IPv4
-subnet on the fixed pairing port. Both screens display a code:
+Start a two-minute discovery window on Windows, then pair from the Mac:
 
 ```text
-Windows                                  Mac
-MacBook-Pro wants to connect.            Found DESKTOP-HOME
-Pairing code: 482 731                    Pairing code: 482 731
-Does the Mac show the same code?         Does Windows show the same code?
+Windows                         Mac
+.\setup.cmd -Pair               otherhost pair
+
+Pairing code: 482 731          Pairing code: 482 731
+                 compare and confirm
 ```
 
-Confirm **only** when the device name and code match. The code is compared, not
-typed or sent as a password. After confirmation, pairing installs the Mac
-public key, pins the WSL SSH host key, saves the connection details, and runs a
-health check.
+Confirm only when the device names and six-digit codes match. If discovery does
+not work, follow the [pairing decision guide](docs/troubleshooting.md#otherhost-pair-finds-no-windows-otherhost).
 
-If discovery does not work, keep both commands open and follow the
-[pairing decision guide](docs/troubleshooting.md#otherhost-pair-finds-no-windows-otherhost).
-The `[diag]` output identifies whether multicast, direct discovery, the listener,
-or SSH failed.
-
-### 4. Connect from the Mac
+### 4. Connect and work
 
 ```bash
 otherhost connect
 ```
 
-Keep that terminal open. Configured services are now available through Mac
-localhost URLs. In another terminal:
-
-```bash
-otherhost urls
-otherhost status
-```
-
-Pairing offers to install a managed OpenSSH host block for editors with Remote
-SSH support. To review it without changing the Mac:
-
-```bash
-otherhost ssh-config
-```
-
-To install or refresh that block later:
-
-```bash
-otherhost ssh-config --apply
-```
-
-The managed block is placed before existing SSH rules, is replaced
-idempotently on later runs, and leaves unrelated host entries unchanged.
-
-### Browse remote projects
-
-The optional project dashboard remains backed by the CLI and opens only on the
-Mac loopback interface:
+Keep that command running to maintain configured localhost tunnels. In another
+terminal, open the project dashboard:
 
 ```bash
 otherhost ui
 ```
 
-It automatically discovers Git repositories within three directory levels of
-the WSL home, while `projects_root` (by default `~/src`) remains the preferred
-location and always has its direct children scanned. Hidden folders, dependency
-trees, Git submodules, linked worktrees, and Windows mounts are excluded. Only
-the primary checkout of each repository relationship is presented. Operational
-Otherhost source checkouts are also excluded, including clones that still use
-the former `devbox-bridge` GitHub URL. The dashboard refreshes every 30 seconds
-while visible, when the browser returns to
-the foreground, and immediately when **Projects** is opened, so a repository
-cloned from the integrated terminal appears without moving it or restarting the
-dashboard. It also shows the Windows hardware inventory and WSL allocation.
-Project cards present branded **Codex** and **VS Code** actions. **Codex** opens
-the desktop app's SSH connection flow for the paired alias; select the displayed
-remote path in Codex to save the project. **VS Code** opens the exact folder over
-Remote SSH and verifies that the managed alias still matches the paired host;
-run `otherhost ssh-config --apply` if the alias is missing or stale. Use the
-terminal icon on a project to start an interactive WSL shell in that directory,
-or open **Terminal** to start in the remote home directory.
-
-The UI is entirely in English, loads no remote assets, sends no telemetry, and
-does not expose its local HTTP server to the LAN. Docker remains available in
-CLI diagnostics but is not treated as a primary machine-health signal in the
-project dashboard. Terminal sessions use the configured pinned SSH identity and
-end when the browser connection or dashboard process closes.
-
-See the [dashboard guide](docs/dashboard.md) for the complete Overview,
-Projects, Terminal, and Machine experience, including responsive screenshots
-and the local security boundaries.
+The dashboard runs only on `127.0.0.1:7842`. It discovers primary Git checkouts
+inside WSL, opens projects with Codex, Claude Code, or VS Code, provides an
+interactive remote shell, and shows the host resources available to development
+workloads. See the [dashboard guide](docs/dashboard.md) for its complete behavior
+and security boundaries.
 
 ## Commands
 
 | Command | Where | Purpose |
 | --- | --- | --- |
 | `.\setup.cmd` | Windows | Check and configure the Windows + WSL host |
-| `.\setup.cmd -Check` | Windows | Run the host preflight without changing anything |
+| `.\setup.cmd -Check` | Windows | Run the host preflight without making changes |
 | `.\setup.cmd -Pair` | Windows | Make the host discoverable for two minutes |
 | `otherhost pair` | Mac | Discover, verify, and save a host |
 | `otherhost doctor` | Mac | Validate configuration, keys, dependencies, and SSH |
-| `otherhost connect` | Mac | Keep all configured SSH port forwards open |
+| `otherhost connect` | Mac | Keep configured SSH port forwards open |
 | `otherhost status` | Mac | Show remote uptime, memory, disk, and Docker usage |
 | `otherhost urls` | Mac | Print forwarded localhost URLs |
-| `otherhost ssh-config [--apply]` | Mac | Review or install the managed OpenSSH host block |
-| `otherhost ui` | Mac | Open the local project, terminal, and machine dashboard |
+| `otherhost ssh-config [--apply]` | Mac | Review or install the managed SSH host block |
+| `otherhost ui` | Mac | Open the project, terminal, and machine dashboard |
 
-## Alternative host mode
+## Security and privacy
 
-If Ubuntu, systemd, and WSL mirrored networking already work, an experienced
-user can install a user-scoped host without PowerShell, Administrator access, or
-`sudo`:
-
-```bash
-cd ~/src/otherhost
-./scripts/bootstrap-wsl-user.sh --apply
-./scripts/pair-wsl.sh
-```
-
-This mode extracts OpenSSH from Ubuntu's signed packages into `~/.local` and
-runs it as a systemd user service. It does not install WSL or change Windows
-firewall policy. See [Windows and WSL host](docs/windows-wsl.md) before choosing
-this route.
-
-## Security at a glance
-
-- Pairing uses fresh X25519 keys, HKDF-SHA-256, and authenticated AES-256-GCM
-  messages.
-- The six-digit comparison binds the complete session and is never transmitted.
-- Only the Mac's **public** SSH key crosses the network; its private key remains
-  on the Mac.
-- The Mac pins the authenticated WSL Ed25519 host key and fails closed if it
-  later changes.
-- SSH password login and root login are disabled.
-- Pairing listeners and Windows firewall exceptions are temporary and restricted
-  to the active local subnet.
-- Forwarded applications bind to Mac `127.0.0.1`, not its LAN interfaces.
-- Integrated terminal sessions are same-origin, one-use, and carried through the
-  existing pinned SSH connection.
-- Configuration files are parsed as data and are never executed as shell or
+- Pairing encrypts the exchange and binds it to the six-digit code shown on both
+  computers.
+- Only the Mac's public SSH key crosses the network; the private key never
+  leaves the Mac.
+- The authenticated WSL host key is pinned, and SSH password and root login are
+  disabled.
+- Dashboard, terminal, and forwarded services bind to Mac localhost rather than
+  LAN interfaces.
+- Configuration is parsed as untrusted data and is never executed as shell or
   PowerShell code.
 
-The six-digit code protects against an active device impersonating either side
-only when the user actually compares it. It does not make an untrusted network
-safe for unrelated traffic or secure an already-compromised computer. Read the
-full [security policy and trust model](SECURITY.md).
+Do not expose the SSH or pairing ports through a public router. Read the full
+[security policy and trust model](SECURITY.md) before changing network or
+deployment boundaries.
 
 ## Documentation
 
 | Guide | Start here when... |
 | --- | --- |
-| [How it works](docs/how-it-works.md) | You want the network and security model in plain language |
-| [Windows and WSL host](docs/windows-wsl.md) | You are setting up or operating the Windows computer |
+| [How it works](docs/how-it-works.md) | You want the product, network, and trust model in plain language |
+| [Windows and WSL host](docs/windows-wsl.md) | You are preparing or operating the Windows computer |
 | [macOS client](docs/macos.md) | You are installing, pairing, or using the Mac command |
-| [Project dashboard](docs/dashboard.md) | You want to browse projects and inspect remote machine capacity |
-| [Troubleshooting](docs/troubleshooting.md) | A setup, discovery, SSH, or Docker step failed |
-| [Architecture and decisions](docs/architecture.md) | You want protocol details or plan a code change |
-| [Brand and visual identity](docs/brand.md) | You need the name, voice, logo, or visual tokens |
+| [Project dashboard](docs/dashboard.md) | You want project discovery, editor actions, terminal, and machine details |
+| [Troubleshooting](docs/troubleshooting.md) | Setup, discovery, SSH, Docker, or the dashboard failed |
+| [Migration from devbox-bridge](docs/migration.md) | You installed the project before the Otherhost rename |
+| [Architecture](docs/architecture.md) | You want protocol details or plan a code change |
+| [Brand](docs/brand.md) | You need the name, voice, logo, or visual tokens |
 | [Contributing](CONTRIBUTING.md) | You want to report, test, document, or implement a change |
-| [Security policy](SECURITY.md) | You need deployment boundaries or private reporting instructions |
-| [Third-party notices](THIRD_PARTY_NOTICES.md) | You need dependency versions and license details |
 
-## Scope and non-goals
+## Scope
 
-otherhost configures a trusted remote-development path. It does **not**:
-
-- install Docker Desktop itself;
-- change router settings or expose the host to the public internet;
-- synchronize source code or private keys between devices;
-- provide a cloud relay, account system, or remote wake service;
-- keep Windows awake or manage OS updates and backups;
-- replace a VPN when the computers are on different networks.
+Otherhost creates a trusted remote-development path. It does not install Docker
+Desktop, expose the host publicly, synchronize source code or private keys,
+provide a cloud relay, manage Windows updates, or replace a private network when
+the machines are in different locations.
 
 ## Contributing
 
-Issues and pull requests are welcome. Please search existing issues, describe the
-Windows/WSL/macOS versions involved, and redact private keys, tokens, usernames,
-hostnames, and LAN addresses from logs. Run `make test` before submitting code.
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and review
-checklist.
+Issues and focused pull requests are welcome. Redact private keys, tokens,
+usernames, hostnames, and LAN addresses from logs, and run `make test` before
+submitting code. See [CONTRIBUTING.md](CONTRIBUTING.md) for the complete workflow.
 
 Licensed under the [MIT License](LICENSE).

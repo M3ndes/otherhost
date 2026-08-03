@@ -1,0 +1,15 @@
+.git
+.github
+.playwright-cli
+.DS_Store
+.env
+.env.*
+*.log
+*.bak
+build
+dist
+docs
+tests
+otherhost.local.conf
+devbox.local.conf
+**/*_test.go

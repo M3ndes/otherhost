@@ -333,6 +333,13 @@ func setSecurityHeaders(response http.ResponseWriter) {
 }
 
 func RunServer(ctx context.Context, collector Collector, launcher ProjectLauncher, terminal TerminalLauncher, deleter ProjectDeleter, sshAlias string, port int, openBrowser bool) error {
+	return RunServerOnAddress(ctx, collector, launcher, terminal, deleter, sshAlias, "127.0.0.1", port, openBrowser)
+}
+
+func RunServerOnAddress(ctx context.Context, collector Collector, launcher ProjectLauncher, terminal TerminalLauncher, deleter ProjectDeleter, sshAlias, listenAddress string, port int, openBrowser bool) error {
+	if listenAddress != "127.0.0.1" && listenAddress != "0.0.0.0" {
+		return errors.New("dashboard listen address must be 127.0.0.1 or 0.0.0.0")
+	}
 	if port < 0 || port > 65535 {
 		return errors.New("dashboard port must be between 0 and 65535")
 	}
@@ -340,11 +347,16 @@ func RunServer(ctx context.Context, collector Collector, launcher ProjectLaunche
 	if err != nil {
 		return err
 	}
-	listener, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
+	listener, err := net.Listen("tcp", net.JoinHostPort(listenAddress, strconv.Itoa(port)))
 	if err != nil {
 		return fmt.Errorf("could not start the local dashboard: %w", err)
 	}
-	dashboardURL := "http://" + listener.Addr().String() + "/"
+	_, boundPort, err := net.SplitHostPort(listener.Addr().String())
+	if err != nil {
+		_ = listener.Close()
+		return fmt.Errorf("could not determine the dashboard address: %w", err)
+	}
+	dashboardURL := "http://127.0.0.1:" + boundPort + "/"
 	fmt.Printf("Otherhost dashboard: %s\nPress Ctrl-C to stop.\n", dashboardURL)
 
 	server := &http.Server{

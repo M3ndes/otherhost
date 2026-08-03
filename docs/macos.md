@@ -200,6 +200,48 @@ LAN or internet listener. Its interface, notifications, empty states, and error
 messages are intentionally English-only. Terminal components are vendored with
 the application and do not load scripts, styles, or telemetry from a CDN.
 
+### Keep the dashboard running with Docker
+
+Docker Desktop can keep the dashboard available after its original terminal is
+closed and restart it after Docker or the Mac starts again. First perform the
+read-only preflight:
+
+```bash
+make docker-check
+```
+
+Then build and start the managed service:
+
+```bash
+make docker-up
+```
+
+Open `http://127.0.0.1:7842`. The service uses `unless-stopped`, a read-only root
+filesystem, no Linux capabilities, and a localhost-only published port. The Go
+server listens on the container's private interface so Docker can forward it,
+but Docker publishes that interface exclusively to Mac loopback. The
+machine-local configuration, dedicated private identity, and pinned known-hosts
+file are mounted individually as read-only files at their existing paths. They
+are excluded from the Docker build context and never copied into the image.
+
+Useful lifecycle commands are:
+
+```bash
+make docker-logs
+./scripts/docker-ui.sh --status
+make docker-down
+```
+
+`make docker-up` is idempotent: it rebuilds the local image and replaces only the
+container named `otherhost-ui`. Stop a foreground `otherhost ui` process before
+starting the container because both use port `7842`. To use a non-default config,
+set `OTHERHOST_CONFIG=/absolute/path/to/config` for each command.
+
+Project inventory, deletion, and the integrated terminal continue to use the
+pinned SSH files from inside the container. Editor buttons use local application
+links handled by the Mac browser, so VS Code, Codex, and Claude Desktop remain
+local applications rather than being installed in the image.
+
 ## Change forwarded ports
 
 The `ports` field in `otherhost.local.conf` is a comma-separated list. For example:

@@ -235,7 +235,7 @@ function renderProjects() {
     openButton.title = 'Open in VS Code';
     openButton.setAttribute('aria-label', `Open ${project.name} in VS Code`);
     openButton.innerHTML = `${icons.vscode}<span>VS Code</span>`;
-    openButton.addEventListener('click', () => openProject(project, openButton));
+    openButton.addEventListener('click', () => openVSCodeProject(project));
     editorActions.append(codexButton, claudeButton, openButton);
     const utilityActions = document.createElement('div');
     utilityActions.className = 'project-utility-actions';
@@ -372,25 +372,15 @@ function renderDisks(disks) {
   });
 }
 
-async function openProject(project, button) {
-  const label = button.querySelector('span');
-  const original = label.textContent;
-  label.textContent = 'Opening…';
-  button.disabled = true;
-  try {
-    const response = await fetch('/api/projects/open', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Otherhost-Token': state.actionToken },
-      body: JSON.stringify({ path: project.path })
-    });
-    if (!response.ok) throw new Error((await response.text()).trim() || 'Could not open the project.');
-    showToast(`Opening ${project.name} in VS Code.`);
-  } catch (error) {
-    showToast(error.message, true);
-  } finally {
-    label.textContent = original;
-    button.disabled = false;
+function openVSCodeProject(project) {
+  const sshAlias = state.snapshot?.sshAlias;
+  if (!sshAlias) {
+    showToast('The VS Code SSH connection is unavailable.', true);
+    return;
   }
+  const remotePath = project.path.split('/').map((segment) => encodeURIComponent(segment)).join('/');
+  window.location.href = `vscode://vscode-remote/ssh-remote+${encodeURIComponent(sshAlias)}${remotePath}`;
+  showToast(`Opening ${project.name} in VS Code.`);
 }
 
 function openCodexProject(project) {

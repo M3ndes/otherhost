@@ -1,0 +1,52 @@
+internal/dashboard/assets/app.js
+  s_71755d8d0bab89::t_d6c900ffe82afe 238,375-379,381-383
+Dockerfile
+  s_71755d8d0bab89::t_d6c900ffe82afe 1-30
+docs/macos.md
+  s_71755d8d0bab89::t_58cfb91bd53303 220-222
+  s_71755d8d0bab89::t_d6c900ffe82afe 203-219,223-244
+cmd/otherhost-ui/main.go
+  s_71755d8d0bab89::t_58cfb91bd53303 29,65
+docs/dashboard.md
+  s_71755d8d0bab89::t_d6c900ffe82afe 72-76,167-172,177-179
+  s_71755d8d0bab89::t_58cfb91bd53303 173-174
+  s_71755d8d0bab89::t_1078d80f1f3e7f 175-176
+  s_71755d8d0bab89::t_2b9a26b25bb44b 180
+internal/dashboard/server.go
+  s_71755d8d0bab89::t_1078d80f1f3e7f 354-359
+  s_71755d8d0bab89::t_58cfb91bd53303 336-342,350
+scripts/docker-ui.sh
+  s_71755d8d0bab89::t_58cfb91bd53303 196
+  s_71755d8d0bab89::t_d6c900ffe82afe 1-195,197-199
+.dockerignore
+  s_71755d8d0bab89::t_d6c900ffe82afe 1-15
+README.md
+  s_71755d8d0bab89::t_d6c900ffe82afe 127-139
+internal/dashboard/server_test.go
+  s_71755d8d0bab89::t_58cfb91bd53303 404-406,411-419
+  s_71755d8d0bab89::t_5a8f465b2c53f8 5,407-410
+  s_71755d8d0bab89::t_d6c900ffe82afe 228
+Makefile
+  s_71755d8d0bab89::t_d6c900ffe82afe 4,8,22-33,42,46
+tests/docker_ui_test.sh
+  s_71755d8d0bab89::t_f01f4547cb955c 50-56,67-70
+  s_71755d8d0bab89::t_d6c900ffe82afe 1-49,57-66,71-83,86,91
+  s_71755d8d0bab89::t_1078d80f1f3e7f 87-90
+  s_71755d8d0bab89::t_58cfb91bd53303 84-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "d72918685c4142e24f85e7d5daa659d8d988b401",
+  "prompts": {},
+  "sessions": {
+    "s_71755d8d0bab89": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fba65-d026-7702-9af9-5f7244398fd3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Thales Mendes <thalesmendes.dev@gmail.com>"
+    }
+  }
+}

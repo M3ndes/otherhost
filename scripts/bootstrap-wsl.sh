@@ -188,6 +188,9 @@ EOF
       ok "cloned project into $PROJECT_DIRECTORY"
     fi
   fi
+
+  otherhost_write_installation_state "$ROOT_DIR" || fail 'could not record the WSL installation revision'
+  ok "recorded WSL installation compatibility $(otherhost_compatibility_version "$ROOT_DIR")"
 fi
 
 printf '\nWSL address candidates:\n'

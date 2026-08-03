@@ -137,6 +137,32 @@ Mac loopback, and receives the configuration, dedicated SSH identity, and pinned
 known-hosts file as individual read-only mounts. See the
 [macOS Docker service](docs/macos.md#keep-the-dashboard-running-with-docker).
 
+For daily use, install the native macOS connection service so the SSH tunnels
+recover after a network interruption, login, or restart:
+
+```bash
+otherhost service --check
+otherhost service --apply
+otherhost service status
+```
+
+The LaunchAgent keeps the same pinned, localhost-only SSH connection alive and
+stores its diagnostics in `~/Library/Logs/otherhost`. It is independent of the
+Docker service that keeps the dashboard available.
+
+Check whether the Mac, Windows, and WSL installations still agree before
+updating either computer:
+
+```bash
+otherhost update
+otherhost update --apply
+```
+
+The check is read-only. Applying on the Mac permits only a clean, canonical
+`main` checkout and a fast-forward update. When Windows or WSL needs an update,
+run `.\setup.cmd -Update` from the Windows checkout so the reviewed Windows
+revision and operational WSL clone advance together.
+
 ## Commands
 
 | Command | Where | Purpose |
@@ -144,12 +170,17 @@ known-hosts file as individual read-only mounts. See the
 | `.\setup.cmd` | Windows | Check and configure the Windows + WSL host |
 | `.\setup.cmd -Check` | Windows | Run the host preflight without making changes |
 | `.\setup.cmd -Pair` | Windows | Make the host discoverable for two minutes |
+| `.\setup.cmd -Update` | Windows | Fast-forward Otherhost and repin WSL to the same revision |
 | `otherhost pair` | Mac | Discover, verify, and save a host |
 | `otherhost doctor` | Mac | Validate configuration, keys, dependencies, and SSH |
 | `otherhost connect` | Mac | Keep configured SSH port forwards open |
+| `otherhost service --check\|--apply` | Mac | Review or install the persistent launchd tunnel service |
+| `otherhost service status\|logs\|remove` | Mac | Operate the persistent connection service |
 | `otherhost status` | Mac | Show remote uptime, memory, disk, and Docker usage |
 | `otherhost urls` | Mac | Print forwarded localhost URLs |
 | `otherhost ssh-config [--apply]` | Mac | Review or install the managed SSH host block |
+| `otherhost update [--apply]` | Mac | Compare revisions or safely fast-forward the Mac client |
+| `otherhost version` | Mac | Print the client revision and compatibility version |
 | `otherhost ui` | Mac | Open the project, terminal, and machine dashboard |
 
 ## Security and privacy
@@ -187,8 +218,8 @@ deployment boundaries.
 
 Otherhost creates a trusted remote-development path. It does not install Docker
 Desktop, expose the host publicly, synchronize source code or private keys,
-provide a cloud relay, manage Windows updates, or replace a private network when
-the machines are in different locations.
+provide a cloud relay, manage operating-system updates, or replace a private
+network when the machines are in different locations.
 
 ## Contributing
 

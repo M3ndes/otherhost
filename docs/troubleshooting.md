@@ -18,7 +18,7 @@ flowchart TD
     Start --> Find --> DiscoverCheck["Keep pairing mode open<br/>read listener and probe diagnostics"]
     Start --> Code --> Reject["Reject both prompts<br/>start a new session"]
     Start --> SSH --> Doctor["Run otherhost doctor<br/>check host key, listener, and public key"]
-    Start --> App --> Service["Keep otherhost connect open<br/>check the service inside WSL"]
+    Start --> App --> Service["Check otherhost service status<br/>and the application inside WSL"]
 ```
 
 | Symptom | Most likely layer | Go to |
@@ -31,6 +31,8 @@ flowchart TD
 | SSH timeout | Address, listener, or Hyper-V firewall | [SSH timeout](#ssh-times-out-from-the-mac) |
 | `Permission denied (publickey)` | Key installation or identity selection | [Public-key failure](#ssh-says-permission-denied-publickey) |
 | Local URL is unavailable | Tunnel, port conflict, or application | [Forwarded port conflict](#a-forwarded-port-is-already-in-use-on-the-mac) |
+| Tunnels disappear after login or a network change | macOS LaunchAgent or SSH reachability | [Connection service](#the-macos-connection-service-is-not-running) |
+| Revisions are unknown or incompatible | Stale Windows/WSL install state | [Update compatibility](#otherhost-update-reports-unknown-or-incompatible-versions) |
 
 Do not disable host-key checking, enable SSH passwords, broadly open the
 firewall, or expose a port through the router as a diagnostic shortcut. Those
@@ -96,8 +98,9 @@ free -h
 From the Mac:
 
 ```bash
-otherhost pair
 otherhost doctor
+otherhost service status
+otherhost update
 nc -vz YOUR_WINDOWS_IP 2222
 ```
 
@@ -292,6 +295,57 @@ lsof -nP -iTCP:3000 -sTCP:LISTEN
 
 Stop that process or choose a different unused port in `otherhost.local.conf`. Keep
 the configured port aligned with the service listening inside WSL.
+
+## The macOS connection service is not running
+
+Check launchd state and the latest connection output:
+
+```bash
+otherhost service status
+otherhost service logs
+otherhost doctor
+```
+
+An unloaded service or stale plist can be repaired idempotently with:
+
+```bash
+otherhost service --check
+otherhost service --apply
+```
+
+If launchd repeatedly reports that a local port is unavailable, stop any
+foreground `otherhost connect` process and inspect the port with `lsof` as shown
+above. If SSH itself fails, diagnose the host, network, pinned identity, and
+firewall before changing launchd. The ten-second retry throttle is expected
+while Windows is asleep or unreachable.
+
+To return to foreground-only connections without deleting pairing state or
+logs, run `otherhost service remove`.
+
+## `otherhost update` reports unknown or incompatible versions
+
+First run the read-only report again while Windows and WSL are running:
+
+```bash
+otherhost update
+```
+
+`unknown` can mean the host is unreachable, but it commonly indicates a remote
+installation from before revision state was recorded. Update Windows and WSL
+together from a clean Windows `main` checkout:
+
+```powershell
+.\setup.cmd -Update
+```
+
+The command requires the official remote and a fast-forward history, then runs
+normal setup so WSL is pinned to the same reviewed revision. Resolve or commit
+intentional checkout changes before retrying; do not bypass the clean-tree
+check. A known compatibility mismatch should be treated as unsupported until
+the older component is updated.
+
+`otherhost update --apply` updates only the Mac client. Neither update command
+installs Windows, Ubuntu, WSL, Docker Desktop, or application-project updates.
 
 ## Disk or memory pressure returns
 

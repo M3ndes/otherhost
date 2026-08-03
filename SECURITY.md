@@ -68,10 +68,16 @@ The default design intends to preserve these properties:
   disabled, and effective hardening is checked before the service is enabled.
 - **Minimal network exposure.** Pairing listeners are temporary and scoped to
   the local network. Application tunnels bind to Mac loopback by default.
+- **Supervised tunnels preserve SSH policy.** The macOS LaunchAgent invokes the
+  same pinned, strict, localhost-only connection command and only adds lifecycle
+  supervision and throttled retries.
 - **Explicit privilege.** Read-only checks precede changes; Windows
   administrator access is requested through UAC only for system policy.
 - **Reviewed bootstrap revision.** The WSL operational clone is pinned to the
   exact clean revision launched from Windows before privileged setup runs.
+- **Constrained project updates.** Mac and Windows updates require the official
+  remote, clean `main`, and fast-forward history. Windows setup advances WSL to
+  the same reviewed revision rather than executing new bootstrap code over SSH.
 - **Configuration is data.** Machine-local config is validated and never
   evaluated as Bash or PowerShell code.
 - **Local terminal authorization.** Browser terminals require the per-process
@@ -128,6 +134,9 @@ disabling strict host-key verification.
   WSL account. Lock the Mac when unattended and close unused sessions.
 - Treat **Delete permanently** like running `rm -rf` in WSL. Otherhost does not
   retain a trash copy; push or back up work before confirming the project name.
+- Review `otherhost update` before applying it. Do not bypass a compatibility,
+  canonical-remote, clean-tree, or fast-forward failure to force mixed bootstrap
+  revisions across Windows and WSL.
 
 The setup scripts preserve unrelated configuration and back up `.wslconfig`
 before changing it. Host owners remain responsible for backups, recovery,
@@ -143,3 +152,9 @@ The Windows pairing transcript under
 `%LOCALAPPDATA%\otherhost\logs\pairing-latest.log` captures the complete
 console session and can also contain the temporary comparison code. Review and
 redact diagnostic output before sharing it publicly.
+
+The macOS connection service writes SSH output under
+`~/Library/Logs/otherhost`. These logs do not intentionally contain private key
+material, but they can contain local paths, configured ports, hostnames, and
+addresses. Windows and WSL installation-state files contain only a Git revision
+and compatibility number; they must never be extended with credentials.

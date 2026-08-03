@@ -97,6 +97,8 @@ PAIRING_PROTOCOL="$ROOT_DIR/internal/pairing/protocol.go"
 PAIRING_HOST="$ROOT_DIR/internal/pairing/host.go"
 PAIRING_CLIENT="$ROOT_DIR/internal/pairing/client.go"
 MAC_COMMAND="$ROOT_DIR/bin/otherhost"
+MAC_SERVICE="$ROOT_DIR/scripts/service-mac.sh"
+UPDATE_SCRIPT="$ROOT_DIR/scripts/update.sh"
 grep -F 'ecdh.X25519()' "$PAIRING_HOST" >/dev/null
 grep -F 'ecdh.X25519()' "$PAIRING_CLIENT" >/dev/null
 grep -F 'cipher.NewGCM' "$PAIRING_PROTOCOL" >/dev/null
@@ -120,6 +122,18 @@ fi
 grep -F 'StrictHostKeyChecking=yes' "$MAC_COMMAND" >/dev/null
 grep -F 'UserKnownHostsFile' "$MAC_COMMAND" >/dev/null
 grep -F '[fail] pairing stopped before the local connection was updated' "$MAC_COMMAND" >/dev/null
+grep -F '<key>KeepAlive</key>' "$MAC_SERVICE" >/dev/null
+grep -F '<key>ThrottleInterval</key>' "$MAC_SERVICE" >/dev/null
+grep -F 'StrictHostKeyChecking=yes' "$UPDATE_SCRIPT" >/dev/null
+grep -F 'protocol.ext.allow=never' "$UPDATE_SCRIPT" >/dev/null
+grep -F 'merge --ff-only' "$UPDATE_SCRIPT" >/dev/null
+grep -F "otherhost_require_config \"\$CONFIG_FILE\"" "$UPDATE_SCRIPT" >/dev/null
+grep -F "otherhost_write_installation_state \"\$ROOT_DIR\"" "$WSL_BOOTSTRAP" >/dev/null
+grep -F "otherhost_write_installation_state \"\$ROOT_DIR\"" "$ROOTLESS_BOOTSTRAP" >/dev/null
+grep -F "[switch]\$Update" "$SETUP_SCRIPT" >/dev/null
+grep -F 'function Update-Repository' "$SETUP_SCRIPT" >/dev/null
+grep -F "'merge', '--ff-only', \$target" "$SETUP_SCRIPT" >/dev/null
+grep -F 'function Write-InstallationState' "$SETUP_SCRIPT" >/dev/null
 grep -F "Remove-NetFirewallRule -Name \$discoveryRule" "$SETUP_SCRIPT" >/dev/null
 grep -F "Remove-NetFirewallRule -Name \$sessionRule" "$SETUP_SCRIPT" >/dev/null
 grep -F -- "-RemoteAddress \$networkPolicy.RemoteSubnets -Profile \$networkPolicy.Profiles" "$SETUP_SCRIPT" >/dev/null

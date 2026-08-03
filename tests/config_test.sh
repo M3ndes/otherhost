@@ -91,7 +91,7 @@ if OTHERHOST_CONFIG="$CONFIG_FILE" "$ROOT_DIR/bin/otherhost" ui --apply >"$TEST_
   printf '%s\n' '--apply unexpectedly worked with ui' >&2
   exit 1
 fi
-grep -F -- '--apply is supported only with ssh-config' "$TEST_DIR/apply-stderr" >/dev/null
+grep -F -- 'ui does not support --check or --apply' "$TEST_DIR/apply-stderr" >/dev/null
 
 URLS=$(OTHERHOST_CONFIG="$CONFIG_FILE" "$ROOT_DIR/bin/otherhost" urls)
 assert_equal 'http://localhost:3000

@@ -8,6 +8,7 @@ param(
     [string]$GitHubKeyFingerprint = '',
     [switch]$Pair,
     [switch]$Check,
+    [switch]$Update,
     [switch]$Yes
 )
 
@@ -17,6 +18,8 @@ $LinuxRepository = '~/src/otherhost'
 $PairingDiscoveryPort = 25370
 $PairingSessionPort = 25371
 $PairingDiscoveryAddress = "239.255.67.89:$PairingDiscoveryPort"
+$CompatibilityVersion = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot 'config\compatibility-version')).Trim()
+if ($CompatibilityVersion -notmatch '^[0-9]+$') { throw 'Invalid compatibility version in this checkout' }
 . (Join-Path $PSScriptRoot 'lib\otherhost-windows.ps1')
 
 function Write-Ok([string]$Message) { Write-Host "[ok] $Message" -ForegroundColor Green }
@@ -52,6 +55,52 @@ function Invoke-CapturedProcess([string]$FilePath, [string[]]$Arguments) {
         Remove-Item -LiteralPath $standardOutput -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $standardError -Force -ErrorAction SilentlyContinue
     }
+}
+
+function Update-Repository {
+    $gitCommand = Get-Command git.exe -ErrorAction SilentlyContinue
+    if (-not $gitCommand) { $gitCommand = Get-Command git -ErrorAction SilentlyContinue }
+    if (-not $gitCommand) { Fail 'Git is required to update Otherhost' }
+    $gitExecutable = $gitCommand.Source
+
+    $originResult = Invoke-CapturedProcess -FilePath $gitExecutable -Arguments @('-C', $PSScriptRoot, 'remote', 'get-url', 'origin')
+    $origin = $originResult.Output.Trim()
+    if ($originResult.ExitCode -ne 0 -or $origin -notin @(
+        $RepositoryUrl,
+        'git@github.com:M3ndes/otherhost.git',
+        'ssh://git@github.com:M3ndes/otherhost.git'
+    )) {
+        Fail "This checkout must use the canonical otherhost origin before updating; found: $origin"
+    }
+
+    $branchResult = Invoke-CapturedProcess -FilePath $gitExecutable -Arguments @('-C', $PSScriptRoot, 'symbolic-ref', '--quiet', '--short', 'HEAD')
+    $branch = $branchResult.Output.Trim()
+    if ($branchResult.ExitCode -ne 0 -or $branch -ne 'main') {
+        Fail "Windows updates require the main branch; current branch: $branch"
+    }
+    $statusResult = Invoke-CapturedProcess -FilePath $gitExecutable -Arguments @('-c', 'core.fsmonitor=false', '-c', 'core.hooksPath=NUL', '-C', $PSScriptRoot, 'status', '--porcelain', '--untracked-files=all')
+    if ($statusResult.ExitCode -ne 0) { Fail 'Could not verify that the Windows checkout is clean' }
+    if ($statusResult.Output.Trim()) { Fail 'The Windows checkout has local changes; commit or remove them before updating' }
+
+    Write-Step 'Fetching the latest main revision'
+    $fetchResult = Invoke-CapturedProcess -FilePath $gitExecutable -Arguments @('-c', 'protocol.ext.allow=never', '-c', 'core.hooksPath=NUL', '-C', $PSScriptRoot, 'fetch', '--no-tags', 'origin', 'main')
+    if ($fetchResult.ExitCode -ne 0) { Fail "Could not fetch origin/main: $($fetchResult.Error.Trim())" }
+    $targetResult = Invoke-CapturedProcess -FilePath $gitExecutable -Arguments @('-C', $PSScriptRoot, 'rev-parse', '--verify', 'FETCH_HEAD')
+    $target = $targetResult.Output.Trim()
+    if ($targetResult.ExitCode -ne 0 -or $target -notmatch '^[a-f0-9]{40}$') { Fail 'Git returned an invalid update revision' }
+    $mergeResult = Invoke-CapturedProcess -FilePath $gitExecutable -Arguments @('-c', 'core.hooksPath=NUL', '-C', $PSScriptRoot, 'merge', '--ff-only', $target)
+    if ($mergeResult.ExitCode -ne 0) { Fail "The Windows checkout could not be fast-forwarded: $($mergeResult.Error.Trim())" }
+    Write-Ok "Windows checkout is current at $($target.Substring(0, 12))"
+}
+
+function Write-InstallationState([string]$Revision) {
+    if ($Revision -notmatch '^[a-f0-9]{40}$') { Fail 'Cannot persist an invalid installation revision' }
+    $stateDirectory = Join-Path $env:LOCALAPPDATA 'otherhost'
+    [void][System.IO.Directory]::CreateDirectory($stateDirectory)
+    $statePath = Join-Path $stateDirectory 'install-state'
+    $content = "compatibility=$CompatibilityVersion`r`nrevision=$Revision`r`n"
+    [System.IO.File]::WriteAllText($statePath, $content, [System.Text.UTF8Encoding]::new($false))
+    Write-Ok "recorded Windows installation compatibility $CompatibilityVersion"
 }
 
 function Get-InstalledDistributions {
@@ -464,6 +513,18 @@ function Start-PairingMode {
     }
 }
 
+if ($Update) {
+    if ($Pair -or $Check -or $GitHubUser -or $GitHubKeyFingerprint) {
+        Fail '-Update cannot be combined with pairing, check, or GitHub recovery options'
+    }
+    Write-Step 'Updating the Windows checkout safely'
+    Update-Repository
+    Write-Step 'Running setup from the updated checkout'
+    $updatedSetup = Join-Path $PSScriptRoot 'setup.ps1'
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $updatedSetup -Distro $Distro -Yes
+    exit $LASTEXITCODE
+}
+
 Write-Step 'Checking this Windows host'
 if (-not (Get-Command wsl.exe -ErrorAction SilentlyContinue)) {
     Fail 'WSL is not available. Install current WSL before running this setup.'
@@ -684,6 +745,8 @@ $sshCheckScript = 'systemctl is-active --quiet ssh && ss -lnt | grep -Eq ":{0}[[
 $null = & wsl.exe -d $Distro -- bash -lc $sshCheckScript
 $sshReady = $LASTEXITCODE -eq 0
 if (-not $sshReady) { Fail "SSH did not become ready on port $sshPort" }
+
+Write-InstallationState -Revision $RepositoryRevision
 
 $lanAddress = Get-LanAddress
 Write-Host "`nOtherhost is ready." -ForegroundColor Green

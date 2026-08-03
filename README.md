@@ -27,10 +27,10 @@ is no cloud relay or project account. Your source, builds, and containers stay
 on the Windows computer; the Mac is the keyboard, editor, and browser.
 
 <p align="center">
-  <img src="docs/assets/screenshots/dashboard-overview.jpg" width="1200" alt="Otherhost dashboard using a fictional demonstration host and projects">
+  <img src="docs/assets/screenshots/dashboard-workspace.jpg" width="1200" alt="Otherhost projects, integrated terminal, and fictional remote machine capacity">
 </p>
 
-<p align="center"><em>The screenshot uses an intentionally fictional demonstration host and workspace.</em></p>
+<p align="center"><em>The product view uses an intentionally fictional demonstration host, projects, terminal output, and hardware.</em></p>
 
 > **Project status:** early stage. CI covers the portable scripts and pairing
 > protocol; full Windows + WSL + macOS behavior still requires real-machine

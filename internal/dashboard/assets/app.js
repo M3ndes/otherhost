@@ -13,7 +13,7 @@ const icons = {
   terminal: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3m6 0h4"/></svg>',
   branch: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="5" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="19" r="2"/><path d="M6 7v10m2-6h4a6 6 0 0 0 6-3"/></svg>',
   codex: '<svg class="brand-icon codex-icon" viewBox="0 0 24 24" aria-hidden="true"><g class="codex-mark"><circle cx="12" cy="6.2" r="4.1"/><circle cx="17" cy="9" r="4.1"/><circle cx="17" cy="15" r="4.1"/><circle cx="12" cy="17.8" r="4.1"/><circle cx="7" cy="15" r="4.1"/><circle cx="7" cy="9" r="4.1"/><circle cx="12" cy="12" r="5.2"/></g><path class="codex-terminal" d="m8.8 9.7 2 2.3-2 2.3M13 14.3h2.8"/></svg>',
-  vscode: '<svg class="brand-icon vscode-icon" viewBox="0 0 96 96" aria-hidden="true"><path d="M65.6 89.4c1.3.5 2.8.5 4.1-.2L87 80.9a5.2 5.2 0 0 0 3-4.7V19.8c0-2-1.2-3.9-3-4.7L69.7 6.7a5.2 5.2 0 0 0-5.3.5L30.7 38 16.2 27a3.5 3.5 0 0 0-4.5.2l-4.6 4.2a3.5 3.5 0 0 0 0 5.2L19.6 48 7.1 59.4a3.5 3.5 0 0 0 0 5.2l4.6 4.2a3.5 3.5 0 0 0 4.5.2l14.5-11 33.1 30.3c.5.5 1.1.9 1.8 1.1ZM69 28.9 43.9 48 69 67.1V28.9Z"/></svg>',
+  vscode: '<img class="brand-icon vscode-icon" src="/vscode.svg" alt="">',
   copy: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>',
   trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5"/></svg>',
   sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',

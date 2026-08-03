@@ -13,6 +13,7 @@ const icons = {
   terminal: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3m6 0h4"/></svg>',
   branch: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="5" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="19" r="2"/><path d="M6 7v10m2-6h4a6 6 0 0 0 6-3"/></svg>',
   codex: '<svg class="brand-icon codex-icon" viewBox="0 0 24 24" aria-hidden="true"><g class="codex-mark"><circle cx="12" cy="6.2" r="4.1"/><circle cx="17" cy="9" r="4.1"/><circle cx="17" cy="15" r="4.1"/><circle cx="12" cy="17.8" r="4.1"/><circle cx="7" cy="15" r="4.1"/><circle cx="7" cy="9" r="4.1"/><circle cx="12" cy="12" r="5.2"/></g><path class="codex-terminal" d="m8.8 9.7 2 2.3-2 2.3M13 14.3h2.8"/></svg>',
+  claude: '<img class="brand-icon claude-icon" src="/claude.svg" alt="">',
   vscode: '<img class="brand-icon vscode-icon" src="/vscode.svg" alt="">',
   copy: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>',
   trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5"/></svg>',
@@ -221,6 +222,13 @@ function renderProjects() {
     codexButton.setAttribute('aria-label', `Set up ${project.name} in Codex`);
     codexButton.innerHTML = `${icons.codex}<span>Codex</span>`;
     codexButton.addEventListener('click', () => openCodexProject(project));
+    const claudeButton = document.createElement('button');
+    claudeButton.className = 'editor-project claude-project';
+    claudeButton.type = 'button';
+    claudeButton.title = 'Open in Claude Code';
+    claudeButton.setAttribute('aria-label', `Open ${project.name} in Claude Code`);
+    claudeButton.innerHTML = `${icons.claude}<span>Claude</span>`;
+    claudeButton.addEventListener('click', () => openClaudeProject(project));
     const openButton = document.createElement('button');
     openButton.className = 'editor-project vscode-project';
     openButton.type = 'button';
@@ -228,7 +236,7 @@ function renderProjects() {
     openButton.setAttribute('aria-label', `Open ${project.name} in VS Code`);
     openButton.innerHTML = `${icons.vscode}<span>VS Code</span>`;
     openButton.addEventListener('click', () => openProject(project, openButton));
-    editorActions.append(codexButton, openButton);
+    editorActions.append(codexButton, claudeButton, openButton);
     const utilityActions = document.createElement('div');
     utilityActions.className = 'project-utility-actions';
     const copyButton = document.createElement('button');
@@ -446,7 +454,7 @@ function stopTerminal(showEmpty = true) {
   }
 }
 
-async function startTerminal(project = null) {
+async function startTerminal(project = null, startupCommand = '') {
   if (!window.Terminal || !window.FitAddon?.FitAddon) {
     showToast('The terminal component could not be loaded.', true);
     return;
@@ -552,6 +560,9 @@ async function startTerminal(project = null) {
       window.clearTimeout(startupTimer);
       setTerminalState('connected', 'Connected');
       if (visibleOutput.length > 0) terminal.write(visibleOutput);
+      if (startupCommand && socket.readyState === WebSocket.OPEN) {
+        socket.send(encoder.encode(`${startupCommand}\r`));
+      }
       terminal.focus();
     };
     socket.onerror = () => {
@@ -578,6 +589,13 @@ function openProjectTerminal(project) {
   window.location.hash = 'terminal';
   document.getElementById('terminal').scrollIntoView();
   window.setTimeout(() => startTerminal(project), 120);
+}
+
+function openClaudeProject(project) {
+  window.location.hash = 'terminal';
+  document.getElementById('terminal').scrollIntoView();
+  showToast(`Starting Claude Code in ${project.name}.`);
+  window.setTimeout(() => startTerminal(project, 'claude'), 120);
 }
 
 async function copyPath(path) {

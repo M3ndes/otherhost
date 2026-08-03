@@ -62,6 +62,10 @@ restart or manual move.
 - **Codex** uses the desktop app's supported SSH connection deep link for the
   paired alias. Codex does not currently publish a deep link for an exact remote
   folder, so select the path shown by Otherhost when saving the remote project.
+- **Claude** opens the integrated terminal at the exact project path and starts
+  the supported `claude` command after the remote shell is ready. Claude Code
+  must be installed and authenticated inside WSL; its native Linux and WSL
+  installer is documented at <https://code.claude.com/docs/en/setup>.
 - **VS Code** asks the local VS Code CLI to open the exact inventoried path
   through the configured Remote SSH alias. The alias must match the paired host,
   user, port, pinned host-key file, and identity; otherwise the action explains

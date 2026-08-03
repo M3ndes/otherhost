@@ -212,17 +212,22 @@ func TestDashboardProvidesBrandedEditorActions(t *testing.T) {
 	}{
 		{"/app.js", []string{
 			"icons.codex",
+			"icons.claude",
 			"icons.vscode",
 			`src="/vscode.svg"`,
 			"<span>Codex</span>",
+			"<span>Claude</span>",
 			"<span>VS Code</span>",
 			"`Set up ${project.name} in Codex`",
+			"`Open ${project.name} in Claude Code`",
 			"`Open ${project.name} in VS Code`",
 			"codex://settings/connections/ssh/add?name=",
+			"startTerminal(project, 'claude')",
 			"Opening ${project.name} in VS Code.",
 		}},
-		{"/app.css", []string{".project-editor-actions", ".codex-project", ".vscode-project", ".codex-icon", ".vscode-icon"}},
+		{"/app.css", []string{".project-editor-actions", ".codex-project", ".claude-project", ".vscode-project", ".codex-icon", ".vscode-icon"}},
 		{"/vscode.svg", []string{`viewBox="0 0 100 100"`, `fill="#0065A9"`, `fill="#007ACC"`, `fill="#1F9CF0"`}},
+		{"/claude.svg", []string{"#D97757"}},
 	} {
 		request := httptest.NewRequest(http.MethodGet, asset.path, nil)
 		request.Host = "127.0.0.1:7842"

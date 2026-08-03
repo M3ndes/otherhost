@@ -207,10 +207,11 @@ func TestDashboardProvidesBrandedEditorActions(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, asset := range []struct {
-		path     string
-		expected []string
+		path        string
+		expected    []string
+		notExpected []string
 	}{
-		{"/app.js", []string{
+		{path: "/app.js", expected: []string{
 			"icons.codex",
 			"icons.claude",
 			"icons.vscode",
@@ -219,15 +220,16 @@ func TestDashboardProvidesBrandedEditorActions(t *testing.T) {
 			"<span>Claude</span>",
 			"<span>VS Code</span>",
 			"`Set up ${project.name} in Codex`",
-			"`Open ${project.name} in Claude Code`",
+			"`Open ${project.name} in Claude Desktop`",
 			"`Open ${project.name} in VS Code`",
 			"codex://settings/connections/ssh/add?name=",
-			"startTerminal(project, 'claude')",
+			"claude://code/new",
+			"Opening Claude Desktop. Select ${sshAlias} over SSH, then ${project.path}.",
 			"Opening ${project.name} in VS Code.",
-		}},
-		{"/app.css", []string{".project-editor-actions", ".codex-project", ".claude-project", ".vscode-project", ".codex-icon", ".vscode-icon"}},
-		{"/vscode.svg", []string{`viewBox="0 0 100 100"`, `fill="#0065A9"`, `fill="#007ACC"`, `fill="#1F9CF0"`}},
-		{"/claude.svg", []string{"#D97757"}},
+		}, notExpected: []string{"startTerminal(project, 'claude')", "startupCommand"}},
+		{path: "/app.css", expected: []string{".project-editor-actions", ".codex-project", ".claude-project", ".vscode-project", ".codex-icon", ".vscode-icon"}},
+		{path: "/vscode.svg", expected: []string{`viewBox="0 0 100 100"`, `fill="#0065A9"`, `fill="#007ACC"`, `fill="#1F9CF0"`}},
+		{path: "/claude.svg", expected: []string{"#D97757"}},
 	} {
 		request := httptest.NewRequest(http.MethodGet, asset.path, nil)
 		request.Host = "127.0.0.1:7842"
@@ -239,6 +241,11 @@ func TestDashboardProvidesBrandedEditorActions(t *testing.T) {
 		for _, expected := range asset.expected {
 			if !strings.Contains(response.Body.String(), expected) {
 				t.Fatalf("%s is missing branded editor action %q", asset.path, expected)
+			}
+		}
+		for _, unexpected := range asset.notExpected {
+			if strings.Contains(response.Body.String(), unexpected) {
+				t.Fatalf("%s contains obsolete editor action %q", asset.path, unexpected)
 			}
 		}
 	}

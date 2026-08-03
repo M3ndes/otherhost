@@ -225,8 +225,8 @@ function renderProjects() {
     const claudeButton = document.createElement('button');
     claudeButton.className = 'editor-project claude-project';
     claudeButton.type = 'button';
-    claudeButton.title = 'Open in Claude Code';
-    claudeButton.setAttribute('aria-label', `Open ${project.name} in Claude Code`);
+    claudeButton.title = 'Open in Claude Desktop';
+    claudeButton.setAttribute('aria-label', `Open ${project.name} in Claude Desktop`);
     claudeButton.innerHTML = `${icons.claude}<span>Claude</span>`;
     claudeButton.addEventListener('click', () => openClaudeProject(project));
     const openButton = document.createElement('button');
@@ -454,7 +454,7 @@ function stopTerminal(showEmpty = true) {
   }
 }
 
-async function startTerminal(project = null, startupCommand = '') {
+async function startTerminal(project = null) {
   if (!window.Terminal || !window.FitAddon?.FitAddon) {
     showToast('The terminal component could not be loaded.', true);
     return;
@@ -560,9 +560,6 @@ async function startTerminal(project = null, startupCommand = '') {
       window.clearTimeout(startupTimer);
       setTerminalState('connected', 'Connected');
       if (visibleOutput.length > 0) terminal.write(visibleOutput);
-      if (startupCommand && socket.readyState === WebSocket.OPEN) {
-        socket.send(encoder.encode(`${startupCommand}\r`));
-      }
       terminal.focus();
     };
     socket.onerror = () => {
@@ -592,10 +589,13 @@ function openProjectTerminal(project) {
 }
 
 function openClaudeProject(project) {
-  window.location.hash = 'terminal';
-  document.getElementById('terminal').scrollIntoView();
-  showToast(`Starting Claude Code in ${project.name}.`);
-  window.setTimeout(() => startTerminal(project, 'claude'), 120);
+  const sshAlias = state.snapshot?.sshAlias;
+  if (!sshAlias) {
+    showToast('The Claude SSH connection is unavailable.', true);
+    return;
+  }
+  window.location.href = 'claude://code/new';
+  showToast(`Opening Claude Desktop. Select ${sshAlias} over SSH, then ${project.path}.`);
 }
 
 async function copyPath(path) {

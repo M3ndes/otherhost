@@ -1,0 +1,22 @@
+README.md
+  s_71755d8d0bab89::t_0162ccb6eefb7c 11-12,15-17,19-20,22-24,26,28-29,32,34-43,45,47-49,51-55,57-60,62-64,68-72,75,81,83,93,95,98-99,101-102,105-106,108,111,114-115,121-125,132,136,139-152,155-157,163-164,166-170,173,175-178,182-184
+  s_71755d8d0bab89::t_e1b7c9aac6af72 30,82
+docs/migration.md
+  s_71755d8d0bab89::t_0162ccb6eefb7c 1-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "7f9910f7f30a3e3c3f71f9c8fb224628feaf0ed1",
+  "prompts": {},
+  "sessions": {
+    "s_71755d8d0bab89": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fba65-d026-7702-9af9-5f7244398fd3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Thales Mendes <thalesmendes.dev@gmail.com>"
+    }
+  }
+}

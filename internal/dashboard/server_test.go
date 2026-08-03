@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -224,6 +225,7 @@ func TestDashboardProvidesBrandedEditorActions(t *testing.T) {
 			"`Open ${project.name} in VS Code`",
 			"codex://settings/connections/ssh/add?name=",
 			"claude://code/new",
+			"vscode://vscode-remote/ssh-remote+",
 			"Opening Claude Desktop. Select ${sshAlias} over SSH, then ${project.path}.",
 			"Opening ${project.name} in VS Code.",
 		}, notExpected: []string{"startTerminal(project, 'claude')", "startupCommand"}},
@@ -397,5 +399,21 @@ func TestDashboardRejectsDNSRebindingHost(t *testing.T) {
 	handler.ServeHTTP(response, request)
 	if response.Code != http.StatusMisdirectedRequest {
 		t.Fatalf("untrusted host returned %d", response.Code)
+	}
+}
+
+func TestDashboardListenAddressIsRestricted(t *testing.T) {
+	for _, address := range []string{"127.0.0.1", "0.0.0.0"} {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		if err := RunServerOnAddress(ctx, fixedCollector{}, &recordingLauncher{}, nil, nil, "test-box", address, 0, false); err != nil {
+			t.Fatalf("allowed listen address %s returned %v", address, err)
+		}
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	err := RunServerOnAddress(ctx, fixedCollector{}, &recordingLauncher{}, nil, nil, "test-box", "192.0.2.10", 0, false)
+	if err == nil || !strings.Contains(err.Error(), "listen address") {
+		t.Fatalf("untrusted listen address returned %v", err)
 	}
 }

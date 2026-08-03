@@ -69,10 +69,11 @@ restart or manual move.
   the project card. The remote host must have Claude Code installed for SSH
   sessions. See <https://support.claude.com/en/articles/14729294-open-claude-desktop-with-a-link>
   and <https://code.claude.com/docs/en/desktop#ssh-sessions>.
-- **VS Code** asks the local VS Code CLI to open the exact inventoried path
-  through the configured Remote SSH alias. The alias must match the paired host,
-  user, port, pinned host-key file, and identity; otherwise the action explains
-  how to repair it with `otherhost ssh-config --apply` before VS Code starts.
+- **VS Code** uses the local `vscode://` application link to open the exact
+  inventoried path through the paired Remote SSH alias. Install or refresh that
+  alias with `otherhost ssh-config --apply` before using the action. Handling the
+  link in the browser keeps the local VS Code application available even when
+  the dashboard server itself runs inside Docker.
 - **Open in terminal** starts an interactive WSL shell at the exact inventoried
   project path inside the dashboard.
 - **Copy path** copies the Linux path for use in a terminal or another editor.
@@ -162,6 +163,20 @@ The dashboard is a trusted local control surface, not a hosted account or
 public administration panel. Its terminal is a normal WSL shell, not a sandbox.
 For the full reasoning and threat boundaries, see [Architecture and
 decisions](architecture.md) and the [security policy](../SECURITY.md).
+
+## Persistent Docker service
+
+On macOS, `make docker-check` validates the local Docker service and the three
+files required for pinned SSH without changing container state. `make docker-up`
+then builds and starts a hardened `otherhost-ui` container with automatic
+restart, a read-only root filesystem, and a port published only to
+`127.0.0.1:7842`. The server listens on the private container interface only so
+Docker can perform that loopback forwarding. The configuration, dedicated
+identity, and pinned known-hosts file are bind-mounted individually as read-only
+files; neither the Mac home
+directory nor the SSH directory is mounted wholesale. See the
+[macOS client guide](macos.md#keep-the-dashboard-running-with-docker) for the
+complete lifecycle.
 
 ## Run with demonstration data
 

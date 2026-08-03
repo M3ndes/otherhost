@@ -26,6 +26,7 @@ func main() {
 func run() error {
 	flags := flag.NewFlagSet("otherhost-ui", flag.ContinueOnError)
 	configPath := flags.String("config", "", "otherhost configuration path")
+	listenAddress := flags.String("listen-address", "127.0.0.1", "dashboard listen address")
 	port := flags.Int("port", 7842, "local loopback port")
 	noOpen := flags.Bool("no-open", false, "do not open the browser automatically")
 	demo := flags.Bool("demo", false, "use local demonstration data")
@@ -61,7 +62,7 @@ func run() error {
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-	return dashboard.RunServer(ctx, collector, projectLauncher, terminal, deleter, sshAlias, *port, !*noOpen)
+	return dashboard.RunServerOnAddress(ctx, collector, projectLauncher, terminal, deleter, sshAlias, *listenAddress, *port, !*noOpen)
 }
 
 type demoCollector struct{}

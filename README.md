@@ -124,6 +124,19 @@ interactive remote shell, and shows the host resources available to development
 workloads. See the [dashboard guide](docs/dashboard.md) for its complete behavior
 and security boundaries.
 
+To keep the dashboard running across terminal closures and Mac restarts, use
+Docker Desktop instead:
+
+```bash
+make docker-check
+make docker-up
+```
+
+The container has an `unless-stopped` restart policy, still publishes only on
+Mac loopback, and receives the configuration, dedicated SSH identity, and pinned
+known-hosts file as individual read-only mounts. See the
+[macOS Docker service](docs/macos.md#keep-the-dashboard-running-with-docker).
+
 ## Commands
 
 | Command | Where | Purpose |

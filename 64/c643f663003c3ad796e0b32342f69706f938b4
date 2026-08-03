@@ -1,0 +1,140 @@
+tests/powershell_syntax_test.ps1
+  s_71755d8d0bab89::t_3033b7ca8c8e72 100-101
+  s_71755d8d0bab89::t_fbc4863689b049 26,28-29,40,102
+  s_71755d8d0bab89::t_13896a4f3e1cd3 5,27,30-39
+tests/service_mac_test.sh
+  s_71755d8d0bab89::t_76a570b946b3cc 67
+internal/dashboard/server_test.go
+  s_71755d8d0bab89::t_303e50ef07eb59 26-69,131,144-202
+  s_71755d8d0bab89::t_87533f30b67b04 203
+cmd/otherhost-ui/main_test.go
+  s_71755d8d0bab89::t_1f3c975862ae14 12
+internal/dashboard/assets/index.html
+  s_71755d8d0bab89::t_1061d694513757 412
+  s_71755d8d0bab89::t_91f0d080de8492 14,39-46,57,79-81,83,101,137-239,265,407-411,413-432,435-436
+  s_71755d8d0bab89::t_5289a58d66905a 27,31,121
+  s_db8d1962b84fbb::t_0b47a97caa092c 433-434,437
+setup.ps1
+  s_71755d8d0bab89::t_665576db45990a 736,748,772-774
+  s_71755d8d0bab89::t_40fb0512b05d75 737-747
+internal/dashboard/assets/app.js
+  s_71755d8d0bab89::t_5289a58d66905a 135
+  s_71755d8d0bab89::t_431b2c5cef736e 435-436,440-441,443-560,918-920,924,954-971,974-975
+  s_71755d8d0bab89::t_271107a00920fa 145,437-439,442,884
+  s_71755d8d0bab89::t_e9b4c08e5d7832 5-7,42-44,112-114,123-134,136-144,146-240,247-248,254-255,267,285-293
+cmd/otherhost-ui/main.go
+  s_71755d8d0bab89::t_b1685f8f738f3d 12,30-33,44-46,52-53,56-77,86-87,96,99-110,112-115,117-125,149-225
+  s_71755d8d0bab89::t_8bbde92d78d7fc 111
+bin/otherhost
+  s_71755d8d0bab89::t_82efd264d81523 49-50,77,371-424,592-594
+internal/dashboard/terminal_server.go
+  s_71755d8d0bab89::t_71e3180d853b43 302,304,309,311,314,323-326
+  s_71755d8d0bab89::t_a9db21c340c87a 43-46,303,305-308,310,312-313
+lib/otherhost.sh
+  s_71755d8d0bab89::t_82efd264d81523 110-148
+internal/dashboard/connection.go
+  s_71755d8d0bab89::t_2691ee85833dc6 158-170
+  s_71755d8d0bab89::t_1061d694513757 122
+  s_71755d8d0bab89::t_70b6a772b3e7dd 1-121,123-157,171-181
+internal/dashboard/connection_test.go
+  s_71755d8d0bab89::t_0daa888966db89 1-62
+  s_71755d8d0bab89::t_4f9fb907104b80 63-75
+docs/macos.md
+  s_71755d8d0bab89::t_e3e8d498b4b85f 134-136,142-155,318-322
+tests/config_test.sh
+  s_71755d8d0bab89::t_76a570b946b3cc 47,130-144
+  s_db8d1962b84fbb::t_ae1155513368b3 145
+host-ui.ps1
+  s_71755d8d0bab89::t_13896a4f3e1cd3 1-41,43-82
+  s_71755d8d0bab89::t_dc7ca045d9b042 42
+tests/docker_ui_test.sh
+  s_71755d8d0bab89::t_76a570b946b3cc 71-72,85-88
+host-ui.cmd
+  s_71755d8d0bab89::t_13896a4f3e1cd3 3-4
+  s_71755d8d0bab89::t_1ce895730a3709 1-2
+scripts/docker-ui.sh
+  s_71755d8d0bab89::t_82efd264d81523 14-15,33,120-121,178-181,204,206
+internal/dashboard/host.go
+  s_71755d8d0bab89::t_fee29d415d0f01 40,42,44,47,133
+  s_71755d8d0bab89::t_dce276b199dc36 24,35,41,43,45-46,48,285-286,291-295
+  s_71755d8d0bab89::t_26fbc645c72d81 1-23,25-34,36-39,49-92,94-132,134-135,137-151,155-284,287-290,296-343,345-351
+  s_71755d8d0bab89::t_1ce895730a3709 93,152-154
+  s_71755d8d0bab89::t_6965ebe4dfae89 136,344
+internal/dashboard/server.go
+  s_71755d8d0bab89::t_fee29d415d0f01 98-99,121-124,138-139,173-182,210-224,249-302,305-381,496,518-521,528
+  s_71755d8d0bab89::t_a9db21c340c87a 94-97,100-102,303-304,395-398,460-463,494-495
+  s_71755d8d0bab89::t_ff99c00b873e23 497
+config/compatibility-version
+  s_71755d8d0bab89::t_5caad535ab9f1d 1
+docs/windows-wsl.md
+  s_71755d8d0bab89::t_f07b0f016d97b7 81-86
+  s_71755d8d0bab89::t_e3e8d498b4b85f 63-64,68-80,94-96
+  s_b64fdc8acc2ced::t_835a8b67f1c529 97
+tests/update_test.sh
+  s_71755d8d0bab89::t_5caad535ab9f1d 52,54,94-96,115,120,126
+.github/workflows/release.yml
+  s_71755d8d0bab89::t_d86cb260bccc16 98
+  s_71755d8d0bab89::t_1ce895730a3709 53-87,89
+README.md
+  s_71755d8d0bab89::t_e3e8d498b4b85f 40-42,88-96,162-164,188,192-193,201
+scripts/service-mac.sh
+  s_71755d8d0bab89::t_82efd264d81523 27,106
+internal/pairing/ssh.go
+  s_71755d8d0bab89::t_2daf937f3c502b 18-22
+  s_71755d8d0bab89::t_d86ab6b85eb39d 4,17,25,31-33,38-41
+  s_71755d8d0bab89::t_6965ebe4dfae89 23-24,26-30,34-37
+  s_db8d1962b84fbb::t_0a0ba29c427a91 42
+internal/dashboard/host_test.go
+  s_71755d8d0bab89::t_0daa888966db89 1-47,49-53
+  s_71755d8d0bab89::t_81fcc5d0733636 48
+internal/dashboard/assets/app.css
+  s_71755d8d0bab89::t_a90fcf4b67a828 86,154-155,195-248,308-309,398,417-419
+docs/architecture.md
+  s_71755d8d0bab89::t_e3e8d498b4b85f 74-80,91-93,101-103,159-170
+  s_71755d8d0bab89::t_648f761757e2a6 171
+SECURITY.md
+  s_71755d8d0bab89::t_e3e8d498b4b85f 74-77,118-120
+  s_71755d8d0bab89::t_15577fe46adbb7 121
+internal/pairing/protocol_test.go
+  s_71755d8d0bab89::t_116e8a4522c245 31-37
+  s_71755d8d0bab89::t_0daa888966db89 21-30
+Makefile
+  s_71755d8d0bab89::t_1ce895730a3709 4,24-27,46-47
+internal/dashboard/model.go
+  s_71755d8d0bab89::t_ca0313293bf6c3 6,14-54
+docs/dashboard.md
+  s_71755d8d0bab89::t_f07b0f016d97b7 37-39
+  s_71755d8d0bab89::t_e3e8d498b4b85f 3-7,29-36,40-67,192-196,214-215,221-224,241-246
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "64c643f663003c3ad796e0b32342f69706f938b4",
+  "prompts": {},
+  "sessions": {
+    "s_71755d8d0bab89": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fba65-d026-7702-9af9-5f7244398fd3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Thales Mendes <thalesmendes.dev@gmail.com>"
+    },
+    "s_b64fdc8acc2ced": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019faa78-b713-7262-ae6d-7634265961fb",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Thales Mendes <thalesmendes.dev@gmail.com>"
+    },
+    "s_db8d1962b84fbb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc733-4b72-7580-aca2-c62323628a10",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Thales Mendes <thalesmendes.dev@gmail.com>"
+    }
+  }
+}

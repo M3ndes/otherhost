@@ -203,12 +203,14 @@ svg { display: block; width: 1em; height: 1em; fill: none; stroke: currentColor;
 .branch-tag { display: inline-flex; max-width: 120px; align-items: center; gap: 4px; }
 .branch-tag span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .project-actions { display: grid; gap: 8px; margin-top: auto; padding-top: 20px; }
-.project-editor-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.project-editor-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .project-utility-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .editor-project { display: inline-flex; height: 38px; min-width: 0; align-items: center; justify-content: center; gap: 8px; border-radius: 10px; font-size: 11px; font-weight: 680; cursor: pointer; transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
 .editor-project:hover { transform: translateY(-1px); }
 .codex-project { border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line)); color: var(--text); background: var(--surface-solid); }
 .codex-project:hover { border-color: color-mix(in srgb, var(--accent) 55%, transparent); box-shadow: 0 8px 20px rgba(103, 82, 230, .12); }
+.claude-project { border: 1px solid color-mix(in srgb, #d97757 42%, var(--line)); color: var(--text); background: color-mix(in srgb, #d97757 10%, var(--surface-solid)); }
+.claude-project:hover { border-color: color-mix(in srgb, #d97757 72%, transparent); box-shadow: 0 8px 20px rgba(217, 119, 87, .15); }
 .vscode-project { border: 1px solid var(--text); color: var(--surface-solid); background: var(--text); }
 :root[data-theme="dark"] .vscode-project { color: #17171b; }
 .vscode-project:hover { box-shadow: 0 8px 20px rgba(24, 24, 32, .14); }
@@ -221,7 +223,7 @@ svg { display: block; width: 1em; height: 1em; fill: none; stroke: currentColor;
 .terminal-project { color: var(--accent-dark); background: var(--accent-soft); }
 .delete-project { color: var(--danger); }
 .delete-project:hover { border-color: color-mix(in srgb, var(--danger) 35%, transparent); background: var(--danger-soft); }
-.editor-project svg { width: 17px; height: 17px; }
+.editor-project svg, .editor-project img { width: 17px; height: 17px; }
 .copy-project svg, .terminal-project svg, .delete-project svg { width: 14px; height: 14px; }
 .skeleton-card { overflow: hidden; background: linear-gradient(100deg, var(--surface) 20%, var(--surface-muted) 45%, var(--surface) 70%); background-size: 220% 100%; animation: shimmer 1.4s infinite; }
 .empty-state { padding: 68px 20px; border: 1px dashed var(--line-strong); border-radius: var(--radius-md); color: var(--text-soft); text-align: center; }

@@ -125,7 +125,9 @@ if ! otherhost_is_positive_integer "$SSH_PORT" || [ "$SSH_PORT" -gt 65535 ]; the
   fail 'ssh_port must be between 1 and 65535'
 fi
 [ -f "$IDENTITY_FILE" ] || fail "SSH identity does not exist: $IDENTITY_FILE"
-[ -n "$KNOWN_HOSTS_CONFIG" ] && [ -f "$KNOWN_HOSTS_FILE" ] || fail 'A pinned known_hosts_file is required to inspect host versions'
+if [ -z "$KNOWN_HOSTS_CONFIG" ] || [ ! -f "$KNOWN_HOSTS_FILE" ]; then
+  fail 'A pinned known_hosts_file is required to inspect host versions'
+fi
 command_available "$SSH_BIN" || fail "OpenSSH is not available: $SSH_BIN"
 
 SSH_ARGS=(

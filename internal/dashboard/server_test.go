@@ -142,6 +142,42 @@ func TestDashboardBuffersTerminalInitializationOutput(t *testing.T) {
 	}
 }
 
+func TestDashboardTerminalUsesReadableLightPalette(t *testing.T) {
+	handler, err := NewHandler(fixedCollector{}, &recordingLauncher{}, "test-box")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, asset := range []struct {
+		path     string
+		expected []string
+	}{
+		{"/app.js", []string{
+			"background: '#f7f7fa', foreground: '#24242b'",
+			"black: '#24242b'",
+			"white: '#5f5f69'",
+		}},
+		{"/app.css", []string{
+			"--terminal-bg: #f7f7fa",
+			"--terminal-text: #24242b",
+			"--terminal-success: #18845c",
+			"background: var(--terminal-bg)",
+		}},
+	} {
+		request := httptest.NewRequest(http.MethodGet, asset.path, nil)
+		request.Host = "127.0.0.1:7842"
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, request)
+		if response.Code != http.StatusOK {
+			t.Fatalf("%s returned %d", asset.path, response.Code)
+		}
+		for _, expected := range asset.expected {
+			if !strings.Contains(response.Body.String(), expected) {
+				t.Fatalf("%s is missing terminal color %q", asset.path, expected)
+			}
+		}
+	}
+}
+
 func TestDashboardRefreshesInventoryWhenProjectsOpen(t *testing.T) {
 	handler, err := NewHandler(fixedCollector{}, &recordingLauncher{}, "test-box")
 	if err != nil {

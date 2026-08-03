@@ -92,6 +92,10 @@ home directory. The terminal icon on a project card begins in that repository.
 Once connected, the shell can navigate the rest of the remote machine with the
 normal permissions of the paired WSL user.
 
+The terminal palette follows the dashboard's light or dark theme. Both palettes
+keep the default text and ANSI shell colors distinct from the terminal
+background, including prompts that explicitly use the ANSI black color.
+
 Each session uses the same configured SSH identity and pinned host key as the
 inventory. **Close**, closing the page, or stopping `otherhost ui` terminates
 the local PTY and its SSH process. Starting a new session replaces the current

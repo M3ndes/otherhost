@@ -404,9 +404,11 @@ function terminalTheme() {
     };
   }
   return {
-    background: '#181820', foreground: '#ececf2', cursor: '#a999ff', cursorAccent: '#181820',
-    selectionBackground: '#6d5dfc66', black: '#181820', brightBlack: '#767681', red: '#ff858b',
-    green: '#69d7aa', yellow: '#e4bf72', blue: '#78afff', magenta: '#a999ff', cyan: '#64ced3', white: '#ececf2'
+    background: '#f7f7fa', foreground: '#24242b', cursor: '#6d5dfc', cursorAccent: '#f7f7fa',
+    selectionBackground: '#6d5dfc44', black: '#24242b', brightBlack: '#696973', red: '#b4232c',
+    green: '#0c7550', yellow: '#805d00', blue: '#1f6fb2', magenta: '#6848d8', cyan: '#00747c', white: '#5f5f69',
+    brightRed: '#c93640', brightGreen: '#18845c', brightYellow: '#8f6800', brightBlue: '#2878c7',
+    brightMagenta: '#765de0', brightCyan: '#0a7f88', brightWhite: '#24242b'
   };
 }
 

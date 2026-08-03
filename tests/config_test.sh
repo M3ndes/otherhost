@@ -131,7 +131,7 @@ CONNECTION_STATE="$TEST_DIR/state directory/connection-state"
 DISCONNECT_OUTPUT=$(OTHERHOST_CONNECTION_STATE="$CONNECTION_STATE" OTHERHOST_CONFIG="$CONFIG_FILE" "$ROOT_DIR/bin/otherhost" disconnect)
 printf '%s\n' "$DISCONNECT_OUTPUT" | grep -F 'pairing and host identity were preserved' >/dev/null
 assert_equal disconnected "$(cat "$CONNECTION_STATE")"
-assert_equal disconnected "$(OTHERHOST_CONNECTION_STATE="$CONNECTION_STATE" otherhost_connection_state)"
+assert_equal disconnected "$(otherhost_connection_state "$CONNECTION_STATE")"
 
 FAKE_SSH="$TEST_DIR/ssh"
 cat > "$FAKE_SSH" <<'EOF'

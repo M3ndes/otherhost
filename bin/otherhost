@@ -391,6 +391,7 @@ run_service_loop() {
   validate_config
   [ "$FAILURES" -eq 0 ] || return 1
   build_ssh_args
+  connection_state_file=$(otherhost_connection_state_path)
   old_ifs=$IFS
   IFS=,
   for port in $PORTS; do
@@ -402,7 +403,7 @@ run_service_loop() {
   service_child=''
   trap 'if [ -n "$service_child" ]; then kill "$service_child" >/dev/null 2>&1 || true; fi; exit 0' INT TERM HUP
   while :; do
-    if [ "$(otherhost_connection_state)" = disconnected ]; then
+    if [ "$(otherhost_connection_state "$connection_state_file")" = disconnected ]; then
       sleep 2
       continue
     fi
@@ -410,7 +411,7 @@ run_service_loop() {
     ssh "${SSH_ARGS[@]}" -o ExitOnForwardFailure=yes -N "$SSH_USER@$HOST" &
     service_child=$!
     while kill -0 "$service_child" >/dev/null 2>&1; do
-      if [ "$(otherhost_connection_state)" = disconnected ]; then
+      if [ "$(otherhost_connection_state "$connection_state_file")" = disconnected ]; then
         kill "$service_child" >/dev/null 2>&1 || true
         break
       fi

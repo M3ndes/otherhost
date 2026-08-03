@@ -44,6 +44,7 @@ assert_equal "$HOME/.ssh/test key" "$(otherhost_resolve_identity_file '.ssh/test
 HELP_OUTPUT=$("$ROOT_DIR/bin/otherhost" help)
 printf '%s\n' "$HELP_OUTPUT" | grep -F '◉  otherhost' >/dev/null
 printf '%s\n' "$HELP_OUTPUT" | grep -F 'Make the other host feel local.' >/dev/null
+printf '%s\n' "$HELP_OUTPUT" | grep -F 'disconnect  Pause managed SSH tunnels' >/dev/null
 
 SSH_CONFIG=$(OTHERHOST_CONFIG="$CONFIG_FILE" "$ROOT_DIR/bin/otherhost" ssh-config)
 printf '%s\n' "$SSH_CONFIG" | grep -F 'Host test-box' >/dev/null
@@ -125,5 +126,21 @@ export UI_ARGS
 OTHERHOST_UI_BIN="$UI_BIN" OTHERHOST_CONFIG="$CONFIG_FILE" "$ROOT_DIR/bin/otherhost" ui
 assert_equal "--config
 $CONFIG_FILE" "$(cat "$UI_ARGS")"
+
+CONNECTION_STATE="$TEST_DIR/state directory/connection-state"
+DISCONNECT_OUTPUT=$(OTHERHOST_CONNECTION_STATE="$CONNECTION_STATE" OTHERHOST_CONFIG="$CONFIG_FILE" "$ROOT_DIR/bin/otherhost" disconnect)
+printf '%s\n' "$DISCONNECT_OUTPUT" | grep -F 'pairing and host identity were preserved' >/dev/null
+assert_equal disconnected "$(cat "$CONNECTION_STATE")"
+assert_equal disconnected "$(OTHERHOST_CONNECTION_STATE="$CONNECTION_STATE" otherhost_connection_state)"
+
+FAKE_SSH="$TEST_DIR/ssh"
+cat > "$FAKE_SSH" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$FAKE_SSH"
+RECONNECT_OUTPUT=$(PATH="$TEST_DIR:$PATH" OTHERHOST_CONNECTION_STATE="$CONNECTION_STATE" OTHERHOST_CONFIG="$CONFIG_FILE" "$ROOT_DIR/bin/otherhost" reconnect)
+printf '%s\n' "$RECONNECT_OUTPUT" | grep -F 'connection resumed' >/dev/null
+assert_equal connected "$(cat "$CONNECTION_STATE")"
 
 printf '%s\n' 'config tests passed'

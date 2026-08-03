@@ -23,6 +23,50 @@ type recordingLauncher struct {
 	path  string
 }
 
+type recordingConnectionManager struct {
+	state       string
+	disconnects int
+	reconnects  int
+}
+
+func (manager *recordingConnectionManager) Status() Connection {
+	return Connection{State: manager.state, Paired: true}
+}
+func (manager *recordingConnectionManager) Disconnect() error {
+	manager.disconnects++
+	manager.state = connectionStateDisconnected
+	return nil
+}
+func (manager *recordingConnectionManager) Reconnect(context.Context) error {
+	manager.reconnects++
+	manager.state = connectionStateConnected
+	return nil
+}
+
+type recordingHostController struct {
+	configured int
+	paired     int
+	revoked    string
+}
+
+func (*recordingHostController) ActionState() (bool, string) { return false, "" }
+func (host *recordingHostController) Configure() error       { host.configured++; return nil }
+func (host *recordingHostController) EnablePairing() error   { host.paired++; return nil }
+func (host *recordingHostController) Revoke(_ context.Context, fingerprint string) error {
+	host.revoked = fingerprint
+	return nil
+}
+
+func managementRequest(handler *Handler, path, body string) *httptest.ResponseRecorder {
+	request := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+	request.Host = "127.0.0.1:7842"
+	request.Header.Set("Origin", "http://127.0.0.1:7842")
+	request.Header.Set("X-Otherhost-Token", handler.token)
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	return response
+}
+
 func (launcher *recordingLauncher) OpenProject(alias, projectPath string) error {
 	launcher.alias = alias
 	launcher.path = projectPath
@@ -84,7 +128,7 @@ func TestDashboardServesEnglishEmbeddedUI(t *testing.T) {
 		t.Fatalf("unexpected status: %d", result.StatusCode)
 	}
 	page := string(body)
-	for _, expected := range []string{`<html lang="en">`, "Build remotely.", "Projects", "Terminal", "Machine", `class="brand sidebar-brand"`, `<img src="/favicon.png" alt="">`, `/vendor/xterm/xterm.js`, `/vendor/addon-fit/addon-fit.js`} {
+	for _, expected := range []string{`<html lang="en">`, "Build remotely.", "Projects", "Terminal", "Machine", "Connections", "Host setup", "Reconnect wizard", "Authorized clients", `class="brand sidebar-brand"`, `<img src="/favicon.png" alt="">`, `/vendor/xterm/xterm.js`, `/vendor/addon-fit/addon-fit.js`} {
 		if !strings.Contains(page, expected) {
 			t.Fatalf("UI is missing %q", expected)
 		}
@@ -94,6 +138,66 @@ func TestDashboardServesEnglishEmbeddedUI(t *testing.T) {
 	}
 	if !strings.Contains(result.Header.Get("Content-Security-Policy"), "default-src 'self'") {
 		t.Fatal("content security policy is missing")
+	}
+}
+
+func TestClientConnectionActionsPauseAndResumeSavedHost(t *testing.T) {
+	connection := &recordingConnectionManager{state: connectionStateConnected}
+	handler, err := NewHandlerWithManagement(fixedCollector{}, &recordingLauncher{}, nil, nil, connection, nil, "test-box")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response := managementRequest(handler, "/api/connection/disconnect", `{}`); response.Code != http.StatusOK {
+		t.Fatalf("disconnect returned %d: %s", response.Code, response.Body.String())
+	}
+	if connection.disconnects != 1 || connection.state != connectionStateDisconnected {
+		t.Fatalf("disconnect was not recorded: %+v", connection)
+	}
+	if response := managementRequest(handler, "/api/connection/reconnect", `{}`); response.Code != http.StatusOK {
+		t.Fatalf("reconnect returned %d: %s", response.Code, response.Body.String())
+	}
+	if connection.reconnects != 1 || connection.state != connectionStateConnected {
+		t.Fatalf("reconnect was not recorded: %+v", connection)
+	}
+}
+
+func TestManagementActionsRequireSameOriginToken(t *testing.T) {
+	connection := &recordingConnectionManager{state: connectionStateConnected}
+	handler, err := NewHandlerWithManagement(fixedCollector{}, &recordingLauncher{}, nil, nil, connection, nil, "test-box")
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodPost, "/api/connection/disconnect", strings.NewReader(`{}`))
+	request.Host = "127.0.0.1:7842"
+	request.Header.Set("Origin", "https://attacker.example")
+	request.Header.Set("X-Otherhost-Token", handler.token)
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusForbidden || connection.disconnects != 0 {
+		t.Fatalf("cross-origin management action returned %d and calls=%d", response.Code, connection.disconnects)
+	}
+}
+
+func TestHostActionsRequireExactFingerprintConfirmation(t *testing.T) {
+	host := &recordingHostController{}
+	handler, err := NewHandlerWithManagement(fixedCollector{}, nil, nil, nil, nil, host, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fingerprint := "SHA256:Tv2nUYxqO8E39QmW267jemkqJq7sbpciWkRgxj9ttac"
+	wrong := managementRequest(handler, "/api/host/clients/revoke", `{"fingerprint":"`+fingerprint+`","confirmation":"wrong"}`)
+	if wrong.Code != http.StatusBadRequest || host.revoked != "" {
+		t.Fatalf("invalid confirmation returned %d and revoked %q", wrong.Code, host.revoked)
+	}
+	valid := managementRequest(handler, "/api/host/clients/revoke", `{"fingerprint":"`+fingerprint+`","confirmation":"`+fingerprint+`"}`)
+	if valid.Code != http.StatusOK || host.revoked != fingerprint {
+		t.Fatalf("valid confirmation returned %d and revoked %q: %s", valid.Code, host.revoked, valid.Body.String())
+	}
+	if response := managementRequest(handler, "/api/host/configure", `{}`); response.Code != http.StatusOK || host.configured != 1 {
+		t.Fatalf("host setup action returned %d and calls=%d", response.Code, host.configured)
+	}
+	if response := managementRequest(handler, "/api/host/pair", `{}`); response.Code != http.StatusOK || host.paired != 1 {
+		t.Fatalf("host pairing action returned %d and calls=%d", response.Code, host.paired)
 	}
 }
 

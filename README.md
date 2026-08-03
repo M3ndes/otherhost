@@ -37,6 +37,9 @@ without a cloud relay, project account, or copied private key.
   Claude Code, VS Code, or the integrated terminal.
 - **See the remote environment.** Inspect CPU, memory, graphics, disks, WSL
   allocation, and project state from a localhost-only dashboard.
+- **Control both sides.** Pause or reconnect a Mac without losing its pairing,
+  and use the Windows host view to prepare the machine, enable pairing, review
+  authorized clients, and revoke access.
 - **Stay private.** Use public-key SSH, pinned host identity, encrypted pairing,
   and local-only service tunnels—without a hosted control plane.
 - **Keep control.** The CLI, configuration, setup scripts, and protocol are open
@@ -81,6 +84,15 @@ Clone the repository on Windows, open PowerShell in the checkout, and run:
 The command checks the host, shows the planned changes, asks for confirmation,
 and configures Windows, WSL, the firewall, and SSH. Use `.\setup.cmd -Check`
 for a read-only preflight.
+
+After setup, open the Windows host console with:
+
+```powershell
+.\host-ui.cmd
+```
+
+Its guided checklist can rerun host configuration, open the temporary pairing
+window, and show authorized Macs and active SSH sessions.
 
 ### 2. Install the Mac client
 
@@ -147,7 +159,9 @@ otherhost service status
 ```
 
 The LaunchAgent keeps the same pinned, localhost-only SSH connection alive and
-stores its diagnostics in `~/Library/Logs/otherhost`. It is independent of the
+stores its diagnostics in `~/Library/Logs/otherhost`. The dashboard's
+**Disconnect** and **Reconnect** actions pause or resume that supervisor while
+preserving the saved key and pinned host identity. It is independent of the
 Docker service that keeps the dashboard available.
 
 Check whether the Mac, Windows, and WSL installations still agree before
@@ -171,9 +185,12 @@ revision and operational WSL clone advance together.
 | `.\setup.cmd -Check` | Windows | Run the host preflight without making changes |
 | `.\setup.cmd -Pair` | Windows | Make the host discoverable for two minutes |
 | `.\setup.cmd -Update` | Windows | Fast-forward Otherhost and repin WSL to the same revision |
+| `.\host-ui.cmd` | Windows | Open host setup, authorized clients, and active connections |
 | `otherhost pair` | Mac | Discover, verify, and save a host |
 | `otherhost doctor` | Mac | Validate configuration, keys, dependencies, and SSH |
 | `otherhost connect` | Mac | Keep configured SSH port forwards open |
+| `otherhost disconnect` | Mac | Pause managed tunnels without deleting the saved pairing |
+| `otherhost reconnect` | Mac | Verify the saved host and resume managed tunnels |
 | `otherhost service --check\|--apply` | Mac | Review or install the persistent launchd tunnel service |
 | `otherhost service status\|logs\|remove` | Mac | Operate the persistent connection service |
 | `otherhost status` | Mac | Show remote uptime, memory, disk, and Docker usage |
@@ -181,7 +198,7 @@ revision and operational WSL clone advance together.
 | `otherhost ssh-config [--apply]` | Mac | Review or install the managed SSH host block |
 | `otherhost update [--apply]` | Mac | Compare revisions or safely fast-forward the Mac client |
 | `otherhost version` | Mac | Print the client revision and compatibility version |
-| `otherhost ui` | Mac | Open the project, terminal, and machine dashboard |
+| `otherhost ui` | Mac | Open the client projects, terminal, machine, and connection dashboard |
 
 ## Security and privacy
 

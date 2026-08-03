@@ -71,10 +71,13 @@ the pairing helper, validates local state, and constructs explicit OpenSSH
 commands. The Go helper owns only discovery and the short-lived cryptographic
 pairing protocol; it is not part of daily SSH connections.
 
-`otherhost service --apply` installs a per-user LaunchAgent that invokes the same
-`otherhost connect` primitive as foreground operation. launchd starts it at
-login, retries failed connections with a throttle, and writes user-scoped logs.
-It does not introduce another SSH implementation or relax host verification.
+`otherhost service --apply` installs a per-user LaunchAgent that invokes a small
+tunnel supervisor around the same OpenSSH arguments as foreground
+`otherhost connect`. launchd starts it at login, retries failed connections,
+and writes user-scoped logs. The supervisor also observes a mode-`0600` state
+file containing only `connected` or `disconnected`, allowing the CLI and Docker
+dashboard to pause tunnels without deleting pairing material. It does not
+introduce another SSH implementation or relax host verification.
 
 `otherhost update` compares the repository revisions and the explicit
 compatibility version reported by Mac, Windows, and WSL. The Mac may
@@ -85,9 +88,9 @@ and UAC boundary rather than allowing remote bootstrap execution over SSH.
 ## Why CLI first
 
 A terminal interface makes every host change reviewable, works over remote or
-recovery sessions, and keeps diagnostics available in CI. A future graphical
-interface can call the same primitives, but security policy and recovery must
-not depend on a GUI.
+recovery sessions, and keeps diagnostics available in CI. The graphical
+interface calls the same reviewed setup, pairing, SSH, and state primitives;
+security policy and recovery do not depend on the GUI.
 
 The project targets the system Bash available on supported macOS releases and
 Windows PowerShell 5.1. The Go pairing helper has no third-party Go module
@@ -95,8 +98,9 @@ dependencies, reducing the release and audit surface.
 
 ## Project dashboard
 
-`otherhost ui` starts a small Go HTTP server bound exclusively to `127.0.0.1`; it
-does not replace the CLI or listen on a LAN address. The embedded frontend has
+`otherhost ui` starts the client mode of a small Go HTTP server bound exclusively
+to `127.0.0.1`. `host-ui.cmd` starts its Windows host mode on the same loopback
+boundary. Neither replaces the CLI or listens on a LAN address. The embedded frontend has
 no CDN dependencies or telemetry. Xterm.js and its fit addon are vendored with
 their licenses. The server reads a bounded inventory over the existing pinned
 SSH connection and treats `otherhost.local.conf` as data.
@@ -151,6 +155,19 @@ login shell. A project terminal may start only at an exact path from the latest
 inventory. A general terminal intentionally starts in the WSL home directory.
 After login it is a normal shell, not a filesystem sandbox, so the user can
 navigate anywhere their WSL account is permitted to access.
+
+Client connection actions share a state file with the launchd supervisor.
+Disconnecting terminates active dashboard PTYs and writes `disconnected` but
+does not remove configuration, client keys, or the pinned host key. Reconnecting
+performs a bounded strict SSH probe first and writes `connected` only after that
+probe succeeds.
+
+Host mode collects Windows hardware locally and runs a bounded WSL inventory for
+setup state, public keys in `authorized_keys`, and established sessions on the
+configured SSH port. Public keys are represented by OpenSSH SHA-256
+fingerprints. Revocation accepts only a confirmed fingerprint and atomically
+rewrites `authorized_keys`; setup and temporary pairing delegate to
+`setup.ps1`, preserving the PowerShell/UAC and firewall boundaries.
 
 The login shell starts without the `SSH_CLIENT`, `SSH_CONNECTION`, and
 `SSH_TTY` marker variables. Prompt themes therefore render like a local WSL

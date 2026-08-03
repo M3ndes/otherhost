@@ -1,9 +1,10 @@
 # Project dashboard
 
-The Otherhost dashboard gives the Mac a local view of projects and compute
-capacity on the connected Windows and WSL host. It remains an optional layer
-over the CLI: pairing, diagnostics, recovery, and SSH continue to work without
-the browser interface.
+The Otherhost dashboard has two explicit modes. **Client mode** gives the Mac a
+local view of projects, terminals, compute capacity, and its saved connection.
+**Host mode** gives Windows a guided setup checklist plus visibility into
+authorized Macs and active SSH sessions. Both remain optional layers over the
+CLI: diagnostics and recovery continue to work without the browser interface.
 
 ![Otherhost overview with a fictional demonstration host](assets/screenshots/dashboard-overview.jpg)
 
@@ -24,6 +25,45 @@ otherhost ui
 The command starts a local server on `127.0.0.1:7842` and opens it in the
 default browser. Closing the command stops the dashboard. It does not start a
 project application or replace the tunnels managed by `otherhost connect`.
+
+On Windows, a successful `setup.cmd` builds the host dashboard. Open it from the
+reviewed checkout with:
+
+```powershell
+.\host-ui.cmd
+```
+
+The host server also binds to Windows loopback. It never exposes an
+administration page to the LAN. On a fresh clone, the launcher can install the
+matching dashboard asset from the latest official release only after verifying
+its SHA-256 entry in that release's `checksums.txt`.
+
+## Connections
+
+In client mode, **Disconnect** closes active embedded terminals and asks the
+macOS tunnel supervisor to pause. It deliberately keeps the dedicated private
+key, public key, configuration, and pinned WSL host identity. **Reconnect**
+first probes the saved host with strict host-key checking; only a successful
+probe changes the shared state back to connected, after which launchd restores
+the configured tunnels. The same operations are available as
+`otherhost disconnect` and `otherhost reconnect`.
+
+In host mode, Connections lists public keys currently present in the WSL
+user's `authorized_keys` and established SSH sessions on the configured SSH
+port. The page derives the standard OpenSSH SHA-256 fingerprint for each key;
+it never displays or reads a Mac private key. **Revoke** requires the exact
+fingerprint to be typed and atomically removes only the matching public-key
+line. Revocation is permanent for that identity and is separate from pausing a
+Mac connection.
+
+## Host setup wizard
+
+The Windows wizard checks the supported Windows host, WSL distribution,
+Otherhost revision state, hardened SSH service, and optional Docker integration.
+**Configure host** invokes the reviewed `setup.ps1` flow and leaves UAC approval
+visible to the Windows user. **Enable pairing for 2 minutes** invokes the same
+temporary discovery and firewall policy as `setup.cmd -Pair`; the browser does
+not reimplement the pairing protocol or bypass PowerShell confirmation.
 
 ## Overview
 
@@ -149,6 +189,11 @@ settings.
 - The frontend loads no CDN scripts, fonts, images, or analytics.
 - Inventory travels through the existing pinned SSH connection.
 - Mutating actions require a per-process random token and a same-origin request.
+- Client disconnect/reconnect requests use that same authorization and never
+  delete pairing material.
+- Host setup and pairing retain the normal PowerShell and UAC boundary.
+- Host revocation requires the exact current OpenSSH fingerprint and rewrites
+  `authorized_keys` atomically with mode `0600`.
 - Non-loopback HTTP hosts are rejected to reduce DNS-rebinding risk.
 - Project launches are restricted to paths from the latest inventory.
 - Project deletion additionally requires the exact project name, revalidates
@@ -166,15 +211,17 @@ decisions](architecture.md) and the [security policy](../SECURITY.md).
 
 ## Persistent Docker service
 
-On macOS, `make docker-check` validates the local Docker service and the three
-files required for pinned SSH without changing container state. `make docker-up`
+On macOS, `make docker-check` validates the local Docker service and the files
+required for pinned SSH without changing container state. `make docker-up`
 then builds and starts a hardened `otherhost-ui` container with automatic
 restart, a read-only root filesystem, and a port published only to
 `127.0.0.1:7842`. The server listens on the private container interface only so
 Docker can perform that loopback forwarding. The configuration, dedicated
 identity, and pinned known-hosts file are bind-mounted individually as read-only
-files; neither the Mac home
-directory nor the SSH directory is mounted wholesale. See the
+files. A dedicated Otherhost application-state directory is mounted read-write
+so the dashboard and native LaunchAgent can share only the `connected` or
+`disconnected` state; neither the Mac home directory nor the SSH directory is
+mounted wholesale. See the
 [macOS client guide](macos.md#keep-the-dashboard-running-with-docker) for the
 complete lifecycle.
 
@@ -191,3 +238,9 @@ Then open `http://127.0.0.1:7842`. Demonstration mode uses an intentionally
 fictional host, sample projects under `/home/demo`, and a scripted read-only
 terminal preview. It never opens an SSH connection or runs the displayed
 commands.
+
+Preview the Windows host mode on any contributor machine with:
+
+```bash
+./build/otherhost-ui --demo --mode host --no-open
+```

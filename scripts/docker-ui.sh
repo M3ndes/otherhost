@@ -11,6 +11,8 @@ CONTAINER_NAME=${OTHERHOST_DOCKER_CONTAINER:-otherhost-ui}
 IMAGE_NAME=${OTHERHOST_DOCKER_IMAGE:-otherhost-ui:local}
 DOCKER_BIN=${OTHERHOST_DOCKER_BIN:-docker}
 DASHBOARD_PORT=${OTHERHOST_UI_PORT:-7842}
+CONNECTION_STATE_FILE=${OTHERHOST_CONNECTION_STATE:-"$HOME/Library/Application Support/otherhost/connection-state"}
+CONNECTION_STATE_DIRECTORY=$(dirname -- "$CONNECTION_STATE_FILE")
 
 usage() {
   cat <<'EOF'
@@ -28,6 +30,7 @@ Environment:
   OTHERHOST_DOCKER_CONTAINER Container name (default: otherhost-ui).
   OTHERHOST_DOCKER_IMAGE     Image name (default: otherhost-ui:local).
   OTHERHOST_UI_PORT          Mac loopback port (default: 7842).
+  OTHERHOST_CONNECTION_STATE Shared pause/reconnect state file.
 EOF
 }
 
@@ -114,6 +117,8 @@ load_mounts() {
   validate_mount_path "$CONFIG_FILE"
   validate_mount_path "$IDENTITY_FILE"
   validate_mount_path "$KNOWN_HOSTS_FILE"
+  validate_mount_path "$CONNECTION_STATE_DIRECTORY"
+  validate_mount_path "$CONNECTION_STATE_FILE"
 }
 
 validate_port() {
@@ -170,6 +175,10 @@ fi
 
 [ "$ACTION" = apply ] || fail "Unsupported action: $ACTION"
 
+if [ ! -f "$CONNECTION_STATE_FILE" ]; then
+  otherhost_write_connection_state connected "$CONNECTION_STATE_FILE" || fail 'Could not initialize the connection state'
+fi
+
 "$DOCKER_BIN" build \
   --build-arg "OTHERHOST_UID=$(id -u)" \
   --build-arg "OTHERHOST_GID=$(id -g)" \
@@ -192,8 +201,9 @@ fi
   --mount "type=bind,src=${CONFIG_FILE},dst=${CONFIG_FILE},readonly" \
   --mount "type=bind,src=${IDENTITY_FILE},dst=${IDENTITY_FILE},readonly" \
   --mount "type=bind,src=${KNOWN_HOSTS_FILE},dst=${KNOWN_HOSTS_FILE},readonly" \
+  --mount "type=bind,src=${CONNECTION_STATE_DIRECTORY},dst=${CONNECTION_STATE_DIRECTORY}" \
   "$IMAGE_NAME" \
-  --config "$CONFIG_FILE" --listen-address 0.0.0.0 --port 7842 --no-open >/dev/null
+  --config "$CONFIG_FILE" --connection-state "$CONNECTION_STATE_FILE" --listen-address 0.0.0.0 --port 7842 --no-open >/dev/null
 
 printf '[ok] dashboard is running at http://127.0.0.1:%s\n' "$DASHBOARD_PORT"
 printf '[ok] restart policy: unless-stopped\n'

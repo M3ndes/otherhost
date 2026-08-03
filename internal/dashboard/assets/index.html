@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="/vendor/xterm/xterm.css">
     <link rel="stylesheet" href="/app.css">
   </head>
-  <body>
+  <body data-mode="client">
     <div class="app-shell">
       <aside class="sidebar" aria-label="Primary navigation">
         <a class="brand sidebar-brand" href="#overview" aria-label="Otherhost overview">
@@ -24,17 +24,25 @@
             <span class="nav-icon" data-icon="overview"></span>
             Overview
           </a>
-          <a class="nav-item" href="#projects" data-section-link="projects">
+          <a class="nav-item" href="#projects" data-section-link="projects" data-client-only>
             <span class="nav-icon" data-icon="projects"></span>
             Projects
           </a>
-          <a class="nav-item" href="#terminal" data-section-link="terminal">
+          <a class="nav-item" href="#terminal" data-section-link="terminal" data-client-only>
             <span class="nav-icon" data-icon="terminal"></span>
             Terminal
           </a>
           <a class="nav-item" href="#machine" data-section-link="machine">
             <span class="nav-icon" data-icon="machine"></span>
             Machine
+          </a>
+          <a class="nav-item" href="#connections" data-section-link="connections">
+            <span class="nav-icon" data-icon="connections"></span>
+            Connections
+          </a>
+          <a class="nav-item" href="#setup" data-section-link="setup" data-host-only>
+            <span class="nav-icon" data-icon="setup"></span>
+            Host setup
           </a>
         </nav>
 
@@ -46,7 +54,7 @@
               <span data-connection-mini>Checking remote host</span>
             </div>
           </div>
-          <span class="privacy-note">Private connection over SSH</span>
+          <span class="privacy-note" data-privacy-note>Private connection over SSH</span>
         </div>
       </aside>
 
@@ -68,11 +76,11 @@
         <div class="content-wrap">
           <section class="hero" id="overview" aria-labelledby="overview-title">
             <div class="hero-copy">
-              <span class="eyebrow">localhost → otherhost</span>
-              <h1 id="overview-title">Build remotely.<br><span>Stay fast locally.</span></h1>
-              <p>Your projects, toolchains, and heavy workloads run on your Windows desktop while your Mac stays focused on the experience.</p>
+              <span class="eyebrow" data-hero-eyebrow>localhost → otherhost</span>
+              <h1 id="overview-title" data-hero-title>Build remotely.<br><span>Stay fast locally.</span></h1>
+              <p data-hero-copy>Your projects, toolchains, and heavy workloads run on your Windows desktop while your Mac stays focused on the experience.</p>
               <div class="hero-actions">
-                <a class="primary-button" href="#projects">
+                <a class="primary-button" href="#projects" data-client-only>
                   Browse projects
                   <span data-icon="arrow"></span>
                 </a>
@@ -90,7 +98,7 @@
                   <span class="device-base"></span>
                 </div>
                 <div class="host-identity">
-                  <span class="overline">Development host</span>
+                <span class="overline" data-host-role>Development host</span>
                   <h2 data-host-name>Connecting…</h2>
                   <span data-host-os>Waiting for inventory</span>
                 </div>
@@ -110,7 +118,7 @@
                   <strong data-host-gpu>—</strong>
                 </div>
                 <div class="metric">
-                  <span>SSH response</span>
+                  <span data-host-response-label>SSH response</span>
                   <strong data-host-latency>—</strong>
                 </div>
               </div>
@@ -126,7 +134,109 @@
             <button type="button" data-refresh>Try again</button>
           </div>
 
-          <section class="section" id="projects" aria-labelledby="projects-title">
+          <section class="section" id="connections" aria-labelledby="connections-title">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">Secure access</span>
+                <h2 id="connections-title">Connections</h2>
+                <p data-connections-description>Control the saved connection between this Mac and its development host.</p>
+              </div>
+              <span class="mode-badge" data-mode-badge>Client mode</span>
+            </div>
+
+            <div class="connection-workspace" data-client-only>
+              <article class="connection-card primary-connection-card">
+                <div class="connection-card-heading">
+                  <span class="connection-orb"><i data-status-dot></i></span>
+                  <div>
+                    <span class="overline">Current development host</span>
+                    <h3 data-connection-host>Waiting for host</h3>
+                    <p data-connection-address>Loading the saved pairing…</p>
+                  </div>
+                  <span class="connection-state-badge" data-client-state>Checking</span>
+                </div>
+                <dl class="connection-facts">
+                  <div><dt>SSH identity</dt><dd data-connection-identity>Checking</dd></div>
+                  <div><dt>Pairing</dt><dd data-connection-pairing>Checking</dd></div>
+                  <div><dt>Tunnels</dt><dd data-connection-tunnels>Checking</dd></div>
+                </dl>
+                <div class="connection-actions">
+                  <button class="primary-button hidden" type="button" data-reconnect>Reconnect</button>
+                  <button class="danger-outline-button" type="button" data-disconnect>Disconnect</button>
+                </div>
+              </article>
+
+              <article class="wizard-card">
+                <span class="overline">Reconnect wizard</span>
+                <h3>Return without pairing again.</h3>
+                <p>Otherhost keeps the dedicated key and pinned host identity on this Mac. Reconnecting verifies the saved host before restoring the tunnels.</p>
+                <ol class="wizard-steps compact-wizard">
+                  <li data-reconnect-step="identity"><i></i><div><strong>Saved identity</strong><span>Dedicated key remains on this Mac.</span></div></li>
+                  <li data-reconnect-step="host"><i></i><div><strong>Verify host</strong><span>Confirm the pinned Windows SSH identity.</span></div></li>
+                  <li data-reconnect-step="tunnels"><i></i><div><strong>Restore tunnels</strong><span>launchd resumes local port forwarding.</span></div></li>
+                </ol>
+              </article>
+            </div>
+
+            <div class="host-connections-grid" data-host-only>
+              <article class="connection-card">
+                <div class="connection-card-heading">
+                  <div>
+                    <span class="overline">Authorized clients</span>
+                    <h3>Macs allowed to connect</h3>
+                  </div>
+                  <span class="count-badge" data-client-count>0</span>
+                </div>
+                <div class="client-list" data-client-list></div>
+              </article>
+              <article class="connection-card">
+                <div class="connection-card-heading">
+                  <div>
+                    <span class="overline">Live activity</span>
+                    <h3>Active SSH sessions</h3>
+                  </div>
+                  <span class="live-pulse" aria-hidden="true"></span>
+                </div>
+                <div class="session-list" data-session-list></div>
+              </article>
+            </div>
+          </section>
+
+          <section class="section" id="setup" aria-labelledby="setup-title" data-host-only>
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">Windows host onboarding</span>
+                <h2 id="setup-title">Host setup</h2>
+                <p>Prepare Windows, WSL, and SSH from one guided checklist.</p>
+              </div>
+              <span class="connection-state-badge" data-setup-state>Checking</span>
+            </div>
+            <div class="setup-layout">
+              <article class="wizard-card host-wizard-card">
+                <div>
+                  <span class="overline">Setup wizard</span>
+                  <h3>Turn this Windows PC into an Otherhost.</h3>
+                  <p data-setup-message>Inspecting Windows and WSL configuration…</p>
+                </div>
+                <ol class="wizard-steps" data-setup-steps></ol>
+                <div class="setup-actions">
+                  <button class="primary-button" type="button" data-configure-host>Configure host</button>
+                  <button class="secondary-button" type="button" data-enable-pairing>Enable pairing for 2 minutes</button>
+                </div>
+                <p class="setup-note">Windows may open PowerShell and request administrator approval. Otherhost never bypasses the UAC prompt.</p>
+              </article>
+              <aside class="pairing-guide">
+                <span class="pairing-number">02:00</span>
+                <span class="overline">Local discovery window</span>
+                <h3>Pair from your Mac.</h3>
+                <p>After enabling pairing here, keep both machines on the same local network and run:</p>
+                <code>otherhost pair</code>
+                <p>The Mac verifies the displayed fingerprint before installing its public key.</p>
+              </aside>
+            </div>
+          </section>
+
+          <section class="section" id="projects" aria-labelledby="projects-title" data-client-only>
             <div class="section-heading">
               <div>
                 <span class="eyebrow">Remote workspaces</span>
@@ -152,7 +262,7 @@
             </div>
           </section>
 
-          <section class="section" id="terminal" aria-labelledby="terminal-title">
+          <section class="section" id="terminal" aria-labelledby="terminal-title" data-client-only>
             <div class="section-heading terminal-heading">
               <div>
                 <span class="eyebrow">Remote shell</span>
@@ -289,6 +399,37 @@
               <span data-icon="trash"></span>
               <span data-delete-submit-label>Delete permanently</span>
             </button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <div class="modal-backdrop hidden" data-disconnect-modal>
+      <section class="delete-dialog connection-dialog" role="dialog" aria-modal="true" aria-labelledby="disconnect-dialog-title">
+        <div class="delete-dialog-icon disconnect-dialog-icon" data-icon="disconnect" aria-hidden="true"></div>
+        <span class="eyebrow">Pause this client</span>
+        <h2 id="disconnect-dialog-title">Disconnect from <span data-disconnect-host>this host</span>?</h2>
+        <p>Active terminals will close and launchd-managed SSH tunnels will pause. The dedicated key and pinned host identity stay on this Mac so you can reconnect without pairing again.</p>
+        <div class="delete-dialog-actions">
+          <button class="secondary-button" type="button" data-disconnect-cancel>Keep connected</button>
+          <button class="danger-button" type="button" data-disconnect-confirm>Disconnect</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal-backdrop hidden" data-revoke-modal>
+      <section class="delete-dialog connection-dialog" role="dialog" aria-modal="true" aria-labelledby="revoke-dialog-title">
+        <div class="delete-dialog-icon" data-icon="alert" aria-hidden="true"></div>
+        <span class="eyebrow">Revoke host access</span>
+        <h2 id="revoke-dialog-title">Remove <span data-revoke-name>this Mac</span>?</h2>
+        <p>This permanently removes its SSH public key from the Windows host. Type the fingerprint to confirm.</p>
+        <code data-revoke-fingerprint></code>
+        <form data-revoke-form>
+          <label for="revoke-confirmation">Fingerprint</label>
+          <input id="revoke-confirmation" type="text" autocomplete="off" spellcheck="false" data-revoke-confirmation>
+          <div class="delete-dialog-actions">
+            <button class="secondary-button" type="button" data-revoke-cancel>Cancel</button>
+            <button class="danger-button" type="submit" data-revoke-submit disabled>Revoke access</button>
           </div>
         </form>
       </section>

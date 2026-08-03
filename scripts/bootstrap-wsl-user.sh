@@ -206,6 +206,9 @@ EOF
       "$ROOT_DIR/scripts/install-pairing-helper-wsl.sh" "$PAIRING_HELPER"
     fi
   fi
+
+  otherhost_write_installation_state "$ROOT_DIR" || fail 'could not record the WSL installation revision'
+  ok "recorded WSL installation compatibility $(otherhost_compatibility_version "$ROOT_DIR")"
 fi
 
 if [ -x "$PAIRING_HELPER" ]; then

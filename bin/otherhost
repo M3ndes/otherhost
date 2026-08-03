@@ -27,6 +27,9 @@ else
 fi
 COMMAND=doctor
 SSH_CONFIG_APPLY=0
+APPLY_REQUESTED=0
+CHECK_REQUESTED=0
+SERVICE_ACTION=check
 PAIR_COMPLETED=0
 PAIRING_VERSION=v0.1.1
 PAIRING_DISCOVERY_ADDRESS=239.255.67.89:25370
@@ -43,8 +46,11 @@ Commands:
   pair        Discover and securely pair with a Windows otherhost.
   doctor      Validate local dependencies, configuration, and connectivity.
   connect     Open SSH port forwards and keep the session in the foreground.
+  service     Check or manage the persistent macOS connection service.
   ssh-config  Print an OpenSSH host block, or install it with --apply.
   status      Show remote host, memory, disk, and Docker status over SSH.
+  update      Compare Mac, Windows, WSL, and upstream revisions; use --apply on Mac.
+  version     Print the local source and compatibility versions.
   urls        Print the forwarded localhost URLs.
   ui          Open the project dashboard in the local browser.
   help        Show this help.
@@ -66,12 +72,29 @@ while [ "$#" -gt 0 ]; do
       COMMAND=help
       shift
       ;;
-    pair|doctor|connect|ssh-config|status|urls|ui)
+    pair|doctor|connect|ssh-config|urls|ui|update|version)
       COMMAND=$1
       shift
       ;;
+    service)
+      COMMAND=service
+      shift
+      ;;
+    status)
+      if [ "$COMMAND" = service ]; then SERVICE_ACTION=status; else COMMAND=status; fi
+      shift
+      ;;
+    logs|remove)
+      [ "$COMMAND" = service ] || { printf 'Unknown argument: %s\n' "$1" >&2; usage >&2; exit 2; }
+      SERVICE_ACTION=$1
+      shift
+      ;;
     --apply)
-      SSH_CONFIG_APPLY=1
+      APPLY_REQUESTED=1
+      shift
+      ;;
+    --check)
+      CHECK_REQUESTED=1
       shift
       ;;
     *)
@@ -82,10 +105,30 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-if [ "$SSH_CONFIG_APPLY" -eq 1 ] && [ "$COMMAND" != ssh-config ]; then
-  printf '%s\n' '--apply is supported only with ssh-config' >&2
+if [ "$APPLY_REQUESTED" -eq 1 ] && [ "$CHECK_REQUESTED" -eq 1 ]; then
+  printf '%s\n' '--check and --apply cannot be used together' >&2
   exit 2
 fi
+case "$COMMAND" in
+  ssh-config)
+    [ "$CHECK_REQUESTED" -eq 0 ] || { printf '%s\n' '--check is not supported with ssh-config' >&2; exit 2; }
+    SSH_CONFIG_APPLY=$APPLY_REQUESTED
+    ;;
+  service)
+    if [ "$APPLY_REQUESTED" -eq 1 ]; then SERVICE_ACTION=apply; fi
+    if [ "$CHECK_REQUESTED" -eq 1 ]; then SERVICE_ACTION=check; fi
+    ;;
+  update)
+    UPDATE_ACTION=check
+    if [ "$APPLY_REQUESTED" -eq 1 ]; then UPDATE_ACTION=apply; fi
+    ;;
+  *)
+    if [ "$APPLY_REQUESTED" -eq 1 ] || [ "$CHECK_REQUESTED" -eq 1 ]; then
+      printf '%s does not support --check or --apply\n' "$COMMAND" >&2
+      exit 2
+    fi
+    ;;
+esac
 
 [ "$COMMAND" = help ] && { usage; exit 0; }
 
@@ -161,6 +204,21 @@ if [ "$COMMAND" = pair ]; then
   PAIR_COMPLETED=1
   COMMAND=doctor
 fi
+
+case "$COMMAND" in
+  service)
+    case "$SERVICE_ACTION" in
+      check|apply) exec "$ROOT_DIR/scripts/service-mac.sh" "--$SERVICE_ACTION" --config "$CONFIG_FILE" ;;
+      *) exec "$ROOT_DIR/scripts/service-mac.sh" "$SERVICE_ACTION" --config "$CONFIG_FILE" ;;
+    esac
+    ;;
+  update)
+    exec "$ROOT_DIR/scripts/update.sh" "--$UPDATE_ACTION" --config "$CONFIG_FILE"
+    ;;
+  version)
+    exec "$ROOT_DIR/scripts/update.sh" --version
+    ;;
+esac
 
 otherhost_require_config "$CONFIG_FILE" || exit 1
 

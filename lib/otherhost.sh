@@ -107,6 +107,50 @@ otherhost_resolve_identity_file() {
   esac
 }
 
+otherhost_repository_revision() {
+  local repository=$1
+  local git_bin=${OTHERHOST_GIT_BIN:-git}
+  "$git_bin" -c core.fsmonitor=false -c core.hooksPath=/dev/null -C "$repository" rev-parse --verify HEAD 2>/dev/null
+}
+
+otherhost_compatibility_version() {
+  local repository=$1
+  local version_file="$repository/config/compatibility-version"
+  local version
+
+  [ -f "$version_file" ] || return 1
+  version=$(otherhost_trim "$(sed -n '1p' "$version_file")")
+  case "$version" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+  printf '%s\n' "$version"
+}
+
+otherhost_write_installation_state() {
+  local repository=$1
+  local state_directory=${2:-"$HOME/.local/state/otherhost"}
+  local revision
+  local compatibility
+  local temporary_file
+
+  revision=$(otherhost_repository_revision "$repository") || return 1
+  case "$revision" in
+    *[!0-9a-f]*|'') return 1 ;;
+  esac
+  [ "${#revision}" -eq 40 ] || return 1
+  compatibility=$(otherhost_compatibility_version "$repository") || return 1
+
+  mkdir -p "$state_directory" || return 1
+  chmod 700 "$state_directory" || return 1
+  temporary_file=$(mktemp "$state_directory/.install-state.XXXXXX") || return 1
+  if ! printf 'compatibility=%s\nrevision=%s\n' "$compatibility" "$revision" > "$temporary_file"; then
+    rm -f "$temporary_file"
+    return 1
+  fi
+  chmod 600 "$temporary_file" || { rm -f "$temporary_file"; return 1; }
+  mv "$temporary_file" "$state_directory/install-state"
+}
+
 otherhost_validate_public_key() {
   local public_key=$1
   local key_file

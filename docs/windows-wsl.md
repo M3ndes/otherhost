@@ -27,7 +27,7 @@ git remote set-url origin https://github.com/M3ndes/otherhost.git
 git pull
 ```
 
-Then rerun `\.\setup.cmd`. The setup accepts the former canonical remote during
+Then rerun `.\setup.cmd`. The setup accepts the former canonical remote during
 the transition, detects the legacy WSL clone and user-scoped service when
 pairing, and keeps the version 1 pairing protocol compatible. A full setup moves
 new operational files to Otherhost paths and removes only superseded SSH
@@ -81,6 +81,32 @@ Pairing mode and normal host setup are deliberately separate. The SSH service
 remains available for an already authorized Mac, while the discovery and pairing
 listener exists only for two minutes.
 
+## Update Windows and WSL together
+
+Run updates from the existing Windows checkout in PowerShell:
+
+```powershell
+.\setup.cmd -Update
+```
+
+The update path requires branch `main`, a clean checkout, and the official
+Otherhost Git remote. It fetches `origin/main`, rejects any non-fast-forward
+history, and then invokes the updated setup through its normal UAC boundary.
+The explicit `-Update` action authorizes this apply. Setup pins the operational
+WSL clone to that same reviewed revision instead of allowing Windows and WSL
+bootstrap code to drift.
+
+After a successful setup, Windows records its revision and compatibility number
+under `%LOCALAPPDATA%\otherhost\install-state`; WSL records the equivalent state
+under `~/.local/state/otherhost/install-state`. These files contain no keys or
+credentials. The Mac reads them through the pinned SSH connection when
+`otherhost update` checks compatibility.
+
+`-Update` updates Otherhost, not Windows, WSL, Ubuntu packages, Docker Desktop,
+or application projects. It cannot be combined with pairing, check, or GitHub
+key-recovery modes. Continue to use `.\setup.cmd -Check` when a strictly
+read-only host preflight is required.
+
 ## Existing mirrored WSL without elevation
 
 If Ubuntu is already installed, PID 1 is systemd, and mirrored networking is
@@ -99,6 +125,11 @@ port forwarding to loopback services. It does not install WSL, change the
 Windows firewall, or persist when the WSL user manager is not running.
 The Mac automatically falls back to bounded local-subnet discovery if mirrored
 WSL networking does not receive multicast probes.
+
+The user-scoped bootstrap writes the same WSL installation state when applied.
+Because this advanced path has no reviewed Windows launcher to coordinate it,
+update its clean checkout manually with `git pull --ff-only` before rerunning
+`bootstrap-wsl-user.sh --apply`.
 
 Windows displays the requesting Mac name and a six-digit code. Confirm only if
 the Mac displays the same code. Temporary Windows Firewall rules are limited to

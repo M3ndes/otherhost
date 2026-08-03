@@ -87,6 +87,8 @@ Pairing is therefore complete only when the final SSH check succeeds.
 | `~/.ssh/otherhost_ed25519` | Dedicated private SSH identity for new installations | **No** |
 | `~/.ssh/otherhost_ed25519.pub` | Public half installed in WSL | Yes |
 | `~/.ssh/otherhost_known_hosts` | Pinned WSL public host identity | Public key data, but identifies the host |
+| `~/Library/LaunchAgents/dev.otherhost.connect.plist` | Native persistent tunnel service | Contains local paths and the config location |
+| `~/Library/Logs/otherhost/connect*.log` | Tunnel service output and errors | Review and redact before sharing |
 
 The default private key is permission-restricted and never leaves the Mac. All
 paired SSH commands use `IdentitiesOnly=yes` and `StrictHostKeyChecking=yes`, so
@@ -111,6 +113,80 @@ Keep that process in a dedicated terminal. SSH keepalives detect a lost host,
 and the command fails immediately when a requested local port cannot be opened.
 `Ctrl-C` closes only the SSH connection; it does not stop applications or
 containers on the Windows host.
+
+### Keep the connection alive with launchd
+
+The native connection service keeps the SSH tunnels active without a terminal
+window. Review the exact installation and current state first:
+
+```bash
+otherhost service --check
+```
+
+Install or repair the per-user LaunchAgent, then inspect it:
+
+```bash
+otherhost service --apply
+otherhost service status
+```
+
+The service starts after Mac login, uses the absolute path to the selected
+configuration, and runs `otherhost connect` with launchd `KeepAlive` enabled.
+If the Windows host sleeps, changes networks, or temporarily disappears,
+launchd retries the failed connection with a ten-second throttle. The same
+dedicated identity, pinned host key, strict verification, and Mac loopback
+bindings used by the foreground command remain in effect.
+
+Use these lifecycle commands when diagnosing or removing it:
+
+```bash
+otherhost service logs
+otherhost service remove
+```
+
+Logs are written under `~/Library/Logs/otherhost` and can identify the host,
+local paths, ports, or network failure, so redact them before sharing. Removing
+the service unloads the LaunchAgent and deletes its plist; it preserves logs and
+all pairing material. Do not run foreground `otherhost connect` at the same time
+because both processes request the same local ports.
+
+### Check and update compatible installations
+
+Print the local build identity or compare every reachable component:
+
+```bash
+otherhost version
+otherhost update
+```
+
+`otherhost update` is read-only. It reads the current GitHub `main` revision,
+then queries installation state from the Mac, Windows, and WSL through the
+existing pinned SSH connection. A different Git commit may still be compatible;
+the compatibility number represents the shared command and state contract.
+`unknown` normally means that the remote installation predates version-state
+reporting or is temporarily unreachable.
+
+Update the Mac only after reviewing the report:
+
+```bash
+otherhost update --apply
+```
+
+Apply requires the official Otherhost remote, branch `main`, and a clean
+working tree. It fetches the verified upstream revision, permits only a
+fast-forward merge, reruns the Mac bootstrap, and refreshes an installed
+connection service. It does not modify Windows or WSL remotely.
+
+When the report says the host needs an update, open the Windows checkout in
+PowerShell and run:
+
+```powershell
+.\setup.cmd -Update
+```
+
+That operation updates the reviewed Windows checkout and repins the operational
+WSL clone to the same revision. This coordinated boundary avoids running new
+host bootstrap code across SSH and preserves the existing UAC review.
 
 ## Migrate an existing devbox-bridge client
 
@@ -181,11 +257,13 @@ a `.git` directory are shown. Submodules and linked worktrees use a `.git`
 pointer file and are omitted in favor of the primary checkout. The inventory
 refreshes every 30 seconds while the dashboard is visible, when its browser tab
 returns to the foreground, and immediately when **Projects** is opened. **Open
-project** launches a discovered path in VS Code. Before launching, Otherhost
-checks that the OpenSSH alias resolves to the configured host, user, port, pinned
-host-key file, and identity. A missing or stale alias returns an actionable
-`otherhost ssh-config --apply` message instead of leaving VS Code with a hostname
-resolution failure. The `code` command-line tool must also be installed.
+in VS Code** sends a local `vscode://` Remote SSH link to the browser. Before
+creating that link, Otherhost checks that the OpenSSH alias resolves to the
+configured host, user, port, pinned host-key file, and identity. A missing or
+stale alias returns an actionable `otherhost ssh-config --apply` message instead
+of leaving VS Code with a hostname resolution failure. Codex and Claude Desktop
+actions likewise open local application links; those desktop applications must
+already be installed on the Mac.
 
 The **Terminal** view starts an interactive login shell through the configured
 pinned SSH connection. Start a session from that view to use the WSL home
@@ -236,6 +314,10 @@ make docker-down
 container named `otherhost-ui`. Stop a foreground `otherhost ui` process before
 starting the container because both use port `7842`. To use a non-default config,
 set `OTHERHOST_CONFIG=/absolute/path/to/config` for each command.
+
+The Docker dashboard and native launchd connection service solve different
+lifecycle problems. Docker keeps the web interface available; launchd keeps the
+Mac-hosted SSH port forwards available. They are designed to run together.
 
 Project inventory, deletion, and the integrated terminal continue to use the
 pinned SSH files from inside the container. Editor buttons use local application

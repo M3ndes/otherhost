@@ -27,6 +27,7 @@ flowchart TB
         CLI["bin/otherhost<br/>Bash orchestration"]
         MacPair["otherhost-pair<br/>Go client"]
         OpenSSH["system OpenSSH client"]
+        LaunchAgent["launchd connection service<br/>automatic tunnel recovery"]
         MacState["local config, private key,<br/>and pinned known_hosts"]
     end
 
@@ -46,6 +47,8 @@ flowchart TB
 
     CLI --> MacPair
     CLI --> OpenSSH
+    CLI --> LaunchAgent
+    LaunchAgent --> OpenSSH
     CLI --> MacState
     Setup --> WinPolicy
     Setup --> WinPair
@@ -67,6 +70,17 @@ WSL bootstraps remain callable for diagnostics and manual recovery.
 the pairing helper, validates local state, and constructs explicit OpenSSH
 commands. The Go helper owns only discovery and the short-lived cryptographic
 pairing protocol; it is not part of daily SSH connections.
+
+`otherhost service --apply` installs a per-user LaunchAgent that invokes the same
+`otherhost connect` primitive as foreground operation. launchd starts it at
+login, retries failed connections with a throttle, and writes user-scoped logs.
+It does not introduce another SSH implementation or relax host verification.
+
+`otherhost update` compares the repository revisions and the explicit
+compatibility version reported by Mac, Windows, and WSL. The Mac may
+fast-forward itself from a clean canonical `main` checkout. Windows and WSL are
+updated together through `setup.cmd -Update`, preserving the reviewed-revision
+and UAC boundary rather than allowing remote bootstrap execution over SSH.
 
 ## Why CLI first
 
@@ -112,11 +126,13 @@ project can be opened or deleted only when its exact remote path appeared in the
 latest SSH inventory. This prevents another local website from turning the
 dashboard into an arbitrary command launcher. Requests with a non-loopback HTTP
 `Host` are rejected to prevent DNS rebinding from bypassing that local boundary.
-Before launching VS Code, the Mac resolves the selected Remote SSH alias with
-`ssh -G` and verifies its host, user, port, identity, and pinned host-key file
-against the parsed Otherhost configuration. Pairing offers to install the same
-managed alias, while `otherhost ssh-config --apply` can replace it idempotently
-without evaluating the local configuration or modifying unrelated SSH entries.
+Before creating a VS Code application link, the Mac resolves the selected
+Remote SSH alias with `ssh -G` and verifies its host, user, port, identity, and
+pinned host-key file against the parsed Otherhost configuration. Pairing offers
+to install the same managed alias, while `otherhost ssh-config --apply` can
+replace it idempotently without evaluating the local configuration or modifying
+unrelated SSH entries. The browser handles the resulting `vscode://` link, so
+the dashboard does not execute a local editor CLI.
 
 Deletion is intentionally permanent. The browser shows the complete path and
 requires the exact project name before sending the request. The server removes
@@ -241,8 +257,8 @@ user mode creates no Windows Firewall rules.
 | Multicast discovery | UDP `239.255.67.89:25370` | Local multicast scope | Pairing window only |
 | Direct discovery and pairing | TCP `25371` | Active local IPv4 subnet | Pairing window only |
 | WSL SSH | TCP `2222` | Allowed local subnet through Hyper-V firewall | Persistent host service |
-| Forwarded applications | Configured ports such as `3000` | Mac `127.0.0.1` only | While `otherhost connect` runs |
-| Project dashboard | TCP `7842` | Mac `127.0.0.1` only | While `otherhost ui` runs |
+| Forwarded applications | Configured ports such as `3000` | Mac `127.0.0.1` only | While foreground connect or the LaunchAgent runs |
+| Project dashboard | TCP `7842` | Mac `127.0.0.1` only | While foreground UI or its Docker service runs |
 
 The fixed pairing ports remain below common ephemeral ranges so mirrored WSL
 networking cannot reserve them for outbound connections. Neither pairing nor SSH
@@ -262,9 +278,10 @@ forwarding destinations to WSL loopback addresses.
 ## Source and compute location
 
 Projects live inside the WSL Linux filesystem, normally under `~/src`. The
-dashboard scans only direct Git repository children of the configured
-`projects_root`. Builds, dependency installation, Git operations, databases,
-and containers run on the desktop. The Mac remains the interactive client.
+dashboard scans the WSL home to a depth of three and always includes direct Git
+repository children of the configured `projects_root`. Builds, dependency
+installation, Git operations, databases, and containers run on the desktop. The
+Mac remains the interactive client.
 
 This is important for Docker Compose bind mounts: a remote Docker engine alone
 is insufficient because source paths must exist beside the engine. Keeping
@@ -287,6 +304,9 @@ Each clone owns an ignored local config. The repository contains only
 | Mac public SSH key | Mac, then WSL | Explicitly safe to share; installed only after confirmation |
 | WSL SSH host private key | WSL | Never returned to the Mac |
 | Pinned WSL host public key | Mac | Enforces strict host-key verification |
+| Mac LaunchAgent plist | Mac user | Contains explicit paths; uses the same pinned SSH policy |
+| Connection service logs | Mac user | Diagnostic data; may identify paths, ports, addresses, and the host |
+| Windows and WSL install state | Respective user profiles | Revision and compatibility metadata only; contains no credentials |
 | `.wslconfig` | Windows user | Unrelated content preserved; backup created before changes |
 | Windows pairing transcript | Windows user profile | Diagnostic data; may identify devices, paths, addresses, and code |
 
@@ -303,6 +323,14 @@ Windows checkout that launched setup. Setup refuses local changes so a stale or
 modified second checkout cannot silently become the code source at the `sudo`
 boundary.
 
+Updates preserve this boundary. `setup.cmd -Update` accepts only the canonical
+remote, clean `main`, and a fast-forward merge before normal setup repins WSL.
+The Mac updater enforces the same canonical, clean, fast-forward constraints for
+its own checkout but never mutates the host over SSH. A small repository-owned
+compatibility integer describes the shared operational contract independently
+of the commit SHA; unknown or mismatched state is reported rather than silently
+assumed compatible.
+
 This constraint means contributors testing host changes should commit them on a
 branch before exercising the full Windows launcher. Local helper binaries are
 used only through the explicit `OTHERHOST_PAIR_BIN` development override.
@@ -314,7 +342,7 @@ material:
 
 ```mermaid
 flowchart LR
-    Preflight["Windows preflight"] --> WSL["WSL policy"] --> Listener["Pairing listener"] --> Discovery["Mac discovery"] --> Auth["SSH authentication"] --> Tunnel["Application tunnel"]
+    Preflight["Windows preflight"] --> WSL["WSL policy"] --> Listener["Pairing listener"] --> Discovery["Mac discovery"] --> Auth["SSH authentication"] --> Tunnel["Application tunnel"] --> Supervisor["launchd supervision"]
 ```
 
 Each arrow is independently testable. Changes should preserve this separation:

@@ -212,10 +212,10 @@ svg { display: block; width: 1em; height: 1em; fill: none; stroke: currentColor;
 .vscode-project { border: 1px solid var(--text); color: var(--surface-solid); background: var(--text); }
 :root[data-theme="dark"] .vscode-project { color: #17171b; }
 .vscode-project:hover { box-shadow: 0 8px 20px rgba(24, 24, 32, .14); }
-.brand-icon { flex: 0 0 auto; }
+.brand-icon { display: block; width: 17px; height: 17px; flex: 0 0 auto; }
 .codex-icon .codex-mark { fill: #635bff; stroke: none; }
 .codex-icon .codex-terminal { fill: none; stroke: #fff; stroke-width: 1.7; }
-.vscode-icon path { fill: #23a9f2; stroke: none; }
+.vscode-icon { object-fit: contain; }
 .copy-project, .terminal-project, .delete-project { display: grid; width: 36px; height: 36px; flex: 0 0 auto; place-items: center; border: 1px solid var(--line); border-radius: 10px; color: var(--text-soft); background: var(--surface-solid); cursor: pointer; }
 .copy-project:hover, .terminal-project:hover { color: var(--text); border-color: var(--line-strong); }
 .terminal-project { color: var(--accent-dark); background: var(--accent-soft); }

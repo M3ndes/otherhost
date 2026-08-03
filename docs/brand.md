@@ -47,7 +47,12 @@ without repeating it elsewhere in the page.
 | `docs/assets/otherhost-mascot.png` | README, project pages, and community artwork |
 | `docs/assets/otherhost-icon.png` | Wordmark lockups, compact documentation, and social avatars |
 | `internal/dashboard/assets/favicon.png` | Browser favicon and dashboard navigation |
+| `internal/dashboard/assets/vscode.svg` | Unmodified official stable VS Code icon for the editor action |
 | `◉  otherhost` | Text-only CLI signature; never substitute terminal art for the image mark |
+
+Third-party product actions use the vendor's published artwork without
+redrawing or recoloring it. The VS Code action uses Microsoft's stable icon and
+approved `VS Code` name; it is not part of the Otherhost identity.
 
 ## Visual system
 

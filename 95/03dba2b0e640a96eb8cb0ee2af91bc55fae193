@@ -1,0 +1,24 @@
+internal/dashboard/server_test.go
+  s_71755d8d0bab89::t_1ce35b1d56928e 210-212,214,223,226-227,229-232,246-248
+  s_71755d8d0bab89::t_5f45a4c1b0cb86 249-250
+docs/dashboard.md
+  s_71755d8d0bab89::t_1ce35b1d56928e 65-71
+internal/dashboard/assets/app.js
+  s_71755d8d0bab89::t_1ce35b1d56928e 228-229,457,592-598
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "9503dba2b0e640a96eb8cb0ee2af91bc55fae193",
+  "prompts": {},
+  "sessions": {
+    "s_71755d8d0bab89": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fba65-d026-7702-9af9-5f7244398fd3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Thales Mendes <thalesmendes.dev@gmail.com>"
+    }
+  }
+}
